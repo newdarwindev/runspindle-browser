@@ -1,0 +1,9 @@
+{
+  "api_version": "runspindle.v1alpha0",
+  "component": "browser",
+  "description": "Scoped credentials, encrypted profiles and fenced browser handoff",
+  "implementation_language": "rust",
+  "repository": "newdarwindev/runspindle-browser",
+  "schema_version": 1,
+  "stage": "scaffold"
+}
