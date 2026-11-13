@@ -3,6 +3,14 @@
   "new_files": "New scaffolding and adapted specifications; no old Git history imported.",
   "provenance_policy": "Public IDs resolve to a privately retained source record containing repository, exact commit, path, source hash and review notes. Private repository names, URLs and operational details are omitted.",
   "schema_version": 1,
+  "shared_synthetic_fixture_source": {
+    "adaptation": "Byte-preserved validator/schema/artifact; generated component-only golden and mutation subsets with immutable hashes. No legacy source import.",
+    "bundle_tree": "68172a671e28175af88638c6d8f1c54e1c675f37",
+    "commit": "e8cd5779968fede213443db13a591c992cd0e183",
+    "path": "fixtures/v1",
+    "repository": "newdarwindev/runspindle",
+    "rights_basis": "Owner-directed reuse of original Runspindle synthetic fixtures; source bytes and notices retained; no blanket relicense."
+  },
   "sources": [
     {
       "adaptation_limits": "New concise conceptual derivatives, not faithful historical re-renders or live implementation. Detailed historical dependencies preserved privately.",

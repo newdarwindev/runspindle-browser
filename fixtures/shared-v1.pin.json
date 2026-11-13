@@ -1,0 +1,14 @@
+{
+  "component": "browser",
+  "fixture_schema": "runspindle.fixture.v1",
+  "repository": "newdarwindev/runspindle",
+  "rights_basis": "Owner-directed reuse of original Runspindle synthetic fixtures; source bytes and notices retained; no blanket relicense.",
+  "schema": "runspindle.fixture.pin.v1",
+  "scope": "synthetic-fixture-consumer-only; not a runtime wire protocol or upstream qualification",
+  "source_bundle_tree": "68172a671e28175af88638c6d8f1c54e1c675f37",
+  "source_commit": "e8cd5779968fede213443db13a591c992cd0e183",
+  "source_manifest_sha256": "1dd35d045064056dd66e6da3619ff100549e1c3e81c928f076cfd4109a524d81",
+  "source_validator_blob": "0c5189a527bcd85b4c491a869a2d0218db50dc25",
+  "subset_manifest_sha256": "1aff79ae7d277a334efab9ef559c4d657afe6d667d99a6b4a3c849abc27de973",
+  "validator_sha256": "1bd6d10ae7105a44a0d583a8974230dde56af603c6ed2b75f67fe3f1fb16319f"
+}

@@ -1,0 +1,31 @@
+[
+  {
+    "detail": {
+      "frame_origin": "https://site.example",
+      "top_origin": "https://site.example"
+    },
+    "evidence_class": "synthetic_fixture",
+    "identity": {
+      "account_ref": "synthetic-account-ref",
+      "attempt": 1,
+      "browser_id": "synthetic-browser-id",
+      "event_id": "synthetic-event-id",
+      "host_id": "synthetic-host-id",
+      "intent_revision": 1,
+      "lease_epoch": 2,
+      "native_session_id": "synthetic-native-session-id",
+      "operation_id": "synthetic-operation-id",
+      "policy_revision": 1,
+      "sequence": 0,
+      "span_id": "synthetic-span-id",
+      "task_id": "synthetic-task-id",
+      "trace_id": "synthetic-trace-id",
+      "workspace_id": "synthetic-workspace-id"
+    },
+    "kind": "browser.observed",
+    "observed_at": "2026-11-13T00:00:00Z",
+    "schema": "runspindle.fixture.v1",
+    "state": "passive",
+    "status": "passed"
+  }
+]

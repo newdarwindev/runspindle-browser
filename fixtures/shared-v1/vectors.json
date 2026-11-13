@@ -1,0 +1,37 @@
+[
+  {
+    "expected_error": "schema-version",
+    "id": "browser.observed-unknown-version",
+    "kind": "browser.observed",
+    "mutation": {
+      "path": [
+        "schema"
+      ],
+      "value": "runspindle.fixture.v99"
+    }
+  },
+  {
+    "expected_error": "identity-mismatch",
+    "id": "browser.observed-wrong-host",
+    "kind": "browser.observed",
+    "mutation": {
+      "path": [
+        "identity",
+        "host_id"
+      ],
+      "value": "synthetic-other-host"
+    }
+  },
+  {
+    "expected_error": "identity-mismatch",
+    "id": "stale-epoch",
+    "kind": "browser.observed",
+    "mutation": {
+      "path": [
+        "identity",
+        "lease_epoch"
+      ],
+      "value": 1
+    }
+  }
+]
