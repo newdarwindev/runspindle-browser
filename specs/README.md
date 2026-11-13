@@ -24,3 +24,7 @@ Preserve explicit authority and unknown outcomes. Distinguish request admission,
 None of these product gates has been run for this scaffold.
 
 Detailed adaptation: [credentials-handoff.md](credentials-handoff.md).
+
+A pinned [shared synthetic fixture subset](../docs/SHARED_FIXTURES.md) now has
+standalone Python consumer checks. Native/Rust adapter behavior and upstream
+compatibility remain unimplemented; these fixture checks are separate evidence.

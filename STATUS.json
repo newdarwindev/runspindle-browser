@@ -6,5 +6,12 @@
   "production_deployment": "not_run",
   "runner_capacity": "unverified",
   "selected_source_migration": "partial",
+  "shared_fixture_consumption": {
+    "evidence": "docs/SHARED_FIXTURES.md",
+    "runtime_adapter_conformance": "blocked",
+    "schema": "runspindle.fixture.v1",
+    "source_commit": "e8cd5779968fede213443db13a591c992cd0e183",
+    "status": "locally_tested"
+  },
   "stage": "scaffold"
 }
