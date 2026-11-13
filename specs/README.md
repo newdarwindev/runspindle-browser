@@ -28,3 +28,10 @@ Detailed adaptation: [credentials-handoff.md](credentials-handoff.md).
 A pinned [shared synthetic fixture subset](../docs/SHARED_FIXTURES.md) now has
 standalone Python consumer checks. Native/Rust adapter behavior and upstream
 compatibility remain unimplemented; these fixture checks are separate evidence.
+
+## Engineering direction
+
+[Desired intent](desired-intent.md) connects this component to scoped access,
+managed sessions, explicit human exceptions and evaluated maintained workflows.
+It adds design and verification obligations without changing runtime schemas,
+existing acceptance results or operational permissions.

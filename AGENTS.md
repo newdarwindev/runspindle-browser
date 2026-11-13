@@ -30,3 +30,13 @@ Update evidence for implemented stories and their remaining gaps. Do not mark se
 ![validation](https://github.com/newdarwindev/runspindle-browser/actions/workflows/validation.yml/badge.svg) [validation](https://github.com/newdarwindev/runspindle-browser/actions/workflows/validation.yml)
 
 ![fleet-qualification](https://github.com/newdarwindev/runspindle-browser/actions/workflows/fleet-qualification.yml/badge.svg) [fleet-qualification](https://github.com/newdarwindev/runspindle-browser/actions/workflows/fleet-qualification.yml)
+
+## Desired capability and implementation discipline
+
+Read [the technical intent](specs/desired-intent.md) before proposing architecture
+or changing workflow behavior. Optimize for useful authorized access plus provable control transfer, never broad credential availability. Keep trusted origin/account observations and lease enforcement outside model output. Human interaction is not automatically an approved training example; preserve consent and redaction boundaries.
+
+Tie each implementation change to a documented intent, existing contract and
+negative test. Preserve all existing permission and evidence boundaries.
+Optimization may change candidate behavior within approved interfaces; it must
+not change authority, conceal uncertainty or reinterpret approval scope.
