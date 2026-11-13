@@ -1,0 +1,45 @@
+# Historical reference SRC-007. Preserved for migration review, not an installed module.
+# This file is intentionally inert text; prototype limitations are documented in README.md.
+# No original license or copyright notice has been removed or reassigned.
+
+"""Restricted OpenBao KV v2 resolvers. Pass values only into trusted helpers."""
+import json
+import re
+from pathlib import Path
+from urllib.parse import urlparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise ValueError('OpenBao redirect rejected')
+
+class OpenBaoAPIResolver:
+    def __init__(self, base_url, token_supplier, allowed_prefix='bao://kv/data/'):
+        parsed = urlparse(base_url)
+        if (parsed.scheme != 'http' or parsed.hostname != '127.0.0.1' or
+            parsed.username or parsed.password or parsed.path not in ('', '/') or
+            parsed.query or parsed.fragment or not parsed.port):
+            raise ValueError('prototype OpenBao API must be loopback')
+        self.base_url = base_url.rstrip('/')
+        self.token_supplier = token_supplier
+        self.allowed_prefix = allowed_prefix
+        self._opener = build_opener(_NoRedirect())
+    def resolve(self, ref):
+        if not re.fullmatch(r'bao://kv/data/[A-Za-z0-9_.-]{1,128}', ref):
+            raise ValueError('unapproved OpenBao reference')
+        if not ref.startswith(self.allowed_prefix):
+            raise ValueError('unapproved OpenBao reference')
+        path = ref.removeprefix('bao://')
+        request = Request(self.base_url+'/v1/'+path, headers={'X-Vault-Token':self.token_supplier()})
+        with self._opener.open(request, timeout=3) as response:
+            data = json.load(response)
+        return data['data']['data']
+
+class MountedFileResolver:
+    def __init__(self, root): self.root = Path(root).resolve()
+    def resolve(self, ref):
+        if not ref.startswith('file-ref://') or not ref.removeprefix('file-ref://').isalnum():
+            raise ValueError('unapproved mounted-file reference')
+        path = (self.root / ref.removeprefix('file-ref://')).resolve()
+        if not path.is_relative_to(self.root): raise ValueError('file escaped mount')
+        return json.loads(path.read_text())

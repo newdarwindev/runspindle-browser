@@ -1,0 +1,306 @@
+# Historical reference SRC-008. Preserved for migration review, not an installed module.
+# This file is intentionally inert text; prototype limitations are documented in README.md.
+# No original license or copyright notice has been removed or reassigned.
+
+"""Loopback fixture gateway. The sole HTTP/WebSocket control entry in local tests.
+
+Production needs distributed admission and identity verification. Never publish
+this development server or its backend URLs.
+"""
+import asyncio
+import json
+import re
+from dataclasses import dataclass
+from secrets import token_urlsafe
+from urllib.parse import urlsplit
+from aiohttp import BasicAuth, ClientSession, WSMsgType, web
+from .core import AccessDenied, Controller, Lease, StaleLease
+from .handback import bounded, checked_observation, finish_cleanup, verified_handback
+
+@dataclass
+class _Viewer:
+    client: web.WebSocketResponse
+    backend: object
+    lease: Lease
+
+class LiveGateway:
+    ROUTES = {('GET','tabs'): '/tabs', ('POST','navigate'): '/navigate'}
+    OBSERVATION_TIMEOUT = 5
+    CLOSE_TIMEOUT = 5
+
+    def __init__(self, broker, accounts: dict[str, dict], viewer_auth_supplier=None,
+                 agent_token_supplier=None, handback_observer=None):
+        self.broker, self.accounts = broker, accounts
+        self.viewer_auth_supplier = viewer_auth_supplier
+        self.agent_token_supplier = agent_token_supplier
+        self.handback_observer = handback_observer
+        self._lock = asyncio.Lock()
+        self._handles: dict[str, Lease] = {}
+        self._human_bindings = {}
+        self._viewers: list[_Viewer] = []
+        self._session = None
+        self.app = web.Application()
+        self.app.add_routes([
+            web.route('*','/accounts/{account}/agent/{operation}',self.agent),
+            web.get('/accounts/{account}/viewer',self.viewer),
+        ])
+        self.app.on_startup.append(self._startup)
+        self.app.on_cleanup.append(self._cleanup)
+
+    async def _startup(self, app): self._session = ClientSession()
+    async def _cleanup(self, app): await self._session.close()
+
+    async def acquire(self, account: str, controller: Controller, holder: str) -> str:
+        async with self._lock:
+            if account not in self.accounts: raise AccessDenied('unknown account')
+            lease = self.broker.acquire(account,controller,holder)
+            handle = token_urlsafe(32)
+            if controller == Controller.HUMAN:
+                try:
+                    observation = await self._observe(account) if self.handback_observer else None
+                    self.broker.assert_current(lease)
+                except BaseException:
+                    self._revoke_handback(lease)
+                    raise
+                self._human_bindings[handle] = observation
+            self._handles[handle] = lease
+            return handle
+
+    def _authorized(self, handle: str, account: str, controller: Controller) -> Lease:
+        lease = self._handles.get(handle)
+        if not lease or lease.account_id != account or lease.controller != controller:
+            raise AccessDenied('account or controller mismatch')
+        self.broker.assert_current(lease)
+        return lease
+
+    @staticmethod
+    def _check_navigation(body: bytes, allowed_origin: str) -> dict:
+        try:
+            payload = json.loads(body)
+            target = urlsplit(payload['url'])
+            allowed = urlsplit(allowed_origin)
+            if (not isinstance(payload, dict) or target.scheme != allowed.scheme or
+                target.hostname != allowed.hostname or target.port != allowed.port or
+                target.username or target.password or target.fragment):
+                raise ValueError('unapproved navigation')
+            return payload
+        except (KeyError, TypeError, ValueError, UnicodeDecodeError):
+            raise web.HTTPForbidden() from None
+
+    async def handoff(self, handle: str, controller: Controller, holder: str) -> str:
+        """Agent-to-human takeover only; return requires explicit verified release."""
+        async with self._lock:
+            lease = self._handles.get(handle)
+            if not lease: raise AccessDenied('unknown handle')
+            self.broker.assert_current(lease)
+            if lease.controller != Controller.AGENT or controller != Controller.HUMAN:
+                raise AccessDenied('explicit verified human release required')
+            observation = await self._observe(lease.account_id) if self.handback_observer else None
+            self.broker.assert_current(lease)
+            try:
+                await self._close_viewers(lease.account_id)
+            except Exception:
+                self.broker.revoke(lease)
+                self._handles.pop(handle)
+                raise
+            self._handles.pop(handle)
+            new = self.broker.handoff(lease,controller,holder)
+            new_handle = token_urlsafe(32)
+            self._handles[new_handle] = new
+            self._human_bindings[new_handle] = observation
+            return new_handle
+
+    async def _observe(self, account):
+        if self.handback_observer is None:
+            raise AccessDenied('runtime handback observer unavailable')
+        try:
+            value = await bounded(self.handback_observer(account), self.OBSERVATION_TIMEOUT)
+            return checked_observation(value, account, self.accounts[account]['allowed_origin'])
+        except Exception:
+            # An adapter exception may contain page data or backend credentials.
+            raise AccessDenied('runtime handback observation failed') from None
+
+    def _revoke_handback(self, lease):
+        try: self.broker.revoke(lease)
+        except StaleLease: pass  # Never revoke a newer independently issued lease.
+
+    async def release_to_agent(self, handle, actor_id, expected_epoch, holder):
+        """Trusted caller supplies an authenticated actor, not a client identity claim.
+
+        Freeze input and close viewers before observing the same attached target.
+        Missing/mismatched evidence never creates an agent capability. This method
+        is deliberately not an HTTP route or a substitute for production identity.
+        """
+        async with self._lock:
+            lease = self._handles.get(handle)
+            if not lease or lease.controller != Controller.HUMAN:
+                raise AccessDenied('current human release required')
+            self.broker.assert_current(lease)
+            if (type(actor_id) is not str or actor_id != lease.holder or
+                    type(expected_epoch) is not int or expected_epoch != lease.epoch):
+                raise AccessDenied('human release actor or epoch mismatch')
+            if type(holder) is not str or not holder:
+                raise AccessDenied('new agent holder required')
+            before = self._human_bindings.pop(handle, None)
+            self._handles.pop(handle)
+            closing = asyncio.create_task(self._close_viewers(lease.account_id))
+            try:
+                await asyncio.shield(closing)
+                self.broker.assert_current(lease)
+                after = await self._observe(lease.account_id)
+                self.broker.assert_current(lease)
+                verified_handback(before, after, lease.account_id)
+                new = self.broker.complete_handback(lease, holder)
+            except asyncio.CancelledError:
+                self._revoke_handback(lease)
+                await finish_cleanup(closing)
+                raise
+            except Exception:
+                self._revoke_handback(lease)
+                raise AccessDenied('human handback failed; no agent access granted') from None
+            new_handle = token_urlsafe(32)
+            self._handles[new_handle] = new
+            return new_handle
+
+    async def cancel(self, handle: str):
+        async with self._lock:
+            lease = self._handles.get(handle)
+            if not lease: raise AccessDenied('unknown handle')
+            self.broker.revoke(lease)
+            self._handles.pop(handle)
+            self._human_bindings.pop(handle, None)
+            await self._close_viewers(lease.account_id)
+
+    async def _close_viewers(self, account: str):
+        affected = [v for v in self._viewers if v.lease.account_id == account]
+        self._viewers = [v for v in self._viewers if v.lease.account_id != account]
+        closures = []
+        for viewer in affected:
+            closures.extend([
+                bounded(viewer.client.close(code=4001, message=b'lease changed'), self.CLOSE_TIMEOUT),
+                bounded(viewer.backend.close(), self.CLOSE_TIMEOUT),
+            ])
+        closing = asyncio.gather(*closures, return_exceptions=True)
+        try:
+            results = await asyncio.shield(closing)
+        except asyncio.CancelledError:
+            # Every endpoint has started closing; do not abandon later endpoints.
+            await finish_cleanup(closing)
+            raise
+        failures = [type(result).__name__ for result in results if isinstance(result, BaseException)]
+        if failures: raise RuntimeError('viewer closures failed: ' + ','.join(failures))
+
+    async def agent(self, request):
+        account, operation = request.match_info['account'], request.match_info['operation']
+        path = self.ROUTES.get((request.method,operation))
+        if path is None: raise web.HTTPForbidden()
+        async with self._lock:
+            try: self._authorized(request.headers.get('X-Session-Handle',''),account,Controller.AGENT)
+            except (AccessDenied,StaleLease): raise web.HTTPForbidden()
+            config = self.accounts[account]
+            body = await request.read()
+            if len(body) > 65536: raise web.HTTPRequestEntityTooLarge(max_size=65536,actual_size=len(body))
+            if operation == 'navigate':
+                payload = self._check_navigation(body,config['allowed_origin'])
+                if 'tabId' in payload:
+                    try:
+                        await self._checked_tab(request.headers.get('X-Session-Handle',''),
+                                                account,payload['tabId'])
+                    except (AccessDenied,StaleLease): raise web.HTTPForbidden() from None
+            token = (self.agent_token_supplier(account) if self.agent_token_supplier
+                     else config['pinchtab_token'])
+            headers = {'Authorization':'Bearer '+token}
+            if body: headers['Content-Type']='application/json'
+            async with self._session.request(request.method,config['pinchtab_url']+path,
+                                              data=body,headers=headers,allow_redirects=False) as response:
+                result = await response.read()
+                return web.Response(status=response.status,body=result,content_type='application/json')
+
+    async def _connect_viewer_backend(self, account, config):
+        auth = None
+        if self.viewer_auth_supplier:
+            username, password = self.viewer_auth_supplier(account)
+            auth = BasicAuth(username,password)
+        return await self._session.ws_connect(
+            config['viewer_url'],auth=auth,origin=config.get('viewer_origin'),
+            protocols=config.get('viewer_protocols',()),
+            ssl=config.get('viewer_tls_verify',True),max_msg_size=1_000_000)
+
+    async def trusted_tab_action(self, handle, account, tab_id, selector, kind, text=None):
+        """Fixture-only trusted helper; never expose this as an agent HTTP route."""
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}',tab_id):
+            raise AccessDenied('invalid tab')
+        if kind not in ('fill','click') or not re.fullmatch(r'#[A-Za-z0-9_-]{1,64}',selector):
+            raise AccessDenied('invalid trusted action')
+        async with self._lock:
+            config, headers = await self._checked_tab(handle,account,tab_id)
+            payload = {'kind':kind,'selector':selector}
+            if text is not None: payload['text'] = text
+            async with self._session.post(config['pinchtab_url']+'/tabs/'+tab_id+'/action',
+                    json=payload,headers=headers) as response:
+                if response.status != 200:
+                    raise AccessDenied(f'trusted action failed with HTTP {response.status}')
+                result = await response.json()
+                if result.get('success') is False:
+                    raise AccessDenied('trusted action reported failure')
+                return result
+
+    async def trusted_tab_snapshot(self, handle, account, tab_id):
+        """Private Activity observation; never expose raw page content to an agent."""
+        async with self._lock:
+            config, headers = await self._checked_tab(handle,account,tab_id)
+            async with self._session.get(config['pinchtab_url']+'/tabs/'+tab_id+'/snapshot',
+                                         headers=headers) as response:
+                if response.status != 200: raise AccessDenied('snapshot failed')
+                return await response.json()
+
+    async def _checked_tab(self, handle, account, tab_id):
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}',tab_id):
+            raise AccessDenied('invalid tab')
+        self._authorized(handle,account,Controller.AGENT)
+        config = self.accounts[account]
+        token = (self.agent_token_supplier(account) if self.agent_token_supplier
+                 else config['pinchtab_token'])
+        headers = {'Authorization':'Bearer '+token}
+        async with self._session.get(config['pinchtab_url']+'/tabs',headers=headers) as response:
+            if response.status != 200: raise AccessDenied('tab lookup failed')
+            tabs = (await response.json())['tabs']
+        tab = next((item for item in tabs if item['id'] == tab_id),None)
+        if tab is None or urlsplit(tab['url']).scheme+'://'+urlsplit(tab['url']).netloc != config['allowed_origin']:
+            raise AccessDenied('tab origin mismatch')
+        return config, headers
+
+    async def viewer(self, request):
+        account = request.match_info['account']
+        async with self._lock:
+            try: lease = self._authorized(request.headers.get('X-Session-Handle',''),account,Controller.HUMAN)
+            except (AccessDenied,StaleLease): raise web.HTTPForbidden()
+            config = self.accounts[account]
+            backend = await self._connect_viewer_backend(account,config)
+            client = web.WebSocketResponse(protocols=config.get('viewer_protocols',()),
+                                           max_msg_size=1_000_000)
+            await client.prepare(request)
+            viewer = _Viewer(client,backend,lease)
+            self._viewers.append(viewer)
+
+        async def forward(source,destination,check_input):
+            async for message in source:
+                if message.type not in (WSMsgType.TEXT,WSMsgType.BINARY): break
+                async with self._lock:
+                    if check_input:
+                        try: self._authorized(request.headers.get('X-Session-Handle',''),account,Controller.HUMAN)
+                        except (AccessDenied,StaleLease): break
+                    if message.type == WSMsgType.TEXT: await destination.send_str(message.data)
+                    else: await destination.send_bytes(message.data)
+
+        tasks = [asyncio.create_task(forward(client,backend,True)),
+                 asyncio.create_task(forward(backend,client,False))]
+        try:
+            done, pending = await asyncio.wait(tasks,return_when=asyncio.FIRST_COMPLETED)
+            for task in pending: task.cancel()
+            await asyncio.gather(*pending,return_exceptions=True)
+        finally:
+            async with self._lock:
+                if viewer in self._viewers: self._viewers.remove(viewer)
+                await client.close(); await backend.close()
+        return client

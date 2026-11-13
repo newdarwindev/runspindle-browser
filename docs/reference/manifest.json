@@ -1,0 +1,16 @@
+[
+  {
+    "source_id": "SRC-007",
+    "path": "docs/reference/openbao-resolver.py.txt",
+    "sha256": "c7b7441141442e09bcf635686fa12ba14e57a2370a45b36fe16177f4ae42538a",
+    "classification": "historical-inert-reference",
+    "implementation": "not_activated"
+  },
+  {
+    "source_id": "SRC-008",
+    "path": "docs/reference/fixture-gateway.py.txt",
+    "sha256": "4feb1f8a8f07575d89b9cb898fa185ec35d7d316a071839f591abf2c4a93c56d",
+    "classification": "historical-inert-reference",
+    "implementation": "not_activated"
+  }
+]

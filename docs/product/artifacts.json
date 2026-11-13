@@ -1,0 +1,83 @@
+{
+  "artifacts": [
+    {
+      "historical_original": true,
+      "implementation_evidence": false,
+      "kind": "retained_mit_notice",
+      "path": "docs/product/LICENSE-SRC-013.txt",
+      "sha256": "fcf64df3e04554728cc4f082f244fa3dc672c2c6368f22360e6491a113204895",
+      "source_ids": [
+        "SRC-013"
+      ],
+      "source_relationship": "byte-preserved source license notice"
+    },
+    {
+      "historical_original": false,
+      "implementation_evidence": false,
+      "kind": "new_support_document",
+      "path": "docs/product/README.md",
+      "sha256": "02526d34121720a81f6f2721e95f8553e38c54b1685ab9c516fd0ad0743f1914",
+      "source_ids": [],
+      "source_relationship": "new authoring/build metadata"
+    },
+    {
+      "historical_original": false,
+      "implementation_evidence": false,
+      "kind": "new_support_document",
+      "path": "docs/product/THIRD_PARTY_NOTICES.md",
+      "sha256": "43548c3d62b980a5e0d03105821e8a49836bb856b0410b09c003dab8afc4987c",
+      "source_ids": [
+        "SRC-002",
+        "SRC-009",
+        "SRC-013"
+      ],
+      "source_relationship": "conceptual adaptation of the listed source material; not a faithful re-render"
+    },
+    {
+      "historical_original": false,
+      "implementation_evidence": false,
+      "kind": "new_static_html",
+      "path": "docs/product/browser.html",
+      "sha256": "cfa1744917d2088f430e588c489590f1b3c3adf25bf15b277012345d6a2245c5",
+      "source_ids": [
+        "SRC-009"
+      ],
+      "source_relationship": "conceptual adaptation of the listed source material; not a faithful re-render"
+    },
+    {
+      "historical_original": false,
+      "implementation_evidence": false,
+      "kind": "new_static_html",
+      "path": "docs/product/index.html",
+      "sha256": "81a27aba679a08c0db9547adada4b925c5631991f3708801a5fb0e9a8d8ebed4",
+      "source_ids": [
+        "SRC-002",
+        "SRC-005",
+        "SRC-009",
+        "SRC-010",
+        "SRC-013"
+      ],
+      "source_relationship": "conceptual adaptation of the listed source material; not a faithful re-render"
+    },
+    {
+      "historical_original": false,
+      "implementation_evidence": false,
+      "kind": "new_static_html",
+      "path": "docs/product/vision.html",
+      "sha256": "4a88ba1dbc13b9cdaa6ffe403d0782514bae18cb2eecf57c4cac3b23e0ad8987",
+      "source_ids": [
+        "SRC-005",
+        "SRC-010",
+        "SRC-013"
+      ],
+      "source_relationship": "conceptual adaptation of the listed source material; not a faithful re-render"
+    }
+  ],
+  "migration_status": "partial",
+  "schema_version": 1,
+  "verification": {
+    "html": "browser_visual_qa_pending",
+    "pdf": "ReportLab output; pages rendered and visually reviewed",
+    "tex": "compile_blocked_missing_formats_and_ini"
+  }
+}
