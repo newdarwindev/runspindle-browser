@@ -1,6 +1,8 @@
 //! Public contract stub. It performs no external operations.
 #[derive(Debug, PartialEq)]
-pub enum ReadinessError { NotImplemented }
+pub enum ReadinessError {
+    NotImplemented,
+}
 
 pub fn activate() -> Result<(), ReadinessError> {
     Err(ReadinessError::NotImplemented)
