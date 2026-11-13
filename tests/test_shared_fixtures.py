@@ -3,12 +3,15 @@ import copy
 import hashlib
 import importlib.util
 import json
+import marshal
 from pathlib import Path
 import shutil
 import subprocess
+import struct
 import sys
 import tempfile
 import unittest
+from types import ModuleType
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,12 +55,15 @@ def checked_kit(root=ROOT):
     if pin != PIN:
         raise ValueError('pin-mismatch')
     bundle = root/'fixtures/shared-v1'
+    verified = {}
     for name, expected in [('manifest.json',PIN['subset_manifest_sha256']),('fixturekit.py',PIN['validator_sha256'])]:
-        if hashlib.sha256((bundle/name).read_bytes()).hexdigest() != expected:
+        verified[name] = (bundle/name).read_bytes()
+        if hashlib.sha256(verified[name]).hexdigest() != expected:
             raise ValueError('pinned-file-mismatch')
-    spec = importlib.util.spec_from_file_location('pinned_fixturekit',bundle/'fixturekit.py')
-    kit = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(kit)
+    # Execute the exact verified snapshot; ignored .pyc files cannot substitute code.
+    kit = ModuleType('pinned_fixturekit')
+    kit.__file__ = str(bundle/'fixturekit.py')
+    exec(compile(verified['fixturekit.py'],kit.__file__,'exec'),kit.__dict__)
     manifest = kit.verify_bundle(bundle)
     if manifest['origin_manifest_sha256'] != PIN['source_manifest_sha256']:
         raise ValueError('origin-mismatch')
@@ -136,6 +142,17 @@ class ConsumerFixtures(unittest.TestCase):
             pin=copy.deepcopy(PIN);pin['source_commit']='0'*40
             (root/'fixtures/shared-v1.pin.json').write_text(json.dumps(pin))
             with self.assertRaisesRegex(ValueError,'pin-mismatch'): checked_kit(root)
+
+    def test_unreviewed_bytecode_cannot_replace_verified_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);shutil.copytree(ROOT/'fixtures',root/'fixtures',ignore=shutil.ignore_patterns('__pycache__'))
+            source=root/'fixtures/shared-v1/fixturekit.py'
+            with patch.object(sys,'pycache_prefix',None):
+                cache=Path(importlib.util.cache_from_source(str(source)));cache.parent.mkdir()
+                header=importlib.util.MAGIC_NUMBER+struct.pack('<III',0,int(source.stat().st_mtime),source.stat().st_size)
+                unreviewed=compile("raise AssertionError('unreviewed bytecode executed')",str(source),'exec')
+                cache.write_bytes(header+marshal.dumps(unreviewed))
+                checked_kit(root)
 
     def test_standalone_with_no_sibling_and_denied_network(self):
         with tempfile.TemporaryDirectory() as directory:
