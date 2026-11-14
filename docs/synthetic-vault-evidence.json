@@ -1,0 +1,30 @@
+{
+  "evidence_class": "synthetic",
+  "base_sha": "56b78515fc3edbfb5e199cebc9c60db110c60f68",
+  "python": "3.12.14",
+  "commands": [
+    "python3 -m unittest discover -s tests -v",
+    "python3 -O -m unittest discover -s tests -v",
+    "python3 tools/check_scaffold.py"
+  ],
+  "python_tests": 16,
+  "source_sha256": {
+    "browser_testing/__init__.py": "16e814c3f30594708aa79d3a04710c119b696ba240b91fffee6768eea1a7c9ea",
+    "browser_testing/vault.py": "28957420788c002e261e1c0021989979156c64d8d785f583990c37037b9d90d8",
+    "tests/test_synthetic_vault.py": "5e319fb89768ef2e8d892a57c64003890eda3065ee602f7877248e1adea767c0",
+    "specs/synthetic-vault-fixtures.md": "8be84e2d2977f02e9b42798db7641471bf4c17b2089d9c749f4ce73880132647"
+  },
+  "rust": "not_run: Cargo unavailable",
+  "upstream_integration": "not_run",
+  "live_acceptance": "not_run",
+  "issue_completion": "partial; issue #1 remains open",
+  "mutation": "removing second scope comparison produces one independently observed forbidden injection",
+  "combined_hygiene": {
+    "head": "1a2c5213732ae451f197e4eca72952b53bcc9cde",
+    "python_tests_normal_and_optimized": 59,
+    "static_new_diagnostics": 0,
+    "baseline": "unchanged",
+    "aggregate": "blocked: rust-format/rust-test/rust-clippy require unavailable cargo"
+  },
+  "review_fix": "Revalidate exact vault entry/generation/expiry after second observation; sequential forgetting/rotation/expiry/ABA/outage deny injection."
+}

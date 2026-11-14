@@ -35,3 +35,9 @@ compatibility remain unimplemented; these fixture checks are separate evidence.
 managed sessions, explicit human exceptions and evaluated maintained workflows.
 It adds design and verification obligations without changing runtime schemas,
 existing acceptance results or operational permissions.
+
+## Synthetic vault fixtures
+
+[Scoped vault and scripted observation fixtures](synthetic-vault-fixtures.md)
+provide a bounded issue #1 test harness. This is synthetic evidence, not trusted
+credential resolution, live browser integration or selected-source migration.
