@@ -1,0 +1,42 @@
+{
+  "evidence_class": "component_storage_with_synthetic_site_adapter",
+  "base_sha": "d3d47bab8f5a42aa9da52d61cff08a1344ddadff",
+  "python": "3.12.14",
+  "source_sha256": {
+    "browser_runtime/__init__.py": "7a6bb51d38d0a5c9234a49e7a92419b3b1cb91173c7b1da8c848da5bd568e7ee",
+    "browser_runtime/effects.py": "a568c5b347d936f9f886164ef32a35c06143ecee1d301dfac7f9bf24fafb1399",
+    "tests/test_effect_journal.py": "c801e3eccbe25b5c05716a0504f29a564184764cf214be8c713b9e3680af0065",
+    "specs/effect-journal-v1.md": "0de85712e88faaa23679f3b8887f8938e511b10cb29a220c3e577a419a9e324b",
+    "browser_testing/effect_site.py": "2450a7cdc507ec0d6113fed298facc4b4e006051f408867f55b45b6e7fc8a3d5"
+  },
+  "commands": [
+    "python3 -m unittest discover -s tests -v",
+    "python3 -O -m unittest discover -s tests -v",
+    "python3 tools/check_scaffold.py"
+  ],
+  "python_tests_normal_and_optimized": 33,
+  "observations": [
+    "Independent SQLite site effect count",
+    "Fresh-process crashes before and after effect",
+    "Two-process duplicate contention",
+    "No site callback on wrong binding/authority or failed durable insert",
+    "Duplicate-effect source mutation independently observed"
+  ],
+  "rust": "not_run: Cargo unavailable",
+  "browser_http_site": "not_run",
+  "core_authority_profile_integration": "not_run",
+  "live_acceptance": "not_run",
+  "completion": "partial; issues #15/#8 remain open",
+  "review_repairs": [
+    "Authority recheck after readback before terminal commit",
+    "Strict readback binding validation rejects bool/int equality",
+    "Reject SQLite ephemeral/URI database names"
+  ],
+  "combined_hygiene": {
+    "head": "b4df4e76fa0393cb94a841e9cdb32dc2d267760e",
+    "python_tests_normal_and_optimized": 76,
+    "static_new_diagnostics": 0,
+    "baseline": "unchanged",
+    "aggregate": "blocked: Cargo unavailable for rust-format/rust-test/rust-clippy"
+  }
+}
