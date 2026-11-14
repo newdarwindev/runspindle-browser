@@ -164,5 +164,9 @@
   "effect_journal": {
     "implementation": "Original stdlib SQLite journal and synthetic site ledger; no historical gateway/resolver source or new dependency imported.",
     "scope": "Partial issues #15/#8; no live browser or production authority qualification."
+  },
+  "trusted_credential_resolver": {
+    "implementation": "Original stdlib-only runtime orchestration and synthetic adapter probes; no historical source expression or dependencies imported.",
+    "scope": "Partial browser #13/#6; real authenticated adapters, Core/Host integration, native conformance and source port #3 remain blocked."
   }
 }
