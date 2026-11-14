@@ -168,5 +168,10 @@
   "trusted_credential_resolver": {
     "implementation": "Original stdlib-only runtime orchestration and synthetic adapter probes; no historical source expression or dependencies imported.",
     "scope": "Partial browser #13/#6; real authenticated adapters, Core/Host integration, native conformance and source port #3 remain blocked."
+  },
+  "openbao_kv_adapter": {
+    "implementation": "Original stdlib protocol and process-local opaque-handle adapter; no upstream implementation copied or new dependency installed.",
+    "scope": "Partial #13/#6; historical source port #3 and live provider/authority/fencing remain blocked.",
+    "api_documentation": "https://github.com/openbao/openbao/blob/92de51f7a0586759215d299bc79118874ea54fb1/website/content/docs/api/secret/kv/kv-v2.mdx"
   }
 }
