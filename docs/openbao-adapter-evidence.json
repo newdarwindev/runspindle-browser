@@ -1,0 +1,21 @@
+{
+  "evidence_class": "synthetic_protocol_component",
+  "base_revision": "3f91ffe07dd9e321f989adabfabb1b9295f98e92",
+  "passed": [
+    "55 Python tests normally and optimized, including 10 new protocol tests",
+    "strict mypy on new production and test modules",
+    "Ruff E4/E7/E9/F/I and formatting on new modules",
+    "scaffold"
+  ],
+  "not_run": [
+    "live OpenBao/TLS/DNS interoperability",
+    "real authority and browser fence",
+    "native Rust tests: Cargo unavailable in cloud",
+    "full product acceptance"
+  ],
+  "source_sha256": {
+    "browser_runtime/openbao.py": "3d4611185029dc4e06497b2bd8d831dec96976ccd16ac8f743dc9e0cbd755548",
+    "tests/test_openbao.py": "ed832f7c5d726ec9da0266e386d74ddeb599fe6997e2e1b70cda85d69e46e566",
+    "specs/openbao-kv-adapter.md": "14f6e7b2e7c26e09aaaf8ff261c4e079854799c20d152af150b7dcb4b31d4528"
+  }
+}
