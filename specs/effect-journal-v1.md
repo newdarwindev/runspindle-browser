@@ -54,6 +54,53 @@ Transport acknowledgement is never confirmation. Terminal state cannot be
 rewritten by later readback. Credentials and raw evidence belong outside this
 journal; the adapter authenticates and validates its authoritative evidence.
 
+## SQLite schema admission
+
+The journal now has an explicit SQLite identity: `application_id = 0x5242454A`
+(`RBEJ`) and `user_version = 1`. The complete `sqlite_master` inventory must match
+this implementation's original `operations` DDL, including the primary-key
+index, SQL text and CHECK constraint. Unknown versions, foreign identities,
+missing/extra tables, indexes, views or triggers, and unrecognized legacy DDL
+are denied rather than repaired. Even equivalent differently formatted legacy
+DDL is not guessed. `quick_check` must succeed; this is not a cryptographic
+integrity guarantee or a comprehensive semantic validation of stored bindings.
+
+Only an empty store with both identity fields zero, or the exact original
+unversioned schema with both fields zero, may be initialized/adopted. Adoption
+adds identity without rebuilding the table or rewriting rows, rowids, outcomes,
+evidence or the original nullable text-primary-key semantics. Existing unknown
+operations remain fenced against resubmission. A current claimed store with a
+missing table cannot be reset to an empty journal.
+
+Existing files first receive a read-only, transactional preflight. A writable
+connection then repeats admission under `BEGIN IMMEDIATE`, so a schema change
+between preflight and lock acquisition cannot be silently adopted. New DDL and
+both identity fields commit together or roll back together. Failed/cancelled
+opens close their connections. WAL is enabled only after admission commits;
+FULL synchronization and the existing two-second lock timeout remain unchanged.
+Constructor SQLite/storage errors become fixed-category `Denied` errors and no
+authority, submit or readback callback runs during admission. There is no salvage,
+backup, destructive reset, provider call or automatic retry.
+
+Rejected, quiescent rollback-journal fixtures have byte-identical files and no
+new sidecars in local tests. This is deliberately not a universal byte-preservation
+promise: SQLite read-only access can perform WAL shared-memory bookkeeping, and
+hot journals, concurrent external writers, path replacement or other filesystem
+actors are outside that claim. A live synthetic WAL writer test separately
+checks retained data and unchanged main/WAL bytes, without claiming unchanged
+shared-memory bytes. Existing exclusive API use and trusted-storage assumptions
+remain necessary after admission, including the interval before WAL activation.
+
+`effects.Journal` is the only SQLite store in `browser_runtime`. The separate
+`browser_testing.effect_site.Site` ledger is deliberately an independent synthetic
+fixture, not a production journal or a source of schema-admission guarantees.
+It is unchanged and does not share this admission implementation.
+
+[Schema-admission evidence](../docs/effect-schema-admission-evidence.json) records
+local positive/negative tests, fresh-process contention and a deliberate schema
+bypass mutation. Issues #15/#8 and their browser/profile/authority integration
+gates remain open.
+
 ## Reproducible local evidence
 
 Run `python3 -m unittest discover -s tests -v` and repeat with `python3 -O`.

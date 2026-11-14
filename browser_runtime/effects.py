@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Callable, Literal
 from urllib.parse import urlsplit
 
+from browser_runtime.effect_schema import SchemaRejected, open_journal
+
 Outcome = Literal["unknown", "confirmed", "rejected"]
 
 
@@ -89,14 +91,12 @@ class Journal:
         self.approve = approve
         self.submit = submit
         self.observe = observe
-        self.db = sqlite3.connect(path, isolation_level=None, timeout=2)
-        self.db.execute("PRAGMA synchronous=FULL")
-        self.db.execute("PRAGMA journal_mode=WAL")
-        self.db.execute("""CREATE TABLE IF NOT EXISTS operations (
-            operation TEXT PRIMARY KEY, binding TEXT NOT NULL,
-            digest TEXT NOT NULL, outcome TEXT NOT NULL,
-            evidence TEXT, CHECK(outcome IN ('unknown','confirmed','rejected'))
-        )""")
+        try:
+            self.db = open_journal(path)
+        except SchemaRejected:
+            raise Denied("journal schema rejected") from None
+        except (sqlite3.Error, OSError):
+            raise Denied("journal unavailable") from None
 
     def close(self) -> None:
         self.db.close()

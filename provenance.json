@@ -163,7 +163,8 @@
   },
   "effect_journal": {
     "implementation": "Original stdlib SQLite journal and synthetic site ledger; no historical gateway/resolver source or new dependency imported.",
-    "scope": "Partial issues #15/#8; no live browser or production authority qualification."
+    "scope": "Partial issues #15/#8; no live browser or production authority qualification.",
+    "schema_admission": "Original stdlib-only exact SQLite identity/admission checks and synthetic tests; no Tether dependency, legacy source import, provider activation or operational database change."
   },
   "trusted_credential_resolver": {
     "implementation": "Original stdlib-only runtime orchestration and synthetic adapter probes; no historical source expression or dependencies imported.",
