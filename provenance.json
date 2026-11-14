@@ -13,18 +13,23 @@
   },
   "sources": [
     {
-      "adaptation_limits": "New concise conceptual derivatives, not faithful historical re-renders or live implementation. Detailed historical dependencies preserved privately.",
+      "adaptation_limits": "Complete selected specification accounting only. Other source artifacts, existing conceptual pages, runtime and live acceptance remain separate.",
       "destination": "specs/credentials-handoff.md",
-      "license_review": "No executable or binary import completed. Retain all required third-party notices when importing.",
-      "migration_status": "partial",
-      "modifications": "Adapted requirements and documented prototype gaps; no executable source port or original Git history imported.",
+      "license_review": "Selected Markdown contains no embedded third-party code or notices; original wording and linked material are not imported. Retained mapping reports no project-wide source license. Original rights retained; no blanket relicense.",
+      "migration_status": "selected_artifact_complete_overall_partial",
+      "modifications": "Original requirements adaptation with 18 substantive units and 8 resolved locator exclusions; 3 current-issue elaborations; synthetic lifecycle model, existing case links and artifact checks. No original history or executable source port.",
       "published_adaptations": [
         "docs/product"
       ],
       "rights_basis": "Owner-directed adaptation. Original rights retained; no blanket relicense.",
       "source_description": "Owner-selected legacy material; detailed source mapping retained privately.",
       "source_id": "SRC-006",
-      "status": "adapted_spec"
+      "status": "adapted_spec",
+      "selected_artifact_status": "complete_accounting_with_resolved_exclusions",
+      "artifact_manifest": "docs/credential-storage/artifact-manifest.json",
+      "coverage": "docs/credential-storage/coverage.json",
+      "source_review": "Author reviewed exact retained bytes and full selected scope; independent review required before publication.",
+      "runtime_acceptance": "not_run"
     },
     {
       "adaptation_limits": "New concise conceptual derivatives, not faithful historical re-renders or live implementation. Detailed historical dependencies preserved privately.",

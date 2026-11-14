@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "source_id": "SRC-006",
+  "evidence_class": "specification_source_accounting",
+  "selected_artifact_status": "complete_accounting_with_resolved_exclusions",
+  "source_review": "author_review_complete_independent_review_required_before_publication",
+  "historical_import": "none",
+  "runtime_acceptance": "not_run",
+  "files": {
+    "browser_testing/storage.py": {
+      "classification": "synthetic_specification_model",
+      "sha256": "0bf2c7aaf1b5a7f2dc0fb7e07de38152b86ec44feec632eb7153438ad6f385e5"
+    },
+    "browser_testing/vault.py": {
+      "classification": "existing_synthetic_model",
+      "sha256": "28957420788c002e261e1c0021989979156c64d8d785f583990c37037b9d90d8"
+    },
+    "docs/credential-storage/README.md": {
+      "classification": "adapted_review_documentation",
+      "sha256": "dc8f25dbe1e4ab23657888283ebcc9b49ad2f164721331620674dda7a35a471e"
+    },
+    "docs/credential-storage/coverage.json": {
+      "classification": "adapted_requirement_accounting",
+      "sha256": "7e959ee3eac2f9da6220eb6eef2413def4b462243a57370365b674287d1a688e"
+    },
+    "provenance.json": {
+      "classification": "public_provenance",
+      "sha256": "c9228fa5ac7bedfeb3a8a7caa43b09c6d59aa29bbd5495d85628504ec3e8e411"
+    },
+    "specs/credentials-handoff.md": {
+      "classification": "adapted_specification",
+      "sha256": "55bd5c001c7a6e7dabd803c43bfef1e82897f888d0b6003fca3aa8abdf71af25"
+    },
+    "tests/test_credential_storage.py": {
+      "classification": "artifact_checker_regression_tests",
+      "sha256": "99ba070afb6777894c8b00a886dbe3ee1f72b02cf4b1dc406d41d18148e25676"
+    },
+    "tests/test_openbao.py": {
+      "classification": "existing_protocol_double_tests",
+      "sha256": "ed832f7c5d726ec9da0266e386d74ddeb599fe6997e2e1b70cda85d69e46e566"
+    },
+    "tests/test_storage_lifecycle.py": {
+      "classification": "synthetic_tests",
+      "sha256": "2578a7fb921e4313fb8806bc3d2b8627c79a1e064d67ba8bc98ea07360531b3f"
+    },
+    "tests/test_synthetic_vault.py": {
+      "classification": "existing_synthetic_tests",
+      "sha256": "5e319fb89768ef2e8d892a57c64003890eda3065ee602f7877248e1adea767c0"
+    },
+    "tests/test_trusted_credentials.py": {
+      "classification": "existing_synthetic_adapter_tests",
+      "sha256": "14e130161cb492c2a8bae79cb6d79eea5ffe66e7e58550bca3ca0c233d72c835"
+    },
+    "tools/check_credential_storage.py": {
+      "classification": "structural_artifact_checker",
+      "sha256": "42b14b33c78f2a5cb63d58497a08c9cb8c6fcb86bb3d6146e2afdfe7b8bc43b0"
+    },
+    "tools/validate.py": {
+      "classification": "existing_validation_entrypoint",
+      "sha256": "1318bc831aa6bd8edc682c4bff0caec40534628fb39e50c356882e08293155fd"
+    }
+  }
+}
