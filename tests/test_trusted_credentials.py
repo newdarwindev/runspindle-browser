@@ -5,6 +5,8 @@ import dataclasses
 import io
 import traceback
 import unittest
+from collections.abc import Iterator
+from typing import Any, cast
 from unittest.mock import patch
 
 from browser_runtime.credentials import (
@@ -22,7 +24,7 @@ CANARY = "secret-canary-DO-NOT-EXPORT"
 
 
 class Adapters:
-    def __init__(self):
+    def __init__(self) -> None:
         self.target = Target(
             Binding(
                 "principal",
@@ -39,21 +41,22 @@ class Adapters:
             "frame",
             "https://example.test",
         )
-        self.grant = Grant(self.target, "credential:one", 12.0)
+        self.grant: Any = Grant(self.target, "credential:one", 12.0)
         self.ticket = object()
         self.now = 10.0
-        self.calls = []
-        self.observations = [Observation(self.target, 10.0)] * 3
+        self.calls: list[str] = []
+        # Deliberately malformed fixtures exercise the runtime type boundary.
+        self.observations: list[Any] = [Observation(self.target, 10.0)] * 3
         self.valid = True
         self.version = True
-        self.fault = None
+        self.fault: str | None = None
         self.active = False
         self.handle = object()
         self.spies = {"reads": 0, "injections": 0}
-        self.guard_observations = []
+        self.guard_observations: list[bool] = []
 
     @contextlib.contextmanager
-    def acquire(self):
+    def acquire(self) -> Iterator["Adapters"]:
         self.active = True
         try:
             yield self
@@ -61,15 +64,15 @@ class Adapters:
             self.active = False
             self.calls.append("fence_closed")
 
-    def admit(self, ticket):
+    def admit(self, ticket: object) -> Grant | None:
         self.calls.append("admit")
-        return self.grant if ticket is self.ticket else None
+        return cast(Grant | None, self.grant) if ticket is self.ticket else None
 
-    def observe(self):
+    def observe(self) -> Any:
         self.calls.append("observe")
         return self.observations.pop(0) if self.observations else None
 
-    def current(self, *args):
+    def current(self, *args: object) -> bool:
         if len(args) == 1:
             return self.valid
         self.calls.append("version")
@@ -77,7 +80,7 @@ class Adapters:
             self.observations[-1] = None
         return self.version
 
-    def read(self, grant):
+    def read(self, grant: Grant) -> object:
         self.guard_observations.append(self.active)
         self.spies["reads"] += 1
         self.calls.append("read")
@@ -87,7 +90,7 @@ class Adapters:
             self.now = 12.0
         return self.handle
 
-    def inject(self, handle, grant, fence):
+    def inject(self, handle: object, grant: Grant, fence: object) -> bool:
         self.guard_observations.append(
             self.active and handle is self.handle and fence is self
         )
@@ -98,12 +101,12 @@ class Adapters:
             raise TimeoutError(CANARY)
         return True
 
-    def release(self, handle):
+    def release(self, handle: object) -> None:
         self.calls.append("release")
         if self.fault == "release":
             raise ValueError(CANARY)
 
-    def resolver(self):
+    def resolver(self) -> Resolver:
         return Resolver(
             AdapterSet(PIN, self, self, self),
             expected_digest=PIN,
@@ -112,7 +115,14 @@ class Adapters:
 
 
 class TrustedCredentialsTests(unittest.TestCase):
-    def denied(self, adapter, resolver=None, ticket=None, reads=0, injections=0):
+    def denied(
+        self,
+        adapter: Adapters,
+        resolver: Resolver | None = None,
+        ticket: object = None,
+        reads: int = 0,
+        injections: int = 0,
+    ) -> None:
         resolver = resolver or adapter.resolver()
         output = io.StringIO()
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
@@ -138,7 +148,7 @@ class TrustedCredentialsTests(unittest.TestCase):
         self.assertFalse(adapter.active)
         self.assertTrue(all(adapter.guard_observations))
 
-    def test_success_is_sanitized_and_once(self):
+    def test_success_is_sanitized_and_once(self) -> None:
         adapter = Adapters()
         resolver = adapter.resolver()
         result = resolver.resolve_and_inject(adapter.ticket)
@@ -162,7 +172,7 @@ class TrustedCredentialsTests(unittest.TestCase):
         )
         self.denied(adapter, resolver, reads=1, injections=1)
 
-    def test_missing_and_wrong_pin_deny_before_authority(self):
+    def test_missing_and_wrong_pin_deny_before_authority(self) -> None:
         adapter = Adapters()
         self.denied(adapter, Resolver())
         self.denied(
@@ -173,12 +183,12 @@ class TrustedCredentialsTests(unittest.TestCase):
         )
         self.assertEqual(adapter.calls, [])
 
-    def test_forged_ticket_cannot_supply_grant_or_observation(self):
+    def test_forged_ticket_cannot_supply_grant_or_observation(self) -> None:
         for ticket in (object(), {"authenticated": True}, Adapters().grant):
             adapter = Adapters()
             self.denied(adapter, ticket=ticket)
 
-    def test_wrong_bindings_deny_before_read(self):
+    def test_wrong_bindings_deny_before_read(self) -> None:
         for name, value in (
             ("account", "other"),
             ("principal", "other"),
@@ -194,7 +204,7 @@ class TrustedCredentialsTests(unittest.TestCase):
                 target = dataclasses.replace(
                     adapter.target,
                     binding=dataclasses.replace(
-                        adapter.target.binding, **{name: value}
+                        adapter.target.binding, **cast(dict[str, Any], {name: value})
                     ),
                 )
                 adapter.observations[0] = Observation(target, 10.0)
@@ -206,11 +216,14 @@ class TrustedCredentialsTests(unittest.TestCase):
         ):
             adapter = Adapters()
             adapter.observations[0] = Observation(
-                dataclasses.replace(adapter.target, **{name: value}), 10.0
+                dataclasses.replace(
+                    adapter.target, **cast(dict[str, Any], {name: value})
+                ),
+                10.0,
             )
             self.denied(adapter)
 
-    def test_unavailable_forged_stale_and_future_observations(self):
+    def test_unavailable_forged_stale_and_future_observations(self) -> None:
         for observation in (
             None,
             {"authenticated": True},
@@ -225,7 +238,7 @@ class TrustedCredentialsTests(unittest.TestCase):
         adapter.valid = False
         self.denied(adapter)
 
-    def test_redirect_after_read_and_during_version_check(self):
+    def test_redirect_after_read_and_during_version_check(self) -> None:
         for index in (1, 2):
             adapter = Adapters()
             adapter.observations[index] = Observation(
@@ -238,7 +251,7 @@ class TrustedCredentialsTests(unittest.TestCase):
         adapter.fault = "rotate"
         self.denied(adapter, reads=1)
 
-    def test_suppressing_guard_cannot_forge_success(self):
+    def test_suppressing_guard_cannot_forge_success(self) -> None:
         for fault in (
             "grant",
             "observation",
@@ -257,7 +270,7 @@ class TrustedCredentialsTests(unittest.TestCase):
                     adapter.fault = fault
 
                 @contextlib.contextmanager
-                def suppressing_guard():
+                def suppressing_guard() -> Iterator[Adapters]:
                     adapter.active = True
                     try:
                         yield adapter
@@ -274,7 +287,7 @@ class TrustedCredentialsTests(unittest.TestCase):
                         injections=int(fault in ("uncertain", "release")),
                     )
 
-    def test_invalid_grants_and_expired_identity_deny_before_read(self):
+    def test_invalid_grants_and_expired_identity_deny_before_read(self) -> None:
         for changes in (
             {"reference": "../escape"},
             {"reference": ""},
@@ -285,7 +298,7 @@ class TrustedCredentialsTests(unittest.TestCase):
             adapter.grant = dataclasses.replace(adapter.grant, **changes)
             self.denied(adapter)
 
-    def test_stale_epoch_after_read_blocks_injection(self):
+    def test_stale_epoch_after_read_blocks_injection(self) -> None:
         adapter = Adapters()
         stale = dataclasses.replace(
             adapter.target, binding=dataclasses.replace(adapter.target.binding, epoch=2)
@@ -294,7 +307,7 @@ class TrustedCredentialsTests(unittest.TestCase):
         self.denied(adapter, reads=1)
         self.assertIn("release", adapter.calls)
 
-    def test_faults_cleanup_and_no_retry(self):
+    def test_faults_cleanup_and_no_retry(self) -> None:
         for fault in (
             "timeout",
             "denial",
@@ -316,7 +329,7 @@ class TrustedCredentialsTests(unittest.TestCase):
         adapter.version = False
         self.denied(adapter, reads=1)
 
-    def test_cancellation_releases_handle_and_fence(self):
+    def test_cancellation_releases_handle_and_fence(self) -> None:
         adapter = Adapters()
         resolver = adapter.resolver()
         with patch.object(adapter, "inject", side_effect=KeyboardInterrupt):
@@ -327,7 +340,7 @@ class TrustedCredentialsTests(unittest.TestCase):
         self.assertTrue(all(adapter.guard_observations))
         self.denied(adapter, resolver, reads=1)
 
-    def test_deliberate_mutation_is_detected_by_forbidden_effect_spies(self):
+    def test_deliberate_mutation_is_detected_by_forbidden_effect_spies(self) -> None:
         adapter = Adapters()
         adapter.observations[0] = None
         resolver = adapter.resolver()
