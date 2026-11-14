@@ -26,6 +26,9 @@
       "rust-test",
       "rust-clippy"
     ],
-    "mutation": []
+    "mutation_1": [],
+    "mutation_2": [],
+    "mutation_3": [],
+    "mutation_4": []
   }
 }
