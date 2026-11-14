@@ -160,5 +160,9 @@
   "synthetic_vault_fixtures": {
     "implementation": "Original stdlib-only synthetic test fixtures; no legacy resolver code or dependency imported.",
     "scope": "Issue #1 partial; production/runtime/source migration claims unchanged."
+  },
+  "effect_journal": {
+    "implementation": "Original stdlib SQLite journal and synthetic site ledger; no historical gateway/resolver source or new dependency imported.",
+    "scope": "Partial issues #15/#8; no live browser or production authority qualification."
   }
 }

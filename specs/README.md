@@ -41,3 +41,9 @@ existing acceptance results or operational permissions.
 [Scoped vault and scripted observation fixtures](synthetic-vault-fixtures.md)
 provide a bounded issue #1 test harness. This is synthetic evidence, not trusted
 credential resolution, live browser integration or selected-source migration.
+
+## Durable effect journal
+
+[Local effect journal](effect-journal-v1.md) persists uncertainty before an
+injected stateful action and blocks blind duplicate dispatch. SQLite/process
+recovery tests are separate from real browser, authority and profile integration.
