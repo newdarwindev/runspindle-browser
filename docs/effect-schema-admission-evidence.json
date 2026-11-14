@@ -1,0 +1,76 @@
+{
+  "evidence_class": "component_sqlite_schema_admission_with_synthetic_data",
+  "base_sha": "ed48b4fd616b4ff58f22c3065a978deb1fc68ded",
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "identity": {
+    "application_id": 1380074826,
+    "application_id_ascii": "RBEJ",
+    "user_version": 1
+  },
+  "source_sha256": {
+    "browser_runtime/effect_schema.py": "305127d1e0663bf4b5a85837003b37d05a626b5ace3f2db2b0c5aadd96581cd2",
+    "browser_runtime/effects.py": "fc279cf368c4ca151df66df8c712b0b47132cf4fb91ec99ad6bfaf78c90f608f",
+    "tests/test_effect_schema.py": "cae18ce2edb980971918aa89e6eb298adedebb841dab345a6f1036d7cd45c498",
+    "specs/effect-journal-v1.md": "76db6479e7ab1d19640322d072a8c71d808cb04759247f7848852ae43829311c",
+    "provenance.json": "1d3d600fe52f92acd5c2884a712264e02bd88c9dc1ba4f74990720b7d8f3ff1b"
+  },
+  "commands": [
+    {
+      "command": "python3 -m unittest discover -s tests -v",
+      "status": "passed",
+      "tests": 76
+    },
+    {
+      "command": "python3 -O -m unittest discover -s tests -v",
+      "status": "passed",
+      "tests": 76
+    },
+    {
+      "command": "python3 tools/check_scaffold.py",
+      "status": "passed"
+    },
+    {
+      "command": "ruff check browser_runtime/effect_schema.py browser_runtime/effects.py tests/test_effect_schema.py",
+      "status": "passed",
+      "tool_version": "ruff 0.14.5"
+    },
+    {
+      "command": "ruff format --check browser_runtime/effect_schema.py browser_runtime/effects.py tests/test_effect_schema.py",
+      "status": "passed"
+    },
+    {
+      "command": "mypy --strict --follow-imports=silent browser_runtime/effect_schema.py browser_runtime/effects.py tests/test_effect_schema.py",
+      "status": "passed",
+      "tool_version": "mypy 1.18.2 (compiled: yes)"
+    },
+    {
+      "command": "python3 tools/validate.py",
+      "status": "blocked",
+      "completed": "scaffold, preserved references, artifact hashes, full 76-test Python suite",
+      "reason": "Cargo unavailable; Rust format/test/clippy not run"
+    }
+  ],
+  "admission_tests": 21,
+  "observations": [
+    "Future user_version 999 with future_only table is denied before writable file connection or WAL mode change.",
+    "Exact original schema and all unknown/confirmed/rejected rows, rowids, evidence and nullable primary-key behavior preserved during identity adoption.",
+    "Unknown identity/version pairs and equivalent-but-unrecognized SQL, extra tables/indexes/views/triggers, missing current table and foreign site ledger denied.",
+    "Real SQLite malformed btree page, truncated database, non-SQLite bytes and quick_check constraint failure denied.",
+    "Read-only preflight followed by changed schema/version is denied by transactional writer-lock recheck.",
+    "Injected second identity-write failure and cancellation roll back initialization/adoption and close connections; writer contention denies.",
+    "Three fresh processes contend on missing, exact empty legacy and retained-unknown legacy stores; all return unknown, independent site counts are one for new operations and zero for the retained fence.",
+    "Fresh subprocess denies a future schema without callbacks; existing process-crash and duplicate-effect tests remain passing.",
+    "Deliberate schema-bypass mutation causes the same rejection oracle to fail, overwrites future identity and exposes a submit callback; existing duplicate-effect mutation remains detected.",
+    "Quiescent rollback-journal rejection fixtures retain exact bytes and directory contents; synthetic active WAL future-store test retains main/WAL bytes and rows with writer open."
+  ],
+  "limits": [
+    "Read-only SQLite WAL shared-memory bookkeeping, hot journals, other writers and filesystem/path replacement prevent a universal no-byte-change claim.",
+    "quick_check and exact schema admission are not cryptographic tamper detection, comprehensive row semantic validation or hostile-store protection.",
+    "Exclusive journal API use remains assumed after admission; no effect state-machine or runtime DDL change beyond persistent identity.",
+    "The independent browser_testing.effect_site ledger remains a synthetic fixture without production schema-admission guarantees.",
+    "No real databases, backups, providers, dependencies, services, deployment, security settings or persistent jobs changed.",
+    "Rust checks unavailable locally; no real browser, encrypted profile, core authority or live acceptance qualification."
+  ],
+  "completion": "partial issues #15/#8; no parent issue closure or production activation"
+}
