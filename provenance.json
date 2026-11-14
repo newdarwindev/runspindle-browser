@@ -156,5 +156,9 @@
       "source_id": "SRC-013",
       "status": "adapted_document"
     }
-  ]
+  ],
+  "synthetic_vault_fixtures": {
+    "implementation": "Original stdlib-only synthetic test fixtures; no legacy resolver code or dependency imported.",
+    "scope": "Issue #1 partial; production/runtime/source migration claims unchanged."
+  }
 }
