@@ -36,8 +36,9 @@ selection comes from admission, not input. No secret is returned by the resolver
 The pinned vault/helper implementation owns KV parsing, redirect refusal, transport,
 least-privilege identity, bounds, secret lifetime and release. It must reject raw
 responses and malformed handles, and honor deadline/cancellation without background
-late writes. Python callbacks cannot be forcibly timed out here. There are no real
-OpenBao/PinchTab/KasmVNC adapters, credentials, listeners or network requests.
+late writes. Python callbacks cannot be forcibly timed out here. The bounded [OpenBao protocol adapter](openbao-kv-adapter.md) now implements
+KV parsing and helper-owned handles. No real provider qualification, PinchTab/KasmVNC
+adapters, credentials, listeners or live network requests are supplied.
 
 ## Outcomes and recovery
 
