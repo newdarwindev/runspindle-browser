@@ -47,3 +47,9 @@ credential resolution, live browser integration or selected-source migration.
 [Local effect journal](effect-journal-v1.md) persists uncertainty before an
 injected stateful action and blocks blind duplicate dispatch. SQLite/process
 recovery tests are separate from real browser, authority and profile integration.
+
+## Scoped resolver orchestration
+
+[Trusted credential resolver](trusted-credential-resolver.md) adds a default-deny
+runtime component with pinned adapter boundaries. Synthetic adapter probes do not
+qualify real authority, fencing, provider integration or live acceptance.
