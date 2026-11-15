@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "source_id": "SRC-009",
+  "evidence_class": "source_structure_not_rendered_acceptance",
+  "selected_artifact_status": "source_accounted_rendered_acceptance_pending",
+  "historical_import": "none",
+  "acceptance": {
+    "source_structure": "checked_separately",
+    "rendered_desktop_mobile": "not_run",
+    "keyboard_navigation": "not_run",
+    "independent_review": "required_before_publication",
+    "umbrella_mirror": "pending",
+    "runtime": "not_run"
+  },
+  "files": {
+    "tools/validate.py": {
+      "classification": "required_validation_entrypoint",
+      "sha256": "8e42eb5c96ad4e53a6cf43866021900aa0969a5715b8361c3cd869dbd9279148"
+    },
+    "provenance.json": {
+      "classification": "public_source_provenance",
+      "sha256": "a855484e1622bb0349a19f115fa74a97a0e1ee28769feae84b7c03e8da74a155"
+    },
+    "docs/product/browser.html": {
+      "classification": "original_static_explanation",
+      "sha256": "afab98f2e8fab8ac27ef29e9ee2499ae2a2fffd9e2aa09fbdcb877bbb1ef2f9e"
+    },
+    "docs/product/browser-source-review.md": {
+      "classification": "source_review_and_pending_acceptance",
+      "sha256": "213003a556ca4d74a191aa08cd3848aa01d6f3c87ab092bd198f10d2e91f0cc3"
+    },
+    "docs/product/browser-coverage.json": {
+      "classification": "source_intent_and_asset_inventory",
+      "sha256": "9d158a43b587cdcb2f3b9f0df801038f4d5b6950aef2253047621bdf2530a378"
+    },
+    "tools/check_browser_product.py": {
+      "classification": "structural_checker_not_renderer",
+      "sha256": "2acabe90fc0298082254b44bf88808fbe8f097512ba9fc263ee654d987c56acf"
+    },
+    "tests/test_browser_product.py": {
+      "classification": "structural_negative_tests",
+      "sha256": "18385cccd3c79bb005687a98f7d8a166a119bb511812e0a60369ef07c77e9221"
+    },
+    "docs/product/README.md": {
+      "classification": "canonical_source_instructions",
+      "sha256": "2c65460fc062036b291213b72a304fc68d6e594f36ced79d1209b3a9370645e6"
+    },
+    "docs/product/THIRD_PARTY_NOTICES.md": {
+      "classification": "rights_and_exclusion_notice",
+      "sha256": "9f999ad58a8a8b7b257f01a6979767a841b54947d25bbf3a844b4fb4d6cc3f5c"
+    }
+  }
+}

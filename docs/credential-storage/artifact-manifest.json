@@ -25,7 +25,7 @@
     },
     "provenance.json": {
       "classification": "public_provenance",
-      "sha256": "c9228fa5ac7bedfeb3a8a7caa43b09c6d59aa29bbd5495d85628504ec3e8e411"
+      "sha256": "a855484e1622bb0349a19f115fa74a97a0e1ee28769feae84b7c03e8da74a155"
     },
     "specs/credentials-handoff.md": {
       "classification": "adapted_specification",
@@ -57,7 +57,7 @@
     },
     "tools/validate.py": {
       "classification": "existing_validation_entrypoint",
-      "sha256": "1318bc831aa6bd8edc682c4bff0caec40534628fb39e50c356882e08293155fd"
+      "sha256": "8e42eb5c96ad4e53a6cf43866021900aa0969a5715b8361c3cd869dbd9279148"
     }
   }
 }
