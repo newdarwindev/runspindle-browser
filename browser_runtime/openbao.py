@@ -324,10 +324,18 @@ class Vault:
     def current(self, handle: object, grant: Grant) -> bool:
         try:
             with self._lock:
-                self._current(handle, grant)
-                return True
+                valid = False
+                try:
+                    self._current(handle, grant)
+                    valid = True
+                finally:
+                    # Invalidate before unlocking, including cancellation. A
+                    # waiting consumer must never reuse a failed refresh handle.
+                    if not valid and type(handle) is Handle:
+                        self._entries.pop(handle, None)
+                return valid
         except Exception:
-            self.release(handle)
+            pass
         return False
 
     def consume(
