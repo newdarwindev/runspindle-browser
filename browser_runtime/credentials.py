@@ -137,17 +137,25 @@ class Resolver:
 
     def _check(self, fence: Fence, grant: Grant) -> None:
         observation = fence.observe()
-        now = self._time(self._clock())
         if (
             type(observation) is not Observation
             or type(observation.target) is not Target
             or observation.target != grant.target
-            or not 0 <= now - self._time(observation.observed_at) <= self._max_age
-            or now >= self._time(grant.deadline)
-            or fence.current(grant) is not True
         ):
             raise ValueError
         observation.target.validate()
+        observed_at = self._time(observation.observed_at)
+        deadline = self._time(grant.deadline)
+        # Both trusted callbacks may block. Preserve observe -> current order,
+        # but never carry a pre-callback freshness/deadline sample into vault use.
+        current = fence.current(grant)
+        now = self._time(self._clock())
+        if (
+            not 0 <= now - observed_at <= self._max_age
+            or now >= deadline
+            or current is not True
+        ):
+            raise ValueError
 
     def resolve_and_inject(self, ticket: object) -> str:
         # Serialize admission before any adapter callback; recursive use denies.
