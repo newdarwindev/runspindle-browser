@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "evidence_class": "manual_preferred_dependency_component_composition",
+  "component": "browser",
+  "partial_issues": [
+    14,
+    13
+  ],
+  "tested_commit": "91923a46ce51f39f529af5b282634212763a91fe",
+  "tested_tree": "dab44acc0b02f61d02db689de8100f23503904fe",
+  "source_url": "https://github.com/newdarwindev/runspindle-browser/commit/91923a46ce51f39f529af5b282634212763a91fe",
+  "historical_cloud_record": "docs/profile-component-integration-evidence.json",
+  "historical_cloud_record_sha256": "f5f62fe15b7ec9344f04f4842cc16686bef13d5d52f9f5bc2eed094f3260cbf6",
+  "requirements_sha256": "96f356c53e8b8c4fb2f8dca5d1a31036148e3004996467a55b238291812ae252",
+  "environment": {
+    "python": "3.12.16",
+    "sqlite": "3.53.1",
+    "stdlib_openssl": "OpenSSL 3.5.9 29 Sep 2026",
+    "dependencies": {
+      "cryptography": "50.0.2",
+      "cffi": "2.1.1",
+      "pycparser_distribution": "3.0"
+    },
+    "openssl_scope": "The reported OpenSSL version is from Python's standard library, not a claim about the cryptography backend."
+  },
+  "source_verification": {
+    "recursive_git_tree_hashes": "verified",
+    "staged_source_blobs": 16,
+    "all_staged_blobs_unchanged_after_tests": true,
+    "receipt_sha256": "c84df3bfb1698eb15f74d83d1b720f966aff71ae276365d3fe260d5ed8f2c671",
+    "composition_git_blobs": {
+      "browser_runtime/profile_directory.py": "a5ac5841f4c853807e2457fc4f218e58d94d00e8",
+      "browser_testing/profile_integration_fixtures.py": "f4d9fd49510dcf82447f023b5366fff8e29f897a",
+      "tests/test_profile_integration.py": "10a16ecf2eef74a442565aad459a537646fe8ac8"
+    }
+  },
+  "dependency_integrity": {
+    "status": "passed",
+    "verified_record_hashes_and_lengths": 168
+  },
+  "results": {
+    "normal": {
+      "status": "passed",
+      "tests": 11,
+      "exit_code": 0,
+      "seconds": 15.324,
+      "log_sha256": "f15e0efa133bc3d9456ec339ee4cd4b7bbdba30d016d6d3c031b5b78ebcb4892"
+    },
+    "optimized": {
+      "status": "passed",
+      "tests": 11,
+      "exit_code": 0,
+      "seconds": 16.062,
+      "log_sha256": "07116f4137ace80c1d35edc3795748f489caffe4962c332797e407d37c97f119"
+    }
+  },
+  "runtime_log_sha256": "c9805a026b75098e7fa60d34b85b016e41bf865b9910f737ec01070d0a525a06",
+  "commands": {
+    "placeholders": "Run from SOURCE_ROOT. PINNED_PYTHON, SOURCE_ROOT and CRYPTO_ROOT identify independently verified staged interpreter/source/dependencies; PRIVATE_HOME and PRIVATE_TMP are isolated temporary directories.",
+    "normal": "env -i HOME=${PRIVATE_HOME} TMPDIR=${PRIVATE_TMP} PATH=/usr/bin:/bin PYTHONPATH=${SOURCE_ROOT}:${CRYPTO_ROOT} PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 ${PINNED_PYTHON} -B -s -m unittest discover -s tests -p test_profile_integration.py -v",
+    "optimized": "env -i HOME=${PRIVATE_HOME} TMPDIR=${PRIVATE_TMP} PATH=/usr/bin:/bin PYTHONPATH=${SOURCE_ROOT}:${CRYPTO_ROOT} PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 ${PINNED_PYTHON} -B -s -O -m unittest discover -s tests -p test_profile_integration.py -v",
+    "resource_bounds": "Each command used CPU 60s, nproc 1280, file limit 262144, timeout 90s and kill-after 5s."
+  },
+  "resource_checks": {
+    "uid_threads_before_normal": 1135,
+    "uid_threads_before_optimized": 1141,
+    "maximum_admitted_uid_threads": 1200,
+    "temporary_test_directory_empty_afterward": true
+  },
+  "limits": [
+    "Separate bounded manual component-composition evidence, not required CI, runner-image/fleet, OS-security or production qualification.",
+    "The full suite and aggregate were not rerun for this preferred-dependency focused receipt.",
+    "Real SQLite/process fencing, AEAD and filesystem composition used synthetic provider and authority fixtures; no live browser or OpenBao was accessed.",
+    "No installations, credentials, services or security settings changed.",
+    "Historical cloud evidence remains unchanged; no raw host logs, private absolute paths or internal tool identifiers are published.",
+    "The integration remains draft and blocked on both PR30 and PR31; this receipt does not authorize a ready or merge transition."
+  ]
+}
