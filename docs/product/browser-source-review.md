@@ -109,7 +109,14 @@ not a passing build. The new checker is required by that entrypoint.
 
 The checker verifies exact artifact hashes, complete intent/asset/exclusion
 inventory, meaningful section anchors, local navigation, no active content or
-network assets, and truthful pending evidence gates. Negative tests corrupt those
+network assets, and truthful pending evidence gates. CSS is accepted only as one
+attribute-free style element in the document head whose exact text matches the
+reviewed stylesheet signature embedded in the checker. Any CSS change, including
+whitespace, requires a new source review and signature update; refreshing artifact
+hashes alone cannot approve it. This is a deliberately narrow integrity contract,
+not a general CSS parser or sanitizer. It rejects alternate resource functions,
+escapes, comments concealing declarations and animation longhands by rejecting
+every unreviewed stylesheet. Negative tests corrupt those
 properties even after refreshing hashes. They fail under normal and optimized
 Python without relying on assertions. This is structural source evidence, not a
 replacement for independent semantic review or a browser accessibility audit.

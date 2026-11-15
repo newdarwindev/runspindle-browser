@@ -218,6 +218,56 @@ class BrowserProductTests(unittest.TestCase):
         ):
             self.reject_page(original.replace("</style>", rule + "</style>"))
 
+    def test_reviewed_css_signature_rejects_hidden_network_and_motion_syntax(
+        self,
+    ) -> None:
+        original = (self.root / PAGE).read_text()
+        rules = (
+            '.map { background-image: image-set("//example.invalid/SYNTHETIC-CANARY.png" 1x); }',
+            r".map { background-image: u\72l(//example.invalid/SYNTHETIC-CANARY.png); }",
+            ".map { display: /* synthetic */ none; }",
+            r".map { display: n\6fne; }",
+            ".map { animation-name: synthetic; animation-duration: 1s; }",
+            ".map { transition-property: opacity; transition-duration: 1s; }",
+            "/* harmless new comment still requires review */",
+            "\n",
+        )
+        for rule in rules:
+            with self.subTest(rule=rule):
+                self.reject_page(original.replace("</style>", rule + "</style>"))
+
+    def test_reviewed_css_container_cannot_be_split_moved_or_reconfigured(self) -> None:
+        original = (self.root / PAGE).read_text()
+        for body in (
+            original.replace("    body { margin:", "</style><style>    body { margin:"),
+            original.replace("<style>", '<style id="reconfigured">'),
+            original.replace("</head>", "</head><style></style>"),
+        ):
+            with self.subTest(body=body[:30]):
+                self.reject_page(body)
+
+    def test_escaped_css_cli_failure_is_closed_in_normal_and_optimized_modes(
+        self,
+    ) -> None:
+        original = (self.root / PAGE).read_text()
+        rule = (
+            r".map { background-image: u\72l(//example.invalid/SYNTHETIC-CANARY.png); }"
+        )
+        (self.root / PAGE).write_text(original.replace("</style>", rule + "</style>"))
+        self.refresh()
+        for flags in ([], ["-O"]):
+            result = subprocess.run(
+                [sys.executable, *flags, "tools/check_browser_product.py"],
+                cwd=self.root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(json.loads(result.stdout)["status"], "failed")
+            self.assertNotIn("SYNTHETIC-CANARY", result.stdout)
+            self.assertEqual(result.stderr, "")
+
     def test_navigation_rejects_missing_fragment_and_external_or_encoded_target(
         self,
     ) -> None:

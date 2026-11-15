@@ -27,7 +27,7 @@
     },
     "docs/product/browser-source-review.md": {
       "classification": "source_review_and_pending_acceptance",
-      "sha256": "39c64d35b99efbd4a019c34ffceae3faf18a9f5b01d6b4dd7ec56348c1810ce4"
+      "sha256": "213003a556ca4d74a191aa08cd3848aa01d6f3c87ab092bd198f10d2e91f0cc3"
     },
     "docs/product/browser-coverage.json": {
       "classification": "source_intent_and_asset_inventory",
@@ -35,11 +35,11 @@
     },
     "tools/check_browser_product.py": {
       "classification": "structural_checker_not_renderer",
-      "sha256": "574915398fd335b963090dbc2b9fc0f54b769127a593d348810f235d81b3c806"
+      "sha256": "2acabe90fc0298082254b44bf88808fbe8f097512ba9fc263ee654d987c56acf"
     },
     "tests/test_browser_product.py": {
       "classification": "structural_negative_tests",
-      "sha256": "0e4281cd13ee280567fefa41272ce0876e4bdc7ccec84cf9e1dd7427a4951fa7"
+      "sha256": "18385cccd3c79bb005687a98f7d8a166a119bb511812e0a60369ef07c77e9221"
     },
     "docs/product/README.md": {
       "classification": "canonical_source_instructions",

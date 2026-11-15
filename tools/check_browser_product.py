@@ -16,6 +16,10 @@ PAGE = "docs/product/browser.html"
 GUIDE = "docs/product/browser-source-review.md"
 COVERAGE = "docs/product/browser-coverage.json"
 MANIFEST = "docs/product/browser-artifact-manifest.json"
+# The only supported stylesheet is the reviewed newly authored static source.
+# This is a byte-integrity boundary, not a generalized CSS parser or sanitizer.
+# Any CSS edit, including whitespace, requires source review and a new signature.
+REVIEWED_CSS_SHA256 = "09c2d6807a623307ea823c12b96b22e593c399c9d1bdea04d806ac82c1870824"
 FILES = {
     "tools/validate.py": "required_validation_entrypoint",
     "provenance.json": "public_source_provenance",
@@ -144,6 +148,7 @@ class Page(HTMLParser):
         self.language = False
         self.viewport = False
         self.css = ""
+        self.style_count = 0
         self.skip = False
         self.main_focus = False
 
@@ -151,6 +156,15 @@ class Page(HTMLParser):
         names = [name for name, _ in attrs]
         require(len(names) == len(set(names)), "duplicate HTML attribute")
         attr = dict(attrs)
+        if tag == "style":
+            self.style_count += 1
+            require(
+                self.style_count == 1
+                and not attrs
+                and bool(self.stack)
+                and self.stack[-1][0] == "head",
+                "stylesheet container changed",
+            )
         require(
             set(names).issubset(
                 {
@@ -291,14 +305,15 @@ def check_page(root: Path) -> Page:
             target = (root / "docs/product" / relative).resolve()
             require(target.is_relative_to(root.resolve()), "link escaped root")
             safe_file(root, target.relative_to(root.resolve()).as_posix())
-    css = page.css.lower()
+    # A manifest refresh must not silently approve new CSS syntax. Comparing the
+    # exact text rejects comments, escapes, alternate resource functions and
+    # longhand declarations without pretending to interpret arbitrary CSS.
     require(
-        not re.search(
-            r"url\s*\(|@import|animation\s*:|transition\s*:|opacity\s*:|display\s*:\s*none|visibility\s*:|overflow(?:-x|-y)?\s*:\s*hidden",
-            css,
-        ),
-        "dynamic hidden or network CSS",
+        page.style_count == 1
+        and hashlib.sha256(page.css.encode("utf-8")).hexdigest() == REVIEWED_CSS_SHA256,
+        "stylesheet differs from reviewed source",
     )
+    css = page.css.lower()
     for marker in (
         "a:focus-visible",
         "outline: 3px",
