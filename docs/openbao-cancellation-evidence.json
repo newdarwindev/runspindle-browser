@@ -1,0 +1,102 @@
+{
+  "evidence_class": "synthetic_protocol_cancellation_component",
+  "base_revision": "97cd0fd2c68a6c222c61da15580aae2e43b744c5",
+  "scope": "Partial Browser #13/#6. Process-local handle invalidation on unsuccessful current validation; no production authority or provider qualification.",
+  "entrypoint": "browser_runtime.openbao.Vault.current",
+  "real_boundaries": [
+    "Existing Vault, Resolver, HTTPS request and stdlib response-parser implementations"
+  ],
+  "synthetic_boundaries": [
+    "In-memory HTTP bytes and connection peer",
+    "Authority, token, clock and injection callbacks",
+    "A controlled consumer entering immediately after lock exit"
+  ],
+  "behavior": {
+    "before": "CancelledError and KeyboardInterrupt during metadata validation propagated while leaving one handle reusable; a subsequent consume made one metadata call and one injection.",
+    "after": "Failed validation removes only the affected handle under the existing lock; ordinary exceptions return False and BaseException interruptions propagate unchanged.",
+    "cancellation_classes": [
+      "asyncio.CancelledError",
+      "KeyboardInterrupt",
+      "SystemExit"
+    ],
+    "interruption_points": [
+      "authority",
+      "token",
+      "metadata return",
+      "post-response authority"
+    ],
+    "independent_oracles": [
+      "Token calls",
+      "Transport calls",
+      "HTTP requests",
+      "Injection effects",
+      "Handle visibility before lock exit",
+      "Response closure"
+    ],
+    "mutations_detected": [
+      "Missing cancellation cleanup permits one injection after cancellation",
+      "Cleanup delayed until after unlock permits one injection by a waiting consumer"
+    ],
+    "unchanged": [
+      "Successful handle reuse until one-shot consumption",
+      "Unrelated handle usability",
+      "Resolver release and one-shot attempt behavior",
+      "Nonreentrant lock and transport framing implementation"
+    ]
+  },
+  "tools": {
+    "python": "3.12.14",
+    "ruff": "0.14.5",
+    "mypy": "1.18.2",
+    "cargo": "unavailable",
+    "rustc": "unavailable"
+  },
+  "passed": [
+    "153 Python tests normally and optimized, zero skips; includes seven new cancellation tests with subcases and two deliberate mutations",
+    "Scaffold, reference hashes, artifact integrity and both source-accounting checkers",
+    "Strict mypy: eight production/fixture/test modules, zero diagnostics",
+    "Ruff E4/E7/E9/F/I and formatting on both changed Python modules",
+    "git diff --check",
+    "Original adapter and HTTP-framing receipts and original OpenBao tests remain byte-identical to base"
+  ],
+  "aggregate": {
+    "command": "python3 tools/validate.py",
+    "exit_code": 1,
+    "status": "blocked",
+    "completed": "All preceding Python/source checks and 153 unit tests passed",
+    "blocker": "FileNotFoundError at required cargo fmt: Cargo is unavailable. Rust formatting/tests/Clippy did not run."
+  },
+  "failed": [],
+  "blocked": [
+    "Aggregate Rust checks because Cargo/rustc are unavailable"
+  ],
+  "not_run": [
+    "Exact-head remote CI",
+    "Live OpenBao, TLS and DNS interoperability",
+    "Authenticated Core/Host/browser fencing",
+    "Real browser injection",
+    "Product acceptance or deployment"
+  ],
+  "reproduction": [
+    "timeout 180 python3 -m unittest discover -s tests -v",
+    "timeout 180 python3 -O -m unittest discover -s tests -v",
+    "python3 tools/check_scaffold.py",
+    "python3 tools/validate.py",
+    "ruff check --isolated --select E4,E7,E9,F,I browser_runtime/openbao.py tests/test_openbao_cancellation.py",
+    "ruff format --isolated --check browser_runtime/openbao.py tests/test_openbao_cancellation.py",
+    "mypy --strict --follow-imports=skip --explicit-package-bases --no-incremental browser_runtime/*.py tests/test_openbao.py tests/test_openbao_http.py tests/test_openbao_cancellation.py"
+  ],
+  "source_sha256": {
+    "browser_runtime/openbao.py": "4a9fd67c3a239c6093c7475268f7bb12a94a099d42ee5455525b61d2826aa630",
+    "browser_runtime/credentials.py": "94fb13543caf48c25d64482d3793de17bc48c32b519162c4690407308fd1fe67",
+    "tests/test_openbao_cancellation.py": "3058ceca9dc945c85346120940ba9387899f00b578b16368eb90f83122552262",
+    "tests/test_openbao_http.py": "1f3a77606d55578dbe2ab37834b4b26cb9f13086457b42b3d950509b175babde",
+    "tests/test_openbao.py": "e14500098413ad40f9aa9231fa10abafbb3279ea5a45aca040f13c63699fcb4d",
+    "specs/openbao-kv-adapter.md": "0ba19fa9bc3cfa571ccc9253b4fa5b369a41884a4a7b0cad28b7f1314961f597"
+  },
+  "preserved_receipt_sha256": {
+    "docs/openbao-adapter-evidence.json": "10a75da418871f9ce2a49dc717e39f6a2baaff8e6c263c2adc87262cfa24c1bd",
+    "docs/openbao-http-framing-evidence.json": "70f0bfbbdd8bde26ccd05a70661f177b33027a6ae6f104f80893553e659bbe3f"
+  },
+  "limits": "Callbacks remain trusted, bounded and nonreentrant; cancellation exceptions must not contain private values. No durable cancellation/replay guarantee, memory zeroization or remote session revocation. No credentials, providers, listeners, services, runner settings or permissions changed."
+}
