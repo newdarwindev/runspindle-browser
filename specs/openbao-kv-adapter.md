@@ -93,6 +93,17 @@ of private values. A successful validation retains its handle for subsequent
 one-shot use; unrelated handles are unchanged. This is process-local cleanup,
 not durable cancellation, memory zeroization or a new retry grant.
 
+Failed `consume` validation likewise removes its handle before releasing the
+existing lock. This includes ordinary failure and cancellation during scope,
+token or metadata callbacks. The successful path still removes the handle before
+the final scope check and sink call; an uncertain sink effect cannot be retried.
+Outer idempotent release remains as cleanup if lock acquisition itself is
+interrupted before the protected body starts. This does not promise cleanup when
+that cleanup is itself interrupted, or cancellation safety at every Python
+instruction. `read` installs an entry only after its callbacks and validation;
+`release` and `forget` remove entries under the same lock. No new callback,
+background cleanup, retry, reentrant lock or durable handle lifetime is added.
+
 The sink is a pinned trusted injection helper running under the existing atomic
 browser/lease fence. It alone receives plaintext. Metadata reread is not an atomic
 remote rotation fence: rotation after observation remains possible. Production use
@@ -141,3 +152,14 @@ permit an independently observed injection. These are synthetic callback and
 controlled-interleaving tests, not production scheduling or live-provider evidence.
 [Cancellation evidence](../docs/openbao-cancellation-evidence.json) records this
 revision separately; earlier adapter and HTTP-framing receipts remain unchanged.
+
+`tests/test_openbao_consume.py` covers failed consumption separately, including
+ordinary errors, three cancellation classes, final scope and uncertain sink
+failure, interrupted acquisition, read failure before handle registration,
+foreign/unrelated handles, release and forget. Controlled lock-exit probes and
+real second-thread contenders observe handle removal before another consumer can
+enter. Restoring delayed cleanup or removing cleanup permits one independently
+recorded injection. These bounded in-memory HTTP/thread tests do not qualify
+live scheduling, remote authority or provider/browser integration. The separate
+[consume evidence](../docs/openbao-consume-evidence.json) records exact checks and
+preserves all earlier receipts.
