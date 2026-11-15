@@ -41,7 +41,7 @@
     },
     "tests/test_openbao.py": {
       "classification": "existing_protocol_double_tests",
-      "sha256": "ed832f7c5d726ec9da0266e386d74ddeb599fe6997e2e1b70cda85d69e46e566"
+      "sha256": "e14500098413ad40f9aa9231fa10abafbb3279ea5a45aca040f13c63699fcb4d"
     },
     "tests/test_storage_hygiene.py": {
       "classification": "integration_regression_tests",

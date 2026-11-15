@@ -10,7 +10,7 @@ import ssl
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Callable, cast
+from typing import Callable, Protocol, cast
 from urllib.parse import urlsplit
 
 from browser_runtime.credentials import Grant, Target
@@ -46,6 +46,19 @@ class Response:
     body: bytes = field(repr=False)
 
 
+class _SafeReader(Protocol):
+    def _safe_read(self, amt: int) -> bytes: ...
+
+
+class _BoundedHTTPResponse(http.client.HTTPResponse):
+    def _safe_read(self, amt: int) -> bytes:
+        # The stdlib chunk parser accepts a negative integer chunk size, which
+        # would otherwise reach fp.read(-1), bypassing our public read limit.
+        # Keep its framing implementation, but never permit an unbounded read.
+        check(type(amt) is int and 0 <= amt <= MAX_BODY + 1)
+        return cast(_SafeReader, super())._safe_read(amt)
+
+
 class HTTPS:
     """Fixed HTTPS origin; no proxy discovery, redirects, retries or logging.
 
@@ -79,7 +92,10 @@ class HTTPS:
             timeout=timeout,
             context=ssl.create_default_context(),
         )
+        reply: http.client.HTTPResponse | None = None
+        failed = True
         try:
+            conn.response_class = _BoundedHTTPResponse
             conn.request(
                 "GET",
                 path,
@@ -87,17 +103,48 @@ class HTTPS:
             )
             reply = conn.getresponse()
             check(reply.status == 200)
+            # Malformed field lines can hide later framing headers from the
+            # email-based parser. Do not reinterpret that failure as EOF framing.
+            check(not reply.headers.defects)
             check(reply.getheader("Content-Encoding", "identity") == "identity")
             length = reply.getheader("Content-Length")
+            transfer = reply.getheader("Transfer-Encoding")
+            # getheader joins duplicates with commas. Reject those, unsupported
+            # codings and ambiguous framing instead of letting the parser pick.
+            if transfer is not None:
+                check(transfer.lower() == "chunked" and length is None)
+            expected_length = None
             if length is not None:
                 check(
                     length.isascii() and length.isdecimal() and int(length) <= MAX_BODY
                 )
+                expected_length = int(length)
             body = reply.read(MAX_BODY + 1)
             check(len(body) <= MAX_BODY)
+            # HTTPResponse.read(amt) may return short on EOF without raising.
+            # Compare encoded bytes only when Content-Length defines the body;
+            # chunk framing and close-delimited EOF remain the parser's job.
+            check(expected_length is None or len(body) == expected_length)
+            failed = False
             return Response(reply.status, body)
         finally:
-            conn.close()
+            cleanup_failed = False
+            try:
+                if reply is not None:
+                    # getresponse() can detach a close-delimited response from
+                    # its connection. Closing only conn then leaks its file.
+                    reply.close()
+            except Exception:
+                cleanup_failed = True
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    cleanup_failed = True
+            # Preserve a primary failure/cancellation. A cleanup-only failure
+            # must still deny, without replacing it with provider error text.
+            if cleanup_failed and not failed:
+                raise ValueError("response cleanup failed")
 
 
 @dataclass(frozen=True)
