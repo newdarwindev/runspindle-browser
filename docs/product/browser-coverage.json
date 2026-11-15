@@ -1,0 +1,464 @@
+{
+  "schema_version": 1,
+  "source_id": "SRC-009",
+  "scope": "selected_page_and_rendering_dependency_closure",
+  "rendering_choice": "new_dependency_free_static_equivalent",
+  "units": [
+    {
+      "id": "P01",
+      "intent": "Account-scoped product introduction",
+      "target": "docs/product/browser.html#overview",
+      "required_terms": [
+        "authorized account",
+        "bounded task",
+        "permission"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "P02",
+      "intent": "One browser and account isolation",
+      "target": "docs/product/browser.html#same-browser",
+      "required_terms": [
+        "same headed browser",
+        "account profiles",
+        "host"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "P03",
+      "intent": "One controller and epoch enforcement",
+      "target": "docs/product/browser.html#one-controller",
+      "required_terms": [
+        "stale lease epochs",
+        "passive viewing",
+        "revoke"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "P04",
+      "intent": "Durable intent and uncertain submission",
+      "target": "docs/product/browser.html#durable-intent",
+      "required_terms": [
+        "durable",
+        "reconcile",
+        "restart"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "S01",
+      "intent": "Browser action API role",
+      "target": "docs/product/browser.html#stack-api",
+      "required_terms": [
+        "pinchtab",
+        "account-scoped authority",
+        "blocked"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "S02",
+      "intent": "Same-browser visual surface role",
+      "target": "docs/product/browser.html#stack-view",
+      "required_terms": [
+        "kasmvnc",
+        "passive view",
+        "unverified"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "S03",
+      "intent": "Scoped vault and planned key management",
+      "target": "docs/product/browser.html#stack-secrets",
+      "required_terms": [
+        "openbao",
+        "kv-v2",
+        "transit",
+        "planned"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "S04",
+      "intent": "Workflow coordination role",
+      "target": "docs/product/browser.html#stack-workflow",
+      "required_terms": [
+        "temporal",
+        "fencing",
+        "reconciliation"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "S05",
+      "intent": "Identity and route proxy roles",
+      "target": "docs/product/browser.html#stack-identity",
+      "required_terms": [
+        "authelia",
+        "pomerium",
+        "untested"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "S06",
+      "intent": "Optional outer ingress",
+      "target": "docs/product/browser.html#stack-ingress",
+      "required_terms": [
+        "caddy",
+        "optional",
+        "authority"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "D01",
+      "intent": "Entry and broker relationship",
+      "target": "docs/product/browser.html#map-entry",
+      "required_terms": [
+        "console",
+        "core",
+        "host",
+        "lease epoch"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "D02",
+      "intent": "Durable workflow relationship",
+      "target": "docs/product/browser.html#map-workflow",
+      "required_terms": [
+        "core",
+        "temporal",
+        "fencing"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "D03",
+      "intent": "Shared browser relationship",
+      "target": "docs/product/browser.html#map-browser",
+      "required_terms": [
+        "pinchtab",
+        "kasmvnc",
+        "mutually exclusive"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "D04",
+      "intent": "Vault helper relationship",
+      "target": "docs/product/browser.html#map-vault",
+      "required_terms": [
+        "openbao",
+        "frame-origin",
+        "secret values"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "D05",
+      "intent": "Identity route and separate lifecycle relationship",
+      "target": "docs/product/browser.html#map-identity",
+      "required_terms": [
+        "authelia",
+        "pomerium",
+        "caddy",
+        "separate revocation"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "F01",
+      "intent": "Identity and account check stage",
+      "target": "docs/product/browser.html#flow-identify",
+      "required_terms": [
+        "principal",
+        "account",
+        "trusted",
+        "cannot enlarge"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "F02",
+      "intent": "Reservation and isolated profile stage",
+      "target": "docs/product/browser.html#flow-reserve",
+      "required_terms": [
+        "lease",
+        "pinned host",
+        "isolated profile"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "F03",
+      "intent": "Bounded operation stage",
+      "target": "docs/product/browser.html#flow-operate",
+      "required_terms": [
+        "broker",
+        "origin",
+        "epoch",
+        "uncertain"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "F04",
+      "intent": "Fenced handoff stage",
+      "target": "docs/product/browser.html#flow-handoff",
+      "required_terms": [
+        "fresh epoch",
+        "authenticated human release",
+        "must not silently"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "E01",
+      "intent": "Replace historical success labels with current evidence",
+      "target": "docs/product/browser.html#evidence-local",
+      "required_terms": [
+        "synthetic",
+        "local",
+        "do not establish"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "E02",
+      "intent": "Preserve unverified integration and production gaps",
+      "target": "docs/product/browser.html#evidence-runtime",
+      "required_terms": [
+        "unqualified",
+        "no source repository",
+        "transfers"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "I01",
+      "intent": "Scroll-progress reading order becomes always-visible order",
+      "target": "docs/product/browser.html#map-reading",
+      "required_terms": [
+        "every role is visible",
+        "no animation",
+        "javascript"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "I02",
+      "intent": "Entry middle completed and reduced-motion states use same content",
+      "target": "docs/product/browser.html#map-caption",
+      "required_terms": [
+        "all five roles",
+        "document order",
+        "without scripts"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "I03",
+      "intent": "Anchor navigation and no-script fallback intent",
+      "target": "docs/product/browser.html#architecture-island",
+      "required_terms": [
+        "static design map",
+        "not evidence"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    },
+    {
+      "id": "I04",
+      "intent": "Responsive and keyboard behavior remains a real acceptance gate",
+      "target": "docs/product/browser.html#evidence-page",
+      "required_terms": [
+        "desktop/mobile",
+        "keyboard",
+        "not been verified",
+        "stays open"
+      ],
+      "disposition": "adapted_intent",
+      "implementation_evidence": false
+    }
+  ],
+  "assets": [
+    {
+      "id": "A01",
+      "role": "Selected product document",
+      "disposition": "adapt_intent_original_expression_excluded",
+      "original_imported": false
+    },
+    {
+      "id": "A02",
+      "role": "Client bootstrap",
+      "disposition": "exclude_static_replacement",
+      "original_imported": false
+    },
+    {
+      "id": "A03",
+      "role": "Architecture island component",
+      "disposition": "adapt_intent_original_expression_excluded",
+      "original_imported": false
+    },
+    {
+      "id": "A04",
+      "role": "Island presentation rules",
+      "disposition": "exclude_original_styles_new_css",
+      "original_imported": false
+    },
+    {
+      "id": "A05",
+      "role": "Package and command declaration",
+      "disposition": "exclude_dependency_free_choice",
+      "original_imported": false
+    },
+    {
+      "id": "A06",
+      "role": "Locked package closure",
+      "disposition": "exclude_all_locked_dependencies",
+      "original_imported": false
+    },
+    {
+      "id": "A07",
+      "role": "Bundler configuration",
+      "disposition": "exclude_dependency_free_choice",
+      "original_imported": false
+    },
+    {
+      "id": "A08",
+      "role": "Browser interaction checks",
+      "disposition": "adapt_intent_checks_not_executed",
+      "original_imported": false
+    },
+    {
+      "id": "A09",
+      "role": "Component content checks",
+      "disposition": "adapt_intent_new_structural_tests",
+      "original_imported": false
+    },
+    {
+      "id": "A10",
+      "role": "Component states",
+      "disposition": "adapt_intent_static_states",
+      "original_imported": false
+    },
+    {
+      "id": "A11",
+      "role": "Story environment configuration",
+      "disposition": "exclude_dependency_free_choice",
+      "original_imported": false
+    },
+    {
+      "id": "A12",
+      "role": "Story preview styling",
+      "disposition": "exclude_original_styles_new_css",
+      "original_imported": false
+    },
+    {
+      "id": "A13",
+      "role": "Original lint configuration",
+      "disposition": "exclude_dependency_free_choice",
+      "original_imported": false
+    },
+    {
+      "id": "A14",
+      "role": "Original publication pipeline",
+      "disposition": "exclude_no_publication_or_runner_import",
+      "original_imported": false
+    },
+    {
+      "id": "A15",
+      "role": "Source documentation",
+      "disposition": "review_only_no_original_expression",
+      "original_imported": false
+    },
+    {
+      "id": "A16",
+      "role": "Source authoring guidance",
+      "disposition": "review_only_no_original_expression",
+      "original_imported": false
+    },
+    {
+      "id": "A17",
+      "role": "Build output exclusions",
+      "disposition": "review_only_no_original_expression",
+      "original_imported": false
+    }
+  ],
+  "exclusions": [
+    {
+      "id": "X01",
+      "subject": "Original authored expression and layout",
+      "reason": "No project-wide license was found. No historical prose, JSX, CSS, figures or source history is redistributed; newly written explanation and layout retain only reviewed design intent.",
+      "resolved_by": "safe_exclusion"
+    },
+    {
+      "id": "X02",
+      "subject": "Historical operational and test claims",
+      "reason": "Previous prototype, SDK and browser-attachment results are not Runspindle evidence. Current local component records are linked separately; live acceptance remains not run.",
+      "resolved_by": "safe_exclusion"
+    },
+    {
+      "id": "X03",
+      "subject": "React and animation execution",
+      "reason": "The island mount, progress hook, opacity/position animation, override controls and motion library are excluded. All five roles are simultaneously readable in semantic HTML.",
+      "resolved_by": "safe_exclusion"
+    },
+    {
+      "id": "X04",
+      "subject": "Build and development dependency closure",
+      "reason": "All 404 non-root locked package records, bundler, lint, test and story dependencies are excluded. License metadata is inventoried but package archives/notices were not fetched or redistributed. Exclusion avoids treating metadata as clearance.",
+      "resolved_by": "safe_exclusion"
+    },
+    {
+      "id": "X05",
+      "subject": "Original publication and browser harness",
+      "reason": "Original cloud runner publication and machine-specific browser launch are excluded. No deployment job, network listener, installation or native browser execution is introduced.",
+      "resolved_by": "safe_exclusion"
+    },
+    {
+      "id": "X06",
+      "subject": "Historical links and machine-specific locations",
+      "reason": "Original repository, site, source path, device path and operational locators stay private. Public links resolve only to current Runspindle repository files.",
+      "resolved_by": "safe_exclusion"
+    }
+  ],
+  "unresolved_exclusions": [],
+  "acceptance": {
+    "source_structure": "checked_separately",
+    "rendered_desktop_mobile": "not_run",
+    "keyboard_navigation": "not_run",
+    "independent_review": "required_before_publication",
+    "umbrella_mirror": "pending",
+    "runtime": "not_run"
+  }
+}

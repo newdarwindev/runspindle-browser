@@ -6,4 +6,14 @@ SRC-013 selected source material carries the MIT notice: Copyright (c) 2026 newd
 
 No project license was found for SRC-002 or SRC-009 during source review. No license is invented or assigned to them here. Detailed provenance and original artifacts remain in restricted migration records outside this public candidate. A publisher must resolve the rights to any retained expression before release.
 
-The public candidate contains newly written narrative and diagrams-free documents; it does not republish historical PDFs, original third-party figures, bibliography entries, or private operational evidence. The historical source bibliography is preserved unmodified in the separate source archive, not represented as fresh verification of external claims.
+The public candidate contains newly written narrative and an original semantic HTML architecture map; it does not republish historical PDFs, original third-party figures, bibliography entries, or private operational evidence. The historical source bibliography is preserved unmodified in the separate source archive, not represented as fresh verification of external claims.
+
+## SRC-009 static replacement
+
+The Browser page uses newly authored prose, markup and CSS to explain reviewed
+design intent. Original React/Motion code, styles, figures, scroll behavior,
+historical claims and the entire locked dependency closure are excluded. No
+third-party code, font, image, binary or package is bundled. The retained lock's
+license labels were inventoried, not treated as license clearance. See
+[browser-source-review.md](browser-source-review.md) for the rights decision and
+[the coverage inventory](browser-coverage.json) for each resolved exclusion.

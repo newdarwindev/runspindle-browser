@@ -1,1 +1,139 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Runspindle Browser</title><style>body{max-width:72rem;margin:auto;padding:3rem 1.5rem;font:18px/1.65 system-ui;color:#183247;background:#f7fafc}h1{font-size:3rem;line-height:1.1}h2{line-height:1.25;margin-top:2.6rem}p{max-width:78ch}.badge{color:#6b3600;background:#fff0d3;padding:1rem;border-radius:.6rem}a{color:#075985}nav{display:flex;gap:1rem;flex-wrap:wrap}footer{border-top:1px solid #b8c8d2;margin-top:3rem;padding-top:1rem}</style><body><nav><a href="index.html">Overview</a><a href="browser.html">Browser</a><a href="vision.html">Refinery</a></nav><main><h1>Runspindle Browser</h1><p class="badge">Design scaffold. Integrations and deployments are planned. No measured savings or live fleet is claimed.</p><section><h2>A bounded system for authorized work</h2><p>Runspindle is a proposed distribution of cooperating components for agent-assisted work. Its aim is to make task boundaries, human control, evidence, and recovery explicit. The current deliverable is a scaffold and design specification. It is not an operating service, a production deployment, or a measured improvement over a native agent product.</p><p>A task begins with a defined outcome, accountable owner, permitted sources and actions, and stop conditions. An agent&#x27;s ability to perform an action is not authority to perform it. Scope changes and consequential actions require the applicable approval. Product policy and legal constraints remain in force; the architecture is not a mechanism for bypassing them.</p></section><section><h2>Browser control and human takeover</h2><p>The intended browser model is one isolated account context, one headed browser, and one current controller. A broker would bind commands to account, task, actor, and lease epoch. PinchTab would provide the action interface. KasmVNC passive viewing is proposed as a separate, authorized read-only mode that grants no input control. Interactive takeover would require a fresh fenced control lease on the same browser. A handoff must invalidate old commands and revoke existing input and streams before granting a new epoch.</p><p>OpenBao is proposed for secret references and controlled credential access. Credentials and browser profiles must not enter logs, public artifacts, or model evaluation datasets. Temporal records durable intent; it cannot by itself fence browser input or prove whether a website accepted a submission. After an ambiguous external action, the workflow must reconcile observable state before retrying. These properties still require Runspindle integration and adversarial tests.</p></section><section><h2>Fleet evidence and uncertainty</h2><p>A fleet view should distinguish a planned component, an observed process, a managed session, and a verified terminal result. Every observation needs a timestamp, source, and freshness policy. Missing updates mean unknown state, not automatic proof of failure. Control actions need a verified binding to the intended host, repository, process, and session.</p><p>Console should eventually render those actual observations rather than synthetic success indicators. Tether messages may link to a bounded task or evidence record, but message delivery is not execution completion. A stale route, recycled process identifier, or disconnected host must not silently redirect an action. Standard Collectors and Langfuse integration are proposed for correlated task, session, trace, and output identity with readback verification. Masking coverage remains unresolved across those paths; no complete redaction guarantee is claimed. The scaffold does not yet collect or render live observations.</p></section><section><h2>Evaluation and release gates</h2><p>Development validation should test contracts and synthetic fixtures first: lease fencing, isolation, duplicate requests, restart recovery, permission changes, cancellation, stream revocation, and unknown external outcomes. Integration tests then need pinned component versions and permissioned environments. No source repository&#x27;s historical test result transfers automatically to the new system.</p><p>Production readiness requires independently evidenced secrets management, authenticated routing, monitoring, rollback, dependency review, and operator acceptance. Packaging a manifest is not deployment; a passing stub test is not proof of a live system. Development and production deployment remain planned. The distribution must fail closed when prerequisites or authorization are missing.</p></section></main><footer>Runspindle design materials. Source concepts: SRC-002, SRC-013, SRC-009. Historical artifacts are not new builds. Third-party products retain their own names and licenses.</footer></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Runspindle Browser design: scoped accounts, shared browser identity, fenced control and explicit evidence limits.">
+  <title>Runspindle Browser | Access with boundaries</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #162e46; background: #f4f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-size: 1.05rem; line-height: 1.65; }
+    a { color: #064d8b; text-underline-offset: .2em; overflow-wrap: anywhere; }
+    a:focus-visible { outline: 3px solid #713c00; outline-offset: 5px; border-radius: 2px; }
+    .skip { display: inline-block; margin: .75rem 1.25rem; }
+    header, main, footer { width: min(100% - 2.5rem, 72rem); margin-inline: auto; }
+    header { border-bottom: 1px solid #a2b5ca; padding-block: 1rem; }
+    nav, .section-links { display: flex; flex-wrap: wrap; gap: .6rem 1.5rem; }
+    nav a, .section-links a { padding-block: .4rem; }
+    main { padding-block: 2rem; }
+    h1 { font-size: clamp(2.4rem, 7vw, 4.8rem); line-height: 1.08; letter-spacing: -.035em; margin-block: .7rem 1.5rem; }
+    h2 { font-size: clamp(1.65rem, 4vw, 2.5rem); line-height: 1.2; }
+    h3 { line-height: 1.3; font-size: 1.2rem; }
+    p, li { overflow-wrap: anywhere; }
+    p { max-width: 78ch; }
+    section { margin-block: 3rem; scroll-margin-top: 1rem; }
+    .eyebrow { font-weight: 700; color: #36536e; }
+    .notice { border-left: .35rem solid #895000; background: #fff2d9; padding: 1rem 1.4rem; }
+    .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 0; list-style: none; }
+    .cards > li { background: #fff; border: 1px solid #b9c9d9; padding: 1.2rem; border-radius: .5rem; min-width: 0; }
+    .cards h3 { margin-top: 0; }
+    .map { margin: 1.5rem 0; padding: 1.5rem; background: #e8f0fa; border: 1px solid #93acc6; border-radius: .5rem; }
+    .map ol { padding-left: 1.5rem; }
+    .map li { padding: .5rem 0 .7rem .5rem; }
+    .map h3, .map p { margin-block: .3rem; }
+    .boundary { font-weight: 650; }
+    .steps { padding-left: 1.5rem; }
+    .steps > li { padding: .5rem 0 .5rem .6rem; }
+    .steps h3 { margin-bottom: .3rem; }
+    footer { padding-block: 1.5rem 3rem; border-top: 1px solid #a2b5ca; font-size: .95rem; }
+    @media (max-width: 44rem) {
+      .cards { grid-template-columns: minmax(0, 1fr); }
+      .map { padding: 1rem; }
+      header, main, footer { width: min(100% - 2rem, 72rem); }
+    }
+    @media print {
+      body { color: #000; background: #fff; }
+      .cards { display: block; }
+      .cards > li { margin-bottom: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header>
+    <nav aria-label="Product pages">
+      <a href="index.html">Overview</a>
+      <a href="browser.html" aria-current="page">Browser</a>
+      <a href="vision.html">Refinery</a>
+    </nav>
+  </header>
+  <main id="main" tabindex="-1">
+    <section id="overview" aria-labelledby="page-title">
+      <p class="eyebrow">Runspindle / Browser design</p>
+      <h1 id="page-title">Access with boundaries.<br>Control with an owner.</h1>
+      <p>Browser is intended to make an authorized account available to a bounded task while keeping credentials, human input and agent input under separate controls. A managed session can preserve continuity; it cannot create permission.</p>
+      <p class="notice" id="evidence-boundary"><strong>Design, not a running service.</strong> This page is a newly authored static explanation. Local synthetic and protocol checks exist in the repository. Real authority adapters, trusted browser observations, distributed fencing, provider integration, encrypted profiles and live acceptance are not established. No production deployment or measured outcomes are claimed.</p>
+      <nav class="section-links" aria-label="On this page">
+        <a href="#architecture">Architecture</a>
+        <a href="#architecture-island">System map</a>
+        <a href="#principles">Control flow</a>
+        <a href="#status">Evidence and gaps</a>
+      </nav>
+    </section>
+
+    <section id="commitments" aria-labelledby="commitments-title">
+      <h2 id="commitments-title">Three requirements, one account boundary</h2>
+      <ul class="cards">
+        <li id="same-browser"><h3>Preserve browser identity</h3><p>The intended agent API and authorized human view must reach the same headed browser, account and native session on the explicitly selected host. Neither a reused process identifier nor a matching page title proves this binding. Account profiles must remain isolated.</p></li>
+        <li id="one-controller"><h3>Fence before transferring control</h3><p>Only one controller may supply input. A broker must reject stale lease epochs, drain or cancel queued commands and revoke interactive streams before a new controller is admitted. Passive viewing is separately authorized read-only access, not takeover.</p></li>
+        <li id="durable-intent"><h3>Keep uncertainty durable</h3><p>Durable orchestration records intent, waits and recovery. It cannot prove whether a website accepted a submission. Persist an uncertain effect before dispatch; reconcile observations before retrying, including after restart.</p></li>
+      </ul>
+    </section>
+
+    <section id="architecture" aria-labelledby="architecture-title">
+      <h2 id="architecture-title">Proposed integration roles</h2>
+      <p>These are boundaries to integrate and qualify, not a deployed stack. A named product's capabilities do not establish Runspindle's end-to-end behavior.</p>
+      <ul class="cards">
+        <li id="stack-api"><h3>PinchTab: bounded browser actions</h3><p>Browser would use an adapter for tab actions, snapshots and attachment to the selected browser. That API must not be treated as account-scoped authority. Core grants, Host identity and Browser lease checks must constrain each command. Native adapter conformance remains blocked.</p></li>
+        <li id="stack-view"><h3>KasmVNC: a view of the same browser</h3><p>The proposed visual surface must observe the browser used by the action API. Passive view and interactive input require different capabilities. Gateway revocation must terminate existing input and streams at control changes; that live behavior is unverified.</p></li>
+        <li id="stack-secrets"><h3>OpenBao: references before values</h3><p>A local KV-v2 protocol adapter exists with process-local opaque handles and synthetic transport tests. Production workload identity, provider integration and Transit envelope encryption remain planned. Trusted helpers, not the model or page, must resolve references for an approved principal, account, origin, operation and current lease.</p></li>
+        <li id="stack-workflow"><h3>Temporal: durable coordination</h3><p>Core would coordinate workflow state, approval waits and bounded retry policy through Temporal. Browser-side fencing and target-site reconciliation remain separate obligations; a successful orchestration step is not proof of an external effect.</p></li>
+        <li id="stack-identity"><h3>Authelia and Pomerium: distinct identity roles</h3><p>An identity provider for OIDC/MFA and an identity-aware route proxy are proposed complementary roles. Named interoperability is untested. A proxy session must not imply an approved website action or possession of that site's account.</p></li>
+        <li id="stack-ingress"><h3>Caddy: optional ingress</h3><p>An outer TLS and general ingress adapter may be appropriate for a chosen host. It is not a second source of action authority or a required duplicate authentication chain. No ingress installation or activation is supplied by this document.</p></li>
+      </ul>
+    </section>
+
+    <section id="architecture-island" aria-labelledby="map-title">
+      <h2 id="map-title">Read the system map without an interactive island</h2>
+      <p id="map-reading">Every role is visible from the start. The numbered reading order is a guide to responsibilities, not a network topology, execution trace or claim that credentials pass through every component. No animation, hover, scroll threshold or JavaScript is needed to reveal information.</p>
+      <figure class="map" aria-labelledby="map-title" aria-describedby="map-reading map-caption">
+        <ol>
+          <li id="map-entry"><h3>Console and Browser broker</h3><p>Console would present identity, account choice and task context. Core supplies the applicable authorization; the Browser broker must bind it to Host's selected session and the current lease epoch.</p><p class="boundary">Relationship: requests may reach a scoped task only after trusted identity and permission checks.</p></li>
+          <li id="map-workflow"><h3>Core and Temporal</h3><p>Task intent, approval waits and recovery would remain durable. Browser owns the local command boundary; Temporal cannot revoke a viewer or authenticate a browser observation.</p><p class="boundary">Relationship: coordination requests reach Browser without replacing its fencing checks.</p></li>
+          <li id="map-browser"><h3>Browser actions and human surface</h3><p>PinchTab and KasmVNC are proposed adapters to one headed browser managed on Host. Agent control and human control must be mutually exclusive. Passive viewers have no input grant.</p><p class="boundary">Relationship: both adapters must prove the same browser binding and revoke old access before a new epoch.</p></li>
+          <li id="map-vault"><h3>Trusted helper and OpenBao</h3><p>Credential references would resolve only inside a helper after fresh top-level and frame-origin observations and current account checks. Secret values, cookies and profile keys must never travel through prompts, traces, receipts, screenshots or training exports.</p><p class="boundary">Relationship: the helper may serve an authorized use; storing or refreshing a secret does not grant browser control.</p></li>
+          <li id="map-identity"><h3>Identity provider and route proxy</h3><p>Authelia and Pomerium are proposed access boundaries around the portal and routes. Caddy may provide outer ingress. Their integration does not supply website authorization.</p><p class="boundary">Relationship: browser lease, proxy session and website cookies are separate states with separate revocation.</p></li>
+        </ol>
+        <figcaption id="map-caption">Static design map adapted from SRC-009 intent. All five roles remain available in document order, including without scripts. The source's historical test labels are not evidence for this implementation.</figcaption>
+      </figure>
+    </section>
+
+    <section id="principles" aria-labelledby="flow-title">
+      <h2 id="flow-title">Transfer control in explicit stages</h2>
+      <ol class="steps">
+        <li id="flow-identify"><h3>Establish the request</h3><p>Verify the principal, selected account, approved action and target through trusted identity and observations. Model output, page text and received feedback cannot enlarge the grant.</p></li>
+        <li id="flow-reserve"><h3>Bind the session</h3><p>Acquire the current account lease on the explicitly pinned host and restore only an authorized isolated profile. A saved profile is neither a shared credential nor proof that a website session remains valid.</p></li>
+        <li id="flow-operate"><h3>Dispatch within the grant</h3><p>Route bounded commands through the broker, rechecking account, origin and epoch at use. If cancellation, redirect or a lease change intervenes, deny the action and clean up. Preserve uncertain external outcomes instead of blindly retrying.</p></li>
+        <li id="flow-handoff"><h3>Fence, then transfer</h3><p>Stop old input, close interactive streams and authenticate the next controller before granting a fresh epoch. Resume only after authenticated human release, viewer input closure and fresh account/target observations. Restart, timeout or disconnect must not silently restore agent control.</p></li>
+      </ol>
+      <p id="separate-lifecycles">Forgetting a credential, deleting an encrypted profile and revoking a website session are distinct operations. Human intervention is an execution event, not automatic consent to export a training example. Repetition does not create recurring authorization.</p>
+    </section>
+
+    <section id="status" aria-labelledby="status-title">
+      <h2 id="status-title">Evidence that exists, gaps that remain</h2>
+      <ul class="cards">
+        <li id="evidence-local"><h3>Local component evidence</h3><p>The repository documents <a href="../../specs/synthetic-vault-fixtures.md">synthetic vault fixtures</a>, a <a href="../../specs/effect-journal-v1.md">local durable effect journal</a>, <a href="../../specs/trusted-credential-resolver.md">default-deny resolver orchestration</a>, and an <a href="../../specs/openbao-kv-adapter.md">OpenBao protocol adapter</a>. These bounded tests do not establish production authority, real provider behavior or live browser control.</p></li>
+        <li id="evidence-runtime"><h3>Runtime acceptance still required</h3><p>Trusted origin and account observations, authenticated authority adapters, distributed lease enforcement, same-browser proof, live stream revocation, profile encryption and identity/provider integration remain unqualified. No source repository's historical test result transfers to Runspindle.</p></li>
+        <li id="evidence-page"><h3>Document checks only</h3><p>This dependency-free HTML has source-level checks for local links, section accounting, dependency exclusions and evidence boundaries. Actual desktop/mobile rendering and keyboard behavior have not been verified. The composition repository mirror remains pending. Issue #5 stays open until those acceptance checks and independent review are complete.</p></li>
+        <li id="evidence-release"><h3>No release authority implied</h3><p>Keep synthetic tests, isolated integration, bounded live acceptance and production deployment separate. Production needs independent secrets, routing, rollback, monitoring and operator evidence. Passing document checks neither activates services nor grants permission to publish, deploy or use an account.</p></li>
+      </ul>
+      <p>Read the <a href="../../specs/credentials-handoff.md">credential and handoff contract</a>, <a href="../../specs/desired-intent.md">desired intent</a> and <a href="browser-source-review.md">source review and remaining acceptance</a> for exact boundaries.</p>
+    </section>
+  </main>
+  <footer>
+    <p>Canonical Browser source: this repository's docs/product/browser.html. Original prose and CSS; historical source ID SRC-009 supplies design intent only. Third-party names identify proposed integrations, without endorsement or a new license.</p>
+    <p><a href="THIRD_PARTY_NOTICES.md">Source notices</a> · <a href="#main">Back to content</a></p>
+  </footer>
+</body>
+</html>
