@@ -19,6 +19,13 @@ operation validates the exact Target and fresh authenticated observations under
 the same guard. All identifiers are opaque routing metadata, not secret values.
 Saving or restoring a cookie does not authorize any website action.
 
+The shared Grant vocabulary also recognizes an explicit `discard` action for
+the separate MaterializedStore directory component. Base Store rejects that
+action without key/IO calls or ciphertext changes. Only that combined component
+may return `discarded`; it binds the reference to an exact materialized generation
+rather than a checkpoint. See [the discard contract](profile-discard-v1.md).
+Existing ticket producers must not infer or reuse authorization for this action.
+
 The authority guard must actually authenticate admission and atomically maintain
 current principal/account/origin/session/browser/epoch and browser quiescence
 until exit. Its `current`, `quiescent` and `observe` methods are trusted adapter

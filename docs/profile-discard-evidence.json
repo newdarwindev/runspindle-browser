@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "classification": "source-component-synthetic-admission-real-posix-sqlite-aead",
+  "source_commit": "dbd5625075b810d34ae522e3435441c2d11199c6",
+  "source_tree": "51cba8fa567776c791ca0570cb5a34154dfc392b",
+  "dependency_base": {
+    "commit": "65514e5a7c76d9404d3a90bbdfb7e3a5d9f4e9d3",
+    "pull_request": "https://github.com/newdarwindev/runspindle-browser/pull/30",
+    "status_at_test": "unmerged; dependency-held extension"
+  },
+  "source_sha256": {
+    "browser_runtime/profile_directory.py": "1147333bb6ade4593b7ca06e3ebb46ff20953909c19dc65ec7ca6d5cba8675a2",
+    "browser_runtime/profile_store.py": "4f36fa84a29db28a959b652978ab833b7ef922b3e4f4ef6846f6023a93edcd61",
+    "specs/encrypted-profile-store-v1.md": "6d9c9013c1646fb698593e4ebb59901a53bab497b91919931304248be704ec53",
+    "specs/profile-directory-v1.md": "0c128abc955e86cbf734b3ebb50a6e63d2f1590169c6353a68f771d8796eb961",
+    "specs/profile-discard-v1.md": "14eba155ab60a5288d316cfdd0237c86db98ce8c44be555a808b30b7b643bef2",
+    "tests/test_profile_discard.py": "8f84c94411c3ed10fe5cdb1f5db3521dc19485e4d491c644b8a7b8e9cf7dc424"
+  },
+  "checks": {
+    "full_suite": {
+      "command": "python3 [-O] -m unittest discover -s tests -v",
+      "tests_each_mode": 292,
+      "normal": "passed",
+      "optimized": "passed",
+      "normal_seconds": 48.748,
+      "optimized_seconds": 108.54
+    },
+    "focused_tests": {
+      "path": "tests/test_profile_discard.py",
+      "tests_each_mode": 19,
+      "included_in_full_suite": true
+    },
+    "discard_crash_boundaries": {
+      "directory_fsyncs_observed": 12,
+      "fresh_process_deaths_each_mode": 24,
+      "positions": "before and after every observed fsync",
+      "fresh_process_recovery_and_retained_checkpoint_restore": "passed",
+      "discard_key_reads": 0
+    },
+    "author_source_mutations": {
+      "pristine_controls": "passed in normal and optimized modes",
+      "variants": [
+        "base-dispatch",
+        "tombstone",
+        "exact-generation",
+        "paired-pending-admission-fences",
+        "marker-persistence",
+        "cleanup"
+      ],
+      "detected_each_mode": 6,
+      "results": "expected test assertions or component-path failures; import/syntax failures rejected as evidence",
+      "independent_review": false
+    },
+    "source_checkers": {
+      "scripts": [
+        "check_scaffold.py",
+        "check_repo_hygiene.py",
+        "check_credential_storage.py",
+        "check_browser_product.py",
+        "check_artifacts.py",
+        "check_references.py"
+      ],
+      "result": "passed; PR body not supplied"
+    },
+    "static_quality": {
+      "command": "python3 tools/static_quality.py",
+      "result": "passed",
+      "existing_debt": 148,
+      "new_diagnostics": 0,
+      "package_pins": "unchanged requirements-quality.txt",
+      "environment_note": "Existing quality venv with primary Python site-packages on PYTHONPATH; initial isolated-venv crypto import absence was corrected without installation."
+    },
+    "targeted_strict": {
+      "result": "passed",
+      "files": [
+        "browser_runtime/profile_directory.py",
+        "browser_runtime/profile_store.py",
+        "tests/test_profile_discard.py"
+      ],
+      "tools": [
+        "Ruff 0.14.5 lint and format",
+        "mypy 1.18.2 --strict --follow-imports=skip --python-executable primary-python"
+      ]
+    }
+  },
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "openssl": "OpenSSL 4.0.1 9 Jun 2026",
+    "dependencies": {
+      "cryptography": "50.0.0",
+      "cffi": "2.1.1",
+      "pycparser": "3.0"
+    },
+    "dependency_evidence": "installed compatibility only; preferred lock not qualified"
+  },
+  "boundaries": {
+    "independent_review_at_receipt": "pending",
+    "ci": "not run",
+    "rust": "not run; Cargo unavailable in local environment",
+    "runtime_live_provider_browser_deployment": "not run",
+    "unchanged": "dependency pins, workflows, required gates, schemas, artifact manifests, hygiene baseline, host pins and operational configuration",
+    "not_claimed": [
+      "browser or quiescence authority implementation",
+      "production grant issuance or generation selection",
+      "Chrome/Firefox compatibility",
+      "power-cut durability",
+      "secure erasure, zeroization or deletion of copies/open descriptors",
+      "credential forgetting, logout or site-session revocation",
+      "complete Browser #14 acceptance"
+    ]
+  }
+}

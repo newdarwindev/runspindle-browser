@@ -127,8 +127,9 @@ plaintext immediately after SIGKILL. Successful recovery leaves one complete
 old/new current tree and no abandoned generation; successful forgetting leaves no
 materialized file bytes. Existing current plaintext and temporary plaintext are
 different inventories. Closing Python descriptors alone does not delete a profile.
-A routine end-of-session discard-with-retained-checkpoint workflow is not yet
-implemented; do not claim that behavior from `close()`.
+An explicit admitted end-of-session discard is implemented in
+[the discard contract](profile-discard-v1.md). It is never implied by `close()`,
+destruction of an object, elapsed time or a browser exit.
 
 ## Exact forgetting and crash gap
 

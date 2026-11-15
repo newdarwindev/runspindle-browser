@@ -20,8 +20,8 @@ from browser_runtime.credentials import Observation, Target
 from browser_runtime.profile_schema import Location, open_store, require, token
 
 MAX_BYTES = 16 * 1024 * 1024
-Action = Literal["save", "restore", "forget"]
-Result = Literal["stored", "delivered", "unknown", "forgotten"]
+Action = Literal["save", "restore", "forget", "discard"]
+Result = Literal["stored", "delivered", "unknown", "forgotten", "discarded"]
 
 
 class Denied(ValueError):
@@ -45,7 +45,7 @@ class Grant:
     target: Target
     profile: str
     action: Action
-    reference: str
+    reference: str  # Checkpoint token; explicit discard instead selects a generation.
     deadline: float
 
     def validate(self) -> None:
@@ -54,7 +54,8 @@ class Grant:
         token(self.profile)
         token(self.reference)
         require(
-            type(self.action) is str and self.action in ("save", "restore", "forget")
+            type(self.action) is str
+            and self.action in ("save", "restore", "forget", "discard")
         )
         require(type(self.deadline) in (int, float) and math.isfinite(self.deadline))
 
@@ -390,6 +391,11 @@ class Store:
         # Key, nonce and uncertainty records survive; no key/site/credential call.
         return "forgotten"
 
+    def _discard(self, guard: Guard, grant: Grant) -> Result:
+        # Plaintext cleanup is a separate explicit component capability. Never
+        # interpret the new admission as ciphertext forgetting or a key request.
+        raise Denied("profile discard unsupported")
+
     def run(self, ticket: object) -> Result:
         if not self._lock.acquire(blocking=False):
             raise Denied("profile store busy")
@@ -410,8 +416,10 @@ class Store:
                         completed = self._save(adapters, guard, grant)
                     elif grant.action == "restore":
                         completed = self._restore(adapters, guard, grant)
-                    else:
+                    elif grant.action == "forget":
                         completed = self._forget(guard, grant)
+                    else:
+                        completed = self._discard(guard, grant)
                 require(
                     completed is not None
                 )  # Suppressing guards cannot fake success.

@@ -282,7 +282,7 @@ class DirectoryProfileIO:
         phase = state["phase"]
         require(
             type(phase) is str
-            and phase in ("ready", "building", "cleanup", "forgotten")
+            and phase in ("ready", "building", "cleanup", "forgotten", "discarding")
         )
         if phase == "ready":
             require(
@@ -300,6 +300,13 @@ class DirectoryProfileIO:
             require(
                 state["current"] is not None
                 and state["candidate"] is None
+                and state["candidate_digest"] is None
+            )
+        if phase == "discarding":
+            require(
+                state["current"] is not None
+                and state["candidate"] is None
+                and state["retired"] is None
                 and state["candidate_digest"] is None
             )
         self._inventory(state)
@@ -384,6 +391,12 @@ class DirectoryProfileIO:
 
     def _claim(self, grant: Grant) -> dict[str, object]:
         state = self._read_state()
+        if grant.action == "discard":
+            require(
+                state["phase"] in ("ready", "discarding")
+                and state["current"] == generation(grant.reference)
+            )
+        require(state["phase"] != "discarding" or grant.action in ("discard", "forget"))
         epoch = cast(int, state["epoch"])
         require(grant.target.binding.epoch >= epoch)
         require(grant.target.binding.epoch > epoch or grant.owner() == state["owner"])
@@ -411,7 +424,7 @@ class DirectoryProfileIO:
                 self._check(grant, guard)
                 self._claim(grant)
                 entered = True
-                if action != "forget":
+                if action not in ("forget", "discard"):
                     self._recover(grant, guard)
                 result = operation()
                 self._check(grant, guard)
@@ -601,6 +614,13 @@ class DirectoryProfileIO:
         self._check(grant, guard)
         state = self._read_state()
         phase = state["phase"]
+        # Only a fresh, exact discard admission may resume nonterminal cleanup.
+        # In particular, failed save/restore admission cannot delete plaintext.
+        if phase == "discarding":
+            require(
+                grant.action == "discard"
+                and state["current"] == generation(grant.reference)
+            )
         if phase in ("building", "forgotten"):
             if state["candidate"] is not None:
                 candidate = generation(state["candidate"])
@@ -615,10 +635,10 @@ class DirectoryProfileIO:
         if phase in ("cleanup", "forgotten") and state["retired"] is not None:
             self._remove("g-" + generation(state["retired"]))
             state["retired"] = None
-        if phase == "forgotten" and state["current"] is not None:
+        if phase in ("forgotten", "discarding") and state["current"] is not None:
             self._remove("g-" + generation(state["current"]))
             state.update(current=None, digest=None)
-        if phase in ("building", "cleanup"):
+        if phase in ("building", "cleanup", "discarding"):
             state["phase"] = "ready"
         self._check(grant, guard)
         self._write_state(state)
@@ -719,6 +739,20 @@ class DirectoryProfileIO:
 
         self._run(grant, guard, "forget", discard)
 
+    def discard(self, grant: Grant, guard: Guard) -> None:
+        def discard_current() -> None:
+            state = self._read_state()
+            require(
+                state["phase"] in ("ready", "discarding")
+                and state["current"] == generation(grant.reference)
+            )
+            state["phase"] = "discarding"
+            self._check(grant, guard)
+            self._write_state(state)  # Record the exact target before any removal.
+            self._recover(grant, guard)
+
+        self._run(grant, guard, "discard", discard_current)
+
     def close(self) -> None:
         if not self._mutex.acquire(blocking=False):
             raise Denied("profile directory busy")
@@ -747,7 +781,9 @@ class MaterializedStore(Store):
 
     Restore checks the encrypted tombstone before even directory recovery. Forget
     commits ciphertext deletion first; a crash before directory cleanup is partial,
-    blocks restore, and needs fresh forget admission. Base Store stays unchanged.
+    blocks restore, and needs fresh forget admission. Base Store forgetting is unchanged.
+    Explicit discard removes only one admitted materialization and retains every
+    encrypted checkpoint; it never grants a browser/path capability.
     """
 
     def __init__(
@@ -774,3 +810,11 @@ class MaterializedStore(Store):
         self._tree.forget(grant, guard)
         self._check(guard, grant)
         return "forgotten"
+
+    def _discard(self, guard: Guard, grant: Grant) -> Result:
+        self._begin(guard, grant)
+        self._claim(grant)  # No cleanup of unenrolled or permanently forgotten data.
+        self._tree.discard(grant, guard)
+        self._check(guard, grant)
+        self._db.execute("COMMIT")
+        return "discarded"
