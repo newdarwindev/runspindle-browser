@@ -8,9 +8,10 @@ import hashlib
 import json
 import re
 import sqlite3
+import threading
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Callable, Literal, NoReturn
 from urllib.parse import urlsplit
 
 from browser_runtime.effect_schema import SchemaRejected, open_journal
@@ -20,6 +21,21 @@ Outcome = Literal["unknown", "confirmed", "rejected"]
 
 class Denied(ValueError):
     """Fixed-category error, never containing raw site responses or payloads."""
+
+
+class Cancelled(BaseException):
+    """Fixed cancellation category. Stop and reconcile; never infer retry rights."""
+
+
+def _fail(category: type[Denied] | type[Cancelled], message: str) -> NoReturn:
+    # A caller may invoke us while already handling a secret-bearing exception.
+    # Even a fresh raise outside our handlers would inherit that active context.
+    try:
+        raise category(message)
+    except (Denied, Cancelled) as sanitized:
+        sanitized.__cause__ = None
+        sanitized.__context__ = None
+        raise
 
 
 @dataclass(frozen=True)
@@ -86,20 +102,86 @@ class Journal:
         submit: Callable[[Binding, bytes], object] | None = None,
         observe: Callable[[Binding, str], Readback] | None = None,
     ) -> None:
-        if not str(path) or str(path) == ":memory:" or str(path).startswith("file:"):
-            raise Denied("persistent file required")
+        self._lock = threading.Lock()
+        self._closed = True
         self.approve = approve
         self.submit = submit
         self.observe = observe
+        failed = "journal unavailable"
+        cancelled = False
         try:
+            if (
+                not str(path)
+                or str(path) == ":memory:"
+                or str(path).startswith("file:")
+            ):
+                raise Denied("persistent file required")
             self.db = open_journal(path)
+            self._closed = False
         except SchemaRejected:
-            raise Denied("journal schema rejected") from None
-        except (sqlite3.Error, OSError):
-            raise Denied("journal unavailable") from None
+            failed = "journal schema rejected"
+        except BaseException as error:
+            cancelled = not isinstance(error, Exception)
+        # Outside exception handlers: from None hides display, not __context__.
+        if cancelled:
+            _fail(Cancelled, "journal initialization cancelled")
+        if self._closed:
+            _fail(Denied, failed)
 
     def close(self) -> None:
-        self.db.close()
+        if not self._lock.acquire(blocking=False):
+            _fail(Denied, "journal busy")
+        failed = False
+        cancelled = False
+        try:
+            if not self._closed:
+                self._closed = True  # Never retry an uncertain connection close.
+                try:
+                    self.db.close()
+                except BaseException as error:
+                    failed = True
+                    cancelled = not isinstance(error, Exception)
+        finally:
+            self._lock.release()
+        if cancelled:
+            _fail(Cancelled, "journal close cancelled")
+        if failed:
+            _fail(Denied, "journal close failed")
+
+    def _run(self, operation: Callable[[], Outcome]) -> Outcome:
+        if not self._lock.acquire(blocking=False):
+            _fail(Denied, "journal busy")
+        result: Outcome | None = None
+        cancelled = False
+        try:
+            try:
+                if self._closed:
+                    raise Denied("journal closed")
+                result = operation()
+            except BaseException as error:
+                cancelled = not isinstance(error, Exception)
+            finally:
+                if not self._closed:
+                    try:
+                        if self.db.in_transaction:
+                            self.db.execute("ROLLBACK")
+                    except BaseException as error:
+                        result = None
+                        cancelled = cancelled or not isinstance(error, Exception)
+                        # Failed cleanup cannot leave this instance usable or
+                        # release a callback into an uncertain transaction.
+                        self._closed = True
+                        try:
+                            self.db.close()
+                        except BaseException as error:
+                            cancelled = cancelled or not isinstance(error, Exception)
+        finally:
+            self._lock.release()
+        if cancelled:
+            _fail(Cancelled, "journal operation cancelled")
+        if result is None:
+            _fail(Denied, "journal operation denied")
+        return result
 
     def _authorized(self, binding: Binding, digest: str) -> None:
         try:
@@ -115,6 +197,9 @@ class Journal:
             raise Denied("journal unavailable") from None
 
     def dispatch(self, binding: Binding, payload: bytes) -> Outcome:
+        return self._run(lambda: self._dispatch(binding, payload))
+
+    def _dispatch(self, binding: Binding, payload: bytes) -> Outcome:
         encoded = binding.encoded()
         if type(payload) is not bytes or not payload or len(payload) > 1048576:
             raise Denied("invalid payload")
@@ -123,45 +208,36 @@ class Journal:
         if self.submit is None:
             raise Denied("site adapter unavailable")
         self._begin()
-        try:
-            row = self.db.execute(
-                "SELECT binding,digest,outcome FROM operations WHERE operation=?",
-                (binding.operation,),
-            ).fetchone()
-            if row is not None:
-                if (row[0], row[1]) != (encoded, digest):
-                    raise Denied("conflicting operation")
-                self.db.execute("ROLLBACK")
-                return self._outcome(row[2])
-            self.db.execute(
-                "INSERT INTO operations VALUES (?,?,?,'unknown',NULL)",
-                (binding.operation, encoded, digest),
-            )
-            # Durable fence precedes *every* possible external call.
-            self.db.execute("COMMIT")
-        except BaseException:
-            if self.db.in_transaction:
-                self.db.execute("ROLLBACK")
-            raise
+        row = self.db.execute(
+            "SELECT binding,digest,outcome FROM operations WHERE operation=?",
+            (binding.operation,),
+        ).fetchone()
+        if row is not None:
+            if (row[0], row[1]) != (encoded, digest):
+                raise Denied("conflicting operation")
+            return self._outcome(row[2])
+        self.db.execute(
+            "INSERT INTO operations VALUES (?,?,?,'unknown',NULL)",
+            (binding.operation, encoded, digest),
+        )
+        # Durable fence precedes *every* possible external call.
+        self.db.execute("COMMIT")
         self._begin()
+        row = self.db.execute(
+            "SELECT outcome FROM operations WHERE operation=?", (binding.operation,)
+        ).fetchone()
+        if row is None:
+            raise Denied("journal changed")
+        outcome = self._outcome(row[0])
+        if outcome != "unknown":
+            return outcome
+        self._authorized(binding, digest)
         try:
-            row = self.db.execute(
-                "SELECT outcome FROM operations WHERE operation=?", (binding.operation,)
-            ).fetchone()
-            if row is None:
-                raise Denied("journal changed")
-            outcome = self._outcome(row[0])
-            if outcome != "unknown":
-                return outcome
-            self._authorized(binding, digest)
-            try:
-                self.submit(binding, payload)
-            except Exception:
-                # Including accepted-but-lost replies: never infer retry/success.
-                pass
-            return "unknown"
-        finally:
-            self.db.execute("ROLLBACK")
+            self.submit(binding, payload)
+        except Exception:
+            # Including accepted-but-lost replies: never infer retry/success.
+            pass
+        return "unknown"
 
     @staticmethod
     def _outcome(value: object) -> Outcome:
@@ -174,6 +250,9 @@ class Journal:
         raise Denied("invalid journal state")
 
     def reconcile(self, binding: Binding, payload_digest: str) -> Outcome:
+        return self._run(lambda: self._reconcile(binding, payload_digest))
+
+    def _reconcile(self, binding: Binding, payload_digest: str) -> Outcome:
         encoded = binding.encoded()
         if re.fullmatch(r"[0-9a-f]{64}", payload_digest) is None:
             raise Denied("invalid digest")
@@ -181,38 +260,34 @@ class Journal:
         if self.observe is None:
             raise Denied("readback adapter unavailable")
         self._begin()
+        row = self.db.execute(
+            "SELECT binding,digest,outcome FROM operations WHERE operation=?",
+            (binding.operation,),
+        ).fetchone()
+        if row is None or (row[0], row[1]) != (encoded, payload_digest):
+            raise Denied("unknown or conflicting operation")
+        outcome = self._outcome(row[2])
+        if outcome != "unknown":
+            return outcome
+        self._authorized(binding, payload_digest)
         try:
-            row = self.db.execute(
-                "SELECT binding,digest,outcome FROM operations WHERE operation=?",
-                (binding.operation,),
-            ).fetchone()
-            if row is None or (row[0], row[1]) != (encoded, payload_digest):
-                raise Denied("unknown or conflicting operation")
-            outcome = self._outcome(row[2])
-            if outcome != "unknown":
-                return outcome
-            self._authorized(binding, payload_digest)
-            try:
-                observed = self.observe(binding, payload_digest)
-                if (
-                    type(observed) is not Readback
-                    or type(observed.binding) is not Binding
-                    or observed.binding.encoded() != encoded
-                    or observed.payload_digest != payload_digest
-                    or type(observed.outcome) is not str
-                    or observed.outcome not in ("confirmed", "rejected")
-                    or re.fullmatch(r"[0-9a-f]{64}", observed.evidence_digest) is None
-                ):
-                    return "unknown"
-            except Exception:
+            observed = self.observe(binding, payload_digest)
+            if (
+                type(observed) is not Readback
+                or type(observed.binding) is not Binding
+                or observed.binding.encoded() != encoded
+                or observed.payload_digest != payload_digest
+                or type(observed.outcome) is not str
+                or observed.outcome not in ("confirmed", "rejected")
+                or re.fullmatch(r"[0-9a-f]{64}", observed.evidence_digest) is None
+            ):
                 return "unknown"
-            self._authorized(binding, payload_digest)
-            self.db.execute(
-                "UPDATE operations SET outcome=?, evidence=? WHERE operation=?",
-                (observed.outcome, observed.evidence_digest, binding.operation),
-            )
-            self.db.execute("COMMIT")
-            return observed.outcome
-        finally:
-            if self.db.in_transaction:
-                self.db.execute("ROLLBACK")
+        except Exception:
+            return "unknown"
+        self._authorized(binding, payload_digest)
+        self.db.execute(
+            "UPDATE operations SET outcome=?, evidence=? WHERE operation=?",
+            (observed.outcome, observed.evidence_digest, binding.operation),
+        )
+        self.db.execute("COMMIT")
+        return observed.outcome

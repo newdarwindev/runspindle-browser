@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from browser_runtime.effects import Binding, Denied, Journal, Readback
+from browser_runtime.effects import Binding, Cancelled, Denied, Journal, Readback
 from browser_testing.effect_site import Site
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -287,7 +287,7 @@ class EffectJournalTests(unittest.TestCase):
         self.journal.db.execute(
             "CREATE TRIGGER deny_insert BEFORE INSERT ON operations BEGIN SELECT RAISE(ABORT, 'synthetic storage failure'); END"
         )
-        with self.assertRaises(sqlite3.Error):
+        with self.assertRaises(Denied):
             self.journal.dispatch(BINDING, PAYLOAD)
         self.assertEqual(self.observe_state(), [])
         self.assertEqual(self.site.effects(), 0)
@@ -307,10 +307,10 @@ class EffectJournalTests(unittest.TestCase):
 
     def test_deliberate_duplicate_effect_mutation_is_observed(self) -> None:
         source = (ROOT / "browser_runtime/effects.py").read_text()
-        anchor = "return self._outcome(row[2])"
+        anchor = "            return self._outcome(row[2])"
         self.assertEqual(source.count(anchor), 1)
         mutated = source.replace(
-            anchor, "self.submit(binding, payload)\n                " + anchor
+            anchor, "            self.submit(binding, payload)\n" + anchor
         )
         path = Path(self.tmp.name) / "mutated_effects.py"
         path.write_text(mutated)
@@ -341,7 +341,7 @@ class EffectJournalTests(unittest.TestCase):
             raise KeyboardInterrupt("synthetic cancellation")
 
         self.journal.submit = cancelled
-        with self.assertRaises(KeyboardInterrupt):
+        with self.assertRaises(Cancelled):
             self.journal.dispatch(BINDING, PAYLOAD)
         self.assertEqual(self.observe_state()[0][2], "unknown")
         self.assertEqual(self.journal.dispatch(BINDING, PAYLOAD), "unknown")

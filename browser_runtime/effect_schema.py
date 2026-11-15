@@ -41,6 +41,20 @@ def _inspect(db: sqlite3.Connection, expected: Inventory) -> bool:
     return adopt
 
 
+def _close_failed(db: sqlite3.Connection, failure: BaseException) -> None:
+    """Do not let an ordinary close error hide an in-flight cancellation.
+
+    Journal's public constructor sanitizes both failures outside their handlers.
+    A close is attempted once; an uncertain close is never blindly retried.
+    """
+    try:
+        db.close()
+    except BaseException:
+        if not isinstance(failure, Exception):
+            raise failure
+        raise
+
+
 def open_journal(path: str | Path) -> sqlite3.Connection:
     """Preflight existing files read-only, then recheck under the writer lock.
 
@@ -52,7 +66,10 @@ def open_journal(path: str | Path) -> sqlite3.Connection:
     try:
         model.execute(OPERATIONS_DDL)
         expected = _inventory(model)
-    finally:
+    except BaseException as error:
+        _close_failed(model, error)
+        raise
+    else:
         model.close()
     file = Path(path)
     if file.exists():
@@ -65,7 +82,10 @@ def open_journal(path: str | Path) -> sqlite3.Connection:
         try:
             probe.execute("BEGIN")
             _inspect(probe, expected)
-        finally:
+        except BaseException as error:
+            _close_failed(probe, error)
+            raise
+        else:
             probe.close()
     db = sqlite3.connect(path, isolation_level=None, timeout=2)
     try:
@@ -82,7 +102,7 @@ def open_journal(path: str | Path) -> sqlite3.Connection:
         # reached after admission; other writers must use the same journal API.
         db.execute("PRAGMA journal_mode=WAL")
         return db
-    except BaseException:
+    except BaseException as error:
         # close() rolls back an uncommitted admission and releases all locks.
-        db.close()
+        _close_failed(db, error)
         raise
