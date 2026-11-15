@@ -56,3 +56,10 @@ qualify real authority, fencing, provider integration or live acceptance.
 
 [OpenBao KV-v2 adapter](openbao-kv-adapter.md) implements bounded protocol and
 opaque-handle behavior; live authority/provider/fencing qualification is blocked.
+
+## Encrypted checkpoint component
+
+[Encrypted profile BLOB storage](encrypted-profile-store-v1.md) adds real AEAD,
+SQLite crash recovery, local writer fencing and logical forgetting. Browser
+directory restoration, production key custody and full #14 acceptance remain
+blocked integration work; preferred dependency/image qualification is separate.

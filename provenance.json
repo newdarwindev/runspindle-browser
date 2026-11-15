@@ -186,5 +186,11 @@
     "implementation": "Original stdlib protocol and process-local opaque-handle adapter; no upstream implementation copied or new dependency installed.",
     "scope": "Partial #13/#6; historical source port #3 and live provider/authority/fencing remain blocked.",
     "api_documentation": "https://github.com/openbao/openbao/blob/92de51f7a0586759215d299bc79118874ea54fb1/website/content/docs/api/secret/kv/kv-v2.mdx"
+  },
+  "encrypted_profile_store": {
+    "implementation": "Original Python AEAD/SQLite checkpoint component and synthetic tests; no historical source expression or crypto primitive implementation imported. PyCA cryptography is a declared external dependency, not vendored.",
+    "scope": "Partial #14/#7; no browser-directory restoration, production key custody, distributed authority or live acceptance.",
+    "dependency_lock": "requirements-profile.txt",
+    "dependency_evidence": "Installed cryptography 50.0.0 compatibility only; preferred 50.0.2 wheels hash-pinned from official PyPI metadata, not installed or qualified."
   }
 }

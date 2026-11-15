@@ -91,7 +91,9 @@ checks retained data and unchanged main/WAL bytes, without claiming unchanged
 shared-memory bytes. Existing exclusive API use and trusted-storage assumptions
 remain necessary after admission, including the interval before WAL activation.
 
-`effects.Journal` is the only SQLite store in `browser_runtime`. The separate
+`effects.Journal` has its own SQLite schema. The separate encrypted-checkpoint
+store now lives in `profile_store`/`profile_schema` with independent admission;
+its evidence does not qualify this journal or vice versa. The separate
 `browser_testing.effect_site.Site` ledger is deliberately an independent synthetic
 fixture, not a production journal or a source of schema-admission guarantees.
 It is unchanged and does not share this admission implementation.

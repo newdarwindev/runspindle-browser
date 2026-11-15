@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "evidence_class": "local_real_crypto_sqlite_synthetic_adapters",
+  "component": "browser",
+  "partial_issues": [
+    14,
+    7
+  ],
+  "source_commit": "8383aac57c9007e0a33466894ef4eb73901f30bd",
+  "base_commit": "223713785763f866b55c50a43e08bfdb42e12c54",
+  "artifact_sha256": {
+    "browser_runtime/profile_schema.py": "078c45da6db546215166dbb6151f7c161977468bb4da73cd5876a86f2cffac7f",
+    "browser_runtime/profile_store.py": "418d899fd0977a1a6c2c8a64080f0b22cab09531d0b7108f813fc7541863b780",
+    "browser_testing/profile_store_fixtures.py": "8d793ab687003f28fdf7a5b3e3c76002b558a621aca8d12a57603bf31ad7f745",
+    "tests/test_profile_store.py": "1a3a21ada177215203cf9aa1849babecf169cdc0ab9c0c349a4d824a3120ee7b",
+    "tools/check_profile_store.py": "5a82e5a6188065bef74b464b36ab0f8268ee9d6c68c59b3b9ce583dc23ec76f2",
+    "requirements-profile.txt": "96f356c53e8b8c4fb2f8dca5d1a31036148e3004996467a55b238291812ae252",
+    "specs/encrypted-profile-store-v1.md": "24dbe53f3898e8dcbe32538c0c9c4064f97c051bff5849235b991107cc07bd79"
+  },
+  "commands": {
+    "compatibility": "python3 tools/check_profile_store.py --compatibility",
+    "preferred_dependencies": "python3 tools/check_profile_store.py",
+    "aggregate": "python3 tools/validate.py",
+    "optimized_all": "python3 -O -m unittest discover -s tests -v"
+  },
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "openssl": "OpenSSL 4.0.1 9 Jun 2026",
+    "installed_dependencies": {
+      "cryptography": "50.0.0",
+      "cffi": "2.1.1",
+      "pycparser": "3.0"
+    },
+    "quality_tools": {
+      "ruff": "0.14.5",
+      "mypy": "1.18.2"
+    },
+    "quality_environment": "Existing prepared quality environment, exposed to existing primary-runtime dependencies for this bounded run; no installation or qualified-image change."
+  },
+  "checks": {
+    "profile_normal": {
+      "status": "passed",
+      "tests": 22,
+      "skipped": 0
+    },
+    "profile_optimized": {
+      "status": "passed",
+      "tests": 22,
+      "skipped": 0
+    },
+    "full_normal": {
+      "status": "passed",
+      "tests": 250,
+      "skipped": 0
+    },
+    "full_optimized": {
+      "status": "passed",
+      "tests": 250,
+      "skipped": 0
+    },
+    "scaffold": {
+      "status": "passed"
+    },
+    "static_quality": {
+      "status": "passed",
+      "new_diagnostics": 0,
+      "existing_debt": 148
+    },
+    "artifact_and_provenance_checks": {
+      "status": "passed"
+    },
+    "aggregate": {
+      "status": "failed",
+      "failed_checks": [
+        "rust-format",
+        "rust-test",
+        "rust-clippy"
+      ],
+      "reason": "Required Cargo executable is absent. No aggregate pass is claimed."
+    },
+    "rust_format_test_clippy": {
+      "status": "blocked",
+      "reason": "cargo unavailable",
+      "observed_harness_status": "failed"
+    },
+    "preferred_dependency_gate": {
+      "status": "blocked",
+      "exit_code": 2,
+      "reason": "Expected cryptography 50.0.2; installed 50.0.0. Explicit compatibility evidence does not qualify preferred lock."
+    },
+    "independent_review": {
+      "status": "passed",
+      "source_commit": "8383aac57c9007e0a33466894ef4eb73901f30bd",
+      "scope": "Runtime/schema and final reference-ledger/import delta independently reviewed; 22 focused tests normal and optimized, scaffold and five additional negative probes passed. No production or complete-issue qualification."
+    }
+  },
+  "real_boundaries": [
+    "PyCA AES-256-GCM encryption and authentication",
+    "SQLite file transactions and hot-journal recovery",
+    "subprocess crashes at save/restore/forget commit boundaries",
+    "cross-process writer contention",
+    "permanent profile/reference tombstones and nonce reservations"
+  ],
+  "injected_boundaries": [
+    "authenticated admission and atomic authority/quiescence guard",
+    "key-custody provider with public synthetic key",
+    "profile capture and plaintext-consumer helper"
+  ],
+  "negative_observations": [
+    "wrong identity/origin and unavailable authority deny before key access",
+    "corrupt ciphertext/AAD/key and cross-account substitution have zero consumer callbacks",
+    "same-instance recursion denies and cross-instance contention has bounded timeout",
+    "forget between reservation transactions retains burn and blocks stale capture",
+    "canaries absent from database, journal, output and digest-only consumer markers"
+  ],
+  "deliberate_mutation": {
+    "status": "passed",
+    "change": "Replace authentication with a test-only cipher returning a synthetic canary for corrupted ciphertext.",
+    "normal_forbidden_consumer_calls": 0,
+    "mutated_forbidden_consumer_calls": 1
+  },
+  "not_run": [
+    "preferred-wheel download or installation",
+    "qualified runner CI and image qualification",
+    "live browser directory materialization and cleanup",
+    "real authority/key-provider integration",
+    "actual power-cut or filesystem/firmware qualification",
+    "physical erasure or deletion of external copies",
+    "deployment"
+  ],
+  "limits": [
+    "Local cooperating processes and protected namespace only; hostile same-UID filesystem mutations are excluded.",
+    "Independent stores require distinct key namespaces; copied-store rollback is unsupported.",
+    "No keys, ciphertext or plaintext are exposed by the public result. SQLite intentionally stores ciphertext.",
+    "Profile deletion is logical scoped deletion, not credential deletion, remote logout or physical erasure.",
+    "No issue completion, provider/runtime activation, backups, persistent jobs or security-setting changes."
+  ]
+}
