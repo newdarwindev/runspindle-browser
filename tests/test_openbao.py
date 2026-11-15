@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 import unittest
 from dataclasses import replace
@@ -250,6 +251,7 @@ class OpenBaoTests(unittest.TestCase):
     def test_https_adapter_real_request_code_with_fake_connection(self) -> None:
         class Reply:
             status = 200
+            headers = http.client.HTTPMessage()
 
             def getheader(self, key: str, default: str | None = None) -> str | None:
                 return default
@@ -257,6 +259,9 @@ class OpenBaoTests(unittest.TestCase):
             def read(self, size: int) -> bytes:
                 self.limit = size
                 return b"{}"
+
+            def close(self) -> None:
+                pass
 
         reply = Reply()
         calls: list[Any] = []
