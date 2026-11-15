@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "source_id": "SRC-006",
+  "evidence_class": "specification_source_accounting",
+  "selected_artifact_status": "complete_accounting_with_resolved_exclusions",
+  "source_review": "author_review_complete_independent_review_required_before_publication",
+  "historical_import": "none",
+  "runtime_acceptance": "not_run",
+  "files": {
+    "browser_testing/storage.py": {
+      "classification": "synthetic_specification_model",
+      "sha256": "0bf2c7aaf1b5a7f2dc0fb7e07de38152b86ec44feec632eb7153438ad6f385e5"
+    },
+    "browser_testing/vault.py": {
+      "classification": "existing_synthetic_model",
+      "sha256": "28957420788c002e261e1c0021989979156c64d8d785f583990c37037b9d90d8"
+    },
+    "docs/credential-storage/README.md": {
+      "classification": "adapted_review_documentation",
+      "sha256": "8358d12cbbda0e02a235e843387484e1a319aaae1facb268afc6ac1e39fb7a6c"
+    },
+    "docs/credential-storage/coverage.json": {
+      "classification": "adapted_requirement_accounting",
+      "sha256": "7e959ee3eac2f9da6220eb6eef2413def4b462243a57370365b674287d1a688e"
+    },
+    "hygiene.json": {
+      "classification": "mandatory_check_inventory",
+      "sha256": "974630be9daa4b8fbe1eb2b6d17ff921f85da0a0a0dc50ebff13ee20165d4287"
+    },
+    "provenance.json": {
+      "classification": "public_provenance",
+      "sha256": "c9228fa5ac7bedfeb3a8a7caa43b09c6d59aa29bbd5495d85628504ec3e8e411"
+    },
+    "specs/credentials-handoff.md": {
+      "classification": "adapted_specification",
+      "sha256": "55bd5c001c7a6e7dabd803c43bfef1e82897f888d0b6003fca3aa8abdf71af25"
+    },
+    "tests/test_credential_storage.py": {
+      "classification": "artifact_checker_regression_tests",
+      "sha256": "99ba070afb6777894c8b00a886dbe3ee1f72b02cf4b1dc406d41d18148e25676"
+    },
+    "tests/test_openbao.py": {
+      "classification": "existing_protocol_double_tests",
+      "sha256": "ed832f7c5d726ec9da0266e386d74ddeb599fe6997e2e1b70cda85d69e46e566"
+    },
+    "tests/test_storage_hygiene.py": {
+      "classification": "integration_regression_tests",
+      "sha256": "9984422baaab609ea4d5e426b42a179aad93f4024c3b2c699d6d5bc146119c9f"
+    },
+    "tests/test_storage_lifecycle.py": {
+      "classification": "synthetic_tests",
+      "sha256": "2578a7fb921e4313fb8806bc3d2b8627c79a1e064d67ba8bc98ea07360531b3f"
+    },
+    "tests/test_synthetic_vault.py": {
+      "classification": "existing_synthetic_tests",
+      "sha256": "5e319fb89768ef2e8d892a57c64003890eda3065ee602f7877248e1adea767c0"
+    },
+    "tests/test_trusted_credentials.py": {
+      "classification": "existing_synthetic_adapter_tests",
+      "sha256": "468fc0d3323755e3245b718c9c2f5a56f327b1ad2ee7f8c24ef15228ec3ff8f1"
+    },
+    "tools/check_credential_storage.py": {
+      "classification": "structural_artifact_checker",
+      "sha256": "dc459e01453ee30b4010735e926da9bbaa9a0b511ddfd6cb8d238a5d8b04c108"
+    },
+    "tools/validate.py": {
+      "classification": "existing_validation_entrypoint",
+      "sha256": "b29f49b6ae71b4427328df21ee855f9ac809ea452af9729a3d1f5ada5695118a"
+    },
+    "validation-partitions.json": {
+      "classification": "mandatory_partition_inventory",
+      "sha256": "49bce75e31d53667558886302b3a9f698f5ceb3f807e62da517bdbc825a7ae5e"
+    }
+  }
+}

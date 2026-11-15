@@ -1,0 +1,411 @@
+{
+  "schema_version": 1,
+  "source_id": "SRC-006",
+  "scope": "one_selected_specification",
+  "units": [
+    {
+      "id": "S01",
+      "title": "Selected account authority",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "save_permission",
+        "use_permission",
+        "no_values"
+      ],
+      "cases": [],
+      "target": "specs/credentials-handoff.md#s01",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "S02",
+      "title": "Specification and execution boundaries",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "no_activation",
+        "separate_evidence"
+      ],
+      "cases": [],
+      "target": "specs/credentials-handoff.md#s02",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "R01",
+      "title": "Account specific references",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "reference",
+        "isolation",
+        "observed_account"
+      ],
+      "cases": [
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_wrong_bindings_deny_before_read"
+      ],
+      "target": "specs/credentials-handoff.md#r01",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "R02",
+      "title": "Admission before provider access",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "principal",
+        "account",
+        "operation",
+        "session",
+        "lease",
+        "before_read"
+      ],
+      "cases": [
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_wrong_bindings_deny_before_read",
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_invalid_grants_and_expired_identity_deny_before_read"
+      ],
+      "target": "specs/credentials-handoff.md#r02",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "R03",
+      "title": "Trusted origins at field use",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "top_origin",
+        "frame_origin",
+        "before_read",
+        "at_use",
+        "invalidate"
+      ],
+      "cases": [
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_unavailable_forged_stale_and_future_observations",
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_redirect_after_read_and_during_version_check",
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_stale_epoch_after_read_blocks_injection",
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_cancellation_releases_handle_and_fence"
+      ],
+      "target": "specs/credentials-handoff.md#r03",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "R04",
+      "title": "Secrets stay in trusted helpers",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "helper",
+        "temporal_fields",
+        "tokens_cookies_profiles",
+        "all_outcomes"
+      ],
+      "cases": [
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_success_is_sanitized_and_once",
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_faults_cleanup_and_no_retry",
+        "tests/test_synthetic_vault.py::SyntheticVaultTests.test_outage_denial_timeout_malformed_are_sanitized"
+      ],
+      "target": "specs/credentials-handoff.md#r04",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "R05",
+      "title": "Rotation refresh and restart",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "version",
+        "refresh",
+        "restart",
+        "independent_status"
+      ],
+      "cases": [
+        "tests/test_synthetic_vault.py::SyntheticVaultTests.test_vault_changes_during_second_observation_deny_injection",
+        "tests/test_synthetic_vault.py::SyntheticVaultTests.test_identity_expiry_rotation_forgetting_are_distinct"
+      ],
+      "target": "specs/credentials-handoff.md#r05",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "R06",
+      "title": "Bounded provider failure",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "deny",
+        "sanitized_errors",
+        "no_fallback",
+        "uncertainty"
+      ],
+      "cases": [
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_faults_cleanup_and_no_retry",
+        "tests/test_openbao.py::OpenBaoTests.test_default_and_wrong_scope_deny_before_token_or_http"
+      ],
+      "target": "specs/credentials-handoff.md#r06",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "B01",
+      "title": "Provider restrictions remain intact",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "endpoints",
+        "redirects",
+        "paths",
+        "identity"
+      ],
+      "cases": [],
+      "target": "specs/credentials-handoff.md#b01",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "B02",
+      "title": "Infrastructure custody boundary",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "authentication",
+        "transport",
+        "custody",
+        "no_configuration"
+      ],
+      "cases": [],
+      "target": "specs/credentials-handoff.md#b02",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "B03",
+      "title": "Private material exclusion",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "root_material",
+        "personal_secrets",
+        "public_boundary"
+      ],
+      "cases": [],
+      "target": "specs/credentials-handoff.md#b03",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "A01",
+      "title": "Isolation denial evidence",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "zero_reads",
+        "zero_injections"
+      ],
+      "cases": [
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_wrong_bindings_deny_before_read"
+      ],
+      "target": "specs/credentials-handoff.md#a01",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "A02",
+      "title": "Resolution race evidence",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "origin_race",
+        "cleanup",
+        "limits"
+      ],
+      "cases": [
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_redirect_after_read_and_during_version_check",
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_stale_epoch_after_read_blocks_injection"
+      ],
+      "target": "specs/credentials-handoff.md#a02",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "A03",
+      "title": "Success and failure privacy evidence",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "success",
+        "failure",
+        "audit_gap"
+      ],
+      "cases": [
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_success_is_sanitized_and_once",
+        "tests/test_synthetic_vault.py::SyntheticVaultTests.test_outage_denial_timeout_malformed_are_sanitized"
+      ],
+      "target": "specs/credentials-handoff.md#a03",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "A04",
+      "title": "Rotation evidence",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "future_resolution",
+        "stale_generation",
+        "site_status"
+      ],
+      "cases": [
+        "tests/test_synthetic_vault.py::SyntheticVaultTests.test_vault_changes_during_second_observation_deny_injection",
+        "tests/test_storage_lifecycle.py::StorageLifecycleTests.test_rotation_does_not_delete_profile_or_revoke_site"
+      ],
+      "target": "specs/credentials-handoff.md#a04",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "A05",
+      "title": "Revocation status evidence",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "fetch_denied",
+        "site_independent",
+        "unknown"
+      ],
+      "cases": [
+        "tests/test_storage_lifecycle.py::StorageLifecycleTests.test_forgetting_operations_are_independent",
+        "tests/test_storage_lifecycle.py::StorageLifecycleTests.test_uncertain_site_result_is_not_revoked"
+      ],
+      "target": "specs/credentials-handoff.md#a05",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "A06",
+      "title": "Provider negatives evidence",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "outage",
+        "expiry",
+        "reference",
+        "redirect",
+        "no_upstream_claim"
+      ],
+      "cases": [
+        "tests/test_trusted_credentials.py::TrustedCredentialsTests.test_invalid_grants_and_expired_identity_deny_before_read",
+        "tests/test_synthetic_vault.py::SyntheticVaultTests.test_outage_denial_timeout_malformed_are_sanitized"
+      ],
+      "target": "specs/credentials-handoff.md#a06",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "E01",
+      "title": "Remaining implementation work",
+      "disposition": "adapted",
+      "reason": "Original Runspindle wording preserves the selected requirement; no historical expression or test result is imported.",
+      "obligations": [
+        "trusted_adapter",
+        "identity",
+        "outage_rotation",
+        "audit",
+        "separate_acceptance"
+      ],
+      "cases": [],
+      "target": "specs/credentials-handoff.md#e01",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "X01",
+      "title": "Historical goal navigation",
+      "disposition": "excluded",
+      "reason": "Resolved safe exclusion: omit unselected linked expression and private locators; retain the requirement boundary in original current documentation.",
+      "obligations": [
+        "safe_replacement"
+      ],
+      "cases": [],
+      "target": "docs/credential-storage/README.md#x01",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "X02",
+      "title": "Historical repository guidance",
+      "disposition": "excluded",
+      "reason": "Resolved safe exclusion: omit unselected linked expression and private locators; retain the requirement boundary in original current documentation.",
+      "obligations": [
+        "safe_replacement"
+      ],
+      "cases": [],
+      "target": "docs/credential-storage/README.md#x02",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "X03",
+      "title": "Historical regression summary",
+      "disposition": "excluded",
+      "reason": "Resolved safe exclusion: omit unselected linked expression and private locators; retain the requirement boundary in original current documentation.",
+      "obligations": [
+        "safe_replacement"
+      ],
+      "cases": [],
+      "target": "docs/credential-storage/README.md#x03",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "X04",
+      "title": "Historical boundary review",
+      "disposition": "excluded",
+      "reason": "Resolved safe exclusion: omit unselected linked expression and private locators; retain the requirement boundary in original current documentation.",
+      "obligations": [
+        "safe_replacement"
+      ],
+      "cases": [],
+      "target": "docs/credential-storage/README.md#x04",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "X05",
+      "title": "Historical acceptance row references",
+      "disposition": "excluded",
+      "reason": "Resolved safe exclusion: omit unselected linked expression and private locators; retain the requirement boundary in original current documentation.",
+      "obligations": [
+        "safe_replacement"
+      ],
+      "cases": [],
+      "target": "docs/credential-storage/README.md#x05",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "X06",
+      "title": "Historical implementation path",
+      "disposition": "excluded",
+      "reason": "Resolved safe exclusion: omit unselected linked expression and private locators; retain the requirement boundary in original current documentation.",
+      "obligations": [
+        "safe_replacement"
+      ],
+      "cases": [],
+      "target": "docs/credential-storage/README.md#x06",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "X07",
+      "title": "Historical account workflow issue",
+      "disposition": "excluded",
+      "reason": "Resolved safe exclusion: omit unselected linked expression and private locators; retain the requirement boundary in original current documentation.",
+      "obligations": [
+        "safe_replacement"
+      ],
+      "cases": [],
+      "target": "docs/credential-storage/README.md#x07",
+      "implementation_evidence": "not_established_by_source_coverage"
+    },
+    {
+      "id": "X08",
+      "title": "Historical infrastructure issue",
+      "disposition": "excluded",
+      "reason": "Resolved safe exclusion: omit unselected linked expression and private locators; retain the requirement boundary in original current documentation.",
+      "obligations": [
+        "safe_replacement"
+      ],
+      "cases": [],
+      "target": "docs/credential-storage/README.md#x08",
+      "implementation_evidence": "not_established_by_source_coverage"
+    }
+  ],
+  "issue_extensions": [
+    "P01",
+    "P02",
+    "P03"
+  ],
+  "unresolved_exclusions": [],
+  "runtime_acceptance": "not_run"
+}

@@ -17,6 +17,7 @@
       "repository-hygiene"
     ],
     "component": [
+      "check-credential-storage",
       "check-artifacts",
       "check-references",
       "python-tests",

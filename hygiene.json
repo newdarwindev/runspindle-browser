@@ -35,6 +35,20 @@
       "timeout_seconds": 300
     },
     {
+      "id": "check-credential-storage",
+      "command": [
+        "python3",
+        "tools/check_credential_storage.py"
+      ],
+      "required_files": [
+        "tools/check_credential_storage.py",
+        "docs/credential-storage/artifact-manifest.json",
+        "docs/credential-storage/coverage.json",
+        "specs/credentials-handoff.md"
+      ],
+      "timeout_seconds": 300
+    },
+    {
       "id": "check-artifacts",
       "command": [
         "python3",
