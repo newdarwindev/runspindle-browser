@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "evidence_class": "manual_preferred_dependency_component_tests",
+  "component": "browser",
+  "partial_issues": [
+    14,
+    13
+  ],
+  "tested_commit": "81b4756c60c8105f22f217ac48dd21b307d72848",
+  "tested_tree": "b7e714b02123fb22a485c2678f1d7764272a2556",
+  "source_url": "https://github.com/newdarwindev/runspindle-browser/commit/81b4756c60c8105f22f217ac48dd21b307d72848",
+  "historical_cloud_record": "docs/profile-key-custody-evidence.json",
+  "historical_cloud_record_sha256": "feecf01003c241095161232a67c527be08319f5f7cb9ffc6bc0f6d181ba1e33d",
+  "requirements_sha256": "96f356c53e8b8c4fb2f8dca5d1a31036148e3004996467a55b238291812ae252",
+  "environment": {
+    "python": "3.12.16",
+    "sqlite": "3.53.1",
+    "dependencies": {
+      "cryptography": "50.0.2",
+      "cffi": "2.1.1",
+      "pycparser_distribution": "3.0",
+      "pycparser_module": "3.00"
+    },
+    "python_binary_sha256": "138937d12d15e660ae7e687a6e2f3c2a06780ceef6400209d45018630dc1667d"
+  },
+  "dependency_integrity": {
+    "status": "passed",
+    "verified_record_hashes": 168
+  },
+  "results": {
+    "normal": {
+      "status": "passed",
+      "tests": 21,
+      "exit_code": 0,
+      "seconds": 9.729,
+      "log_sha256": "2398b276871f78d26d21bc41f5e27a3be6414dc691379084eda10ed4eb1b43f2"
+    },
+    "optimized": {
+      "status": "passed",
+      "tests": 21,
+      "exit_code": 0,
+      "seconds": 9.696,
+      "log_sha256": "ccaf150c7156976934e8cc64f0172aed96ca657640c15b1ce3f3204b075a3ded"
+    }
+  },
+  "limits": [
+    "Separate bounded manual verification, not a required-CI pass, runner-image qualification or fleet qualification.",
+    "Full suite and aggregate were not rerun by this preferred-dependency receipt.",
+    "No installation, live OpenBao, browser, production provisioning or global configuration change.",
+    "Historical cloud compatibility evidence remains unchanged. This receipt adds preferred-dependency focused coverage only.",
+    "Only artifact digests are published; private host paths and raw host logs are excluded."
+  ],
+  "source_verification": {
+    "recursive_tree_hashes": "verified",
+    "staged_source_blobs": 15,
+    "all_staged_blobs_unchanged_after_tests": true,
+    "receipt_sha256": "c7cdce363b98fb6b77cb7536c62b29192490b74629e1968c250e3d2e2c33720a"
+  },
+  "runtime_log_sha256": "de5c3efab9f85fffcef01fff2f2bc374e0568cf53ee68d63896ece16b32158b3",
+  "commands": {
+    "placeholders": "PINNED_PYTHON, SOURCE_ROOT and CRYPTO_ROOT refer to the independently verified interpreter and staged source/dependency roots. PRIVATE_HOME and PRIVATE_TMP are isolated temporary directories. Run from SOURCE_ROOT.",
+    "normal": "env -i HOME=${PRIVATE_HOME} TMPDIR=${PRIVATE_TMP} PATH=/usr/bin:/bin PYTHONPATH=${SOURCE_ROOT}:${CRYPTO_ROOT} PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 ${PINNED_PYTHON} -B -s -m unittest discover -s tests -p test_profile_keys.py",
+    "optimized": "env -i HOME=${PRIVATE_HOME} TMPDIR=${PRIVATE_TMP} PATH=/usr/bin:/bin PYTHONPATH=${SOURCE_ROOT}:${CRYPTO_ROOT} PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 ${PINNED_PYTHON} -B -s -O -m unittest discover -s tests -p test_profile_keys.py",
+    "resource_bounds": "Each command used CPU 60s, nproc 1280, file limit 262144, timeout 90s and kill-after 5s."
+  },
+  "resource_checks": {
+    "uid_threads_before_normal": 1170,
+    "uid_threads_before_optimized": 1120,
+    "maximum_admitted_uid_threads": 1200,
+    "temporary_test_directory_empty_afterward": true
+  }
+}
