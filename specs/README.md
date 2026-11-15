@@ -63,3 +63,10 @@ opaque-handle behavior; live authority/provider/fencing qualification is blocked
 SQLite crash recovery, local writer fencing and logical forgetting. Browser
 directory restoration, production key custody and full #14 acceptance remain
 blocked integration work; preferred dependency/image qualification is separate.
+
+## Managed directory component
+
+[Bounded profile directory IO](profile-directory-v1.md) captures and materializes
+real synthetic regular-file trees, recovers interrupted generation transitions,
+and explicitly sequences ciphertext forgetting before plaintext cleanup. Actual
+browser/launcher integration and full #14 acceptance remain unqualified.

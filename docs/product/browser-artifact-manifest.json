@@ -31,7 +31,7 @@
     },
     "provenance.json": {
       "classification": "public_source_provenance",
-      "sha256": "0de7f18ffff95e2df427804491c6332267a66f51b1ea16a5c92cd0f37d90e2d8"
+      "sha256": "791ecf25bf6f7b74bafc41db059a82ff6be9ffa9491f0c6bbaeccdd2c4f404ec"
     },
     "docs/product/browser.html": {
       "classification": "original_static_explanation",
