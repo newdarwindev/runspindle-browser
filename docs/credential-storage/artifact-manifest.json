@@ -17,11 +17,15 @@
     },
     "docs/credential-storage/README.md": {
       "classification": "adapted_review_documentation",
-      "sha256": "dc8f25dbe1e4ab23657888283ebcc9b49ad2f164721331620674dda7a35a471e"
+      "sha256": "8358d12cbbda0e02a235e843387484e1a319aaae1facb268afc6ac1e39fb7a6c"
     },
     "docs/credential-storage/coverage.json": {
       "classification": "adapted_requirement_accounting",
       "sha256": "7e959ee3eac2f9da6220eb6eef2413def4b462243a57370365b674287d1a688e"
+    },
+    "hygiene.json": {
+      "classification": "mandatory_check_inventory",
+      "sha256": "8311a93317e273135611178085e4ec2f7eba3725085b924052231d45ba12d69e"
     },
     "provenance.json": {
       "classification": "public_provenance",
@@ -39,6 +43,10 @@
       "classification": "existing_protocol_double_tests",
       "sha256": "e14500098413ad40f9aa9231fa10abafbb3279ea5a45aca040f13c63699fcb4d"
     },
+    "tests/test_storage_hygiene.py": {
+      "classification": "integration_regression_tests",
+      "sha256": "9984422baaab609ea4d5e426b42a179aad93f4024c3b2c699d6d5bc146119c9f"
+    },
     "tests/test_storage_lifecycle.py": {
       "classification": "synthetic_tests",
       "sha256": "2578a7fb921e4313fb8806bc3d2b8627c79a1e064d67ba8bc98ea07360531b3f"
@@ -49,15 +57,19 @@
     },
     "tests/test_trusted_credentials.py": {
       "classification": "existing_synthetic_adapter_tests",
-      "sha256": "14e130161cb492c2a8bae79cb6d79eea5ffe66e7e58550bca3ca0c233d72c835"
+      "sha256": "468fc0d3323755e3245b718c9c2f5a56f327b1ad2ee7f8c24ef15228ec3ff8f1"
     },
     "tools/check_credential_storage.py": {
       "classification": "structural_artifact_checker",
-      "sha256": "42b14b33c78f2a5cb63d58497a08c9cb8c6fcb86bb3d6146e2afdfe7b8bc43b0"
+      "sha256": "dc459e01453ee30b4010735e926da9bbaa9a0b511ddfd6cb8d238a5d8b04c108"
     },
     "tools/validate.py": {
       "classification": "existing_validation_entrypoint",
-      "sha256": "8e42eb5c96ad4e53a6cf43866021900aa0969a5715b8361c3cd869dbd9279148"
+      "sha256": "b29f49b6ae71b4427328df21ee855f9ac809ea452af9729a3d1f5ada5695118a"
+    },
+    "validation-partitions.json": {
+      "classification": "mandatory_partition_inventory",
+      "sha256": "b7a5a282ab743b764bcd2260df5fad208c08046bc7ddc1c93c954ea462879384"
     }
   }
 }

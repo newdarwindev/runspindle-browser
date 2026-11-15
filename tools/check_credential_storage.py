@@ -116,6 +116,9 @@ CASES: dict[str, list[str]] = {
     "X08": [],
 }
 FILES: dict[str, str] = {
+    "hygiene.json": "mandatory_check_inventory",
+    "validation-partitions.json": "mandatory_partition_inventory",
+    "tests/test_storage_hygiene.py": "integration_regression_tests",
     "docs/credential-storage/coverage.json": "adapted_requirement_accounting",
     "docs/credential-storage/README.md": "adapted_review_documentation",
     "specs/credentials-handoff.md": "adapted_specification",

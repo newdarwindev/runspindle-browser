@@ -104,8 +104,15 @@ From a clean checkout using Python 3.11 or later:
     python3 -O -m unittest discover -s tests -v
 
 The repository's aggregate command remains `python3 tools/validate.py`; it also
-requires its existing Rust toolchain. Missing Cargo is a blocked aggregate stage,
-not a passing build. The new checker is required by that entrypoint.
+requires its pinned quality tools and existing Rust toolchain. Missing Cargo is a
+blocked aggregate stage, not a passing build. The existing hygiene entrypoint
+runs its mandatory inventory. The product checker is registered exactly once in
+that inventory and once in the component partition, beside the separately
+required credential-storage checker. Neither checker is separately called by the
+entrypoint. Integration tests reject missing/duplicate registration and missing
+checker files. Existing workflow gates, image pins, baselines and runtime source
+are unchanged. These structural checks do not render HTML or prove keyboard,
+mobile or browser acceptance.
 
 The checker verifies exact artifact hashes, complete intent/asset/exclusion
 inventory, meaningful section anchors, local navigation, no active content or

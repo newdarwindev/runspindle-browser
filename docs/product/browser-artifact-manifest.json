@@ -13,9 +13,21 @@
     "runtime": "not_run"
   },
   "files": {
+    "hygiene.json": {
+      "classification": "mandatory_check_inventory",
+      "sha256": "8311a93317e273135611178085e4ec2f7eba3725085b924052231d45ba12d69e"
+    },
+    "validation-partitions.json": {
+      "classification": "mandatory_partition_inventory",
+      "sha256": "b7a5a282ab743b764bcd2260df5fad208c08046bc7ddc1c93c954ea462879384"
+    },
+    "tests/test_product_hygiene.py": {
+      "classification": "integration_regression_tests",
+      "sha256": "49b76acd3f98c70d2543a756f6ca2c4c8898c8cf4d5746e9b87ed64d3f13796d"
+    },
     "tools/validate.py": {
       "classification": "required_validation_entrypoint",
-      "sha256": "8e42eb5c96ad4e53a6cf43866021900aa0969a5715b8361c3cd869dbd9279148"
+      "sha256": "b29f49b6ae71b4427328df21ee855f9ac809ea452af9729a3d1f5ada5695118a"
     },
     "provenance.json": {
       "classification": "public_source_provenance",
@@ -27,7 +39,7 @@
     },
     "docs/product/browser-source-review.md": {
       "classification": "source_review_and_pending_acceptance",
-      "sha256": "213003a556ca4d74a191aa08cd3848aa01d6f3c87ab092bd198f10d2e91f0cc3"
+      "sha256": "a239d0603f423067cf8b7669f6ec431380c051bf01e3c71da9537fd536aae325"
     },
     "docs/product/browser-coverage.json": {
       "classification": "source_intent_and_asset_inventory",
@@ -35,7 +47,7 @@
     },
     "tools/check_browser_product.py": {
       "classification": "structural_checker_not_renderer",
-      "sha256": "2acabe90fc0298082254b44bf88808fbe8f097512ba9fc263ee654d987c56acf"
+      "sha256": "2e07cdc82c4811c73b9222033c63a0d2295437a403870fb0dc67b2a5d6bd47cb"
     },
     "tests/test_browser_product.py": {
       "classification": "structural_negative_tests",

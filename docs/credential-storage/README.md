@@ -60,7 +60,14 @@ Run from the repository root with Python 3.12 (standard library only):
 - `python3 -m unittest discover -s tests -v`
 - `python3 -O -m unittest discover -s tests -v`
 - `python3 tools/check_scaffold.py`
-- `python3 tools/validate.py` (also requires the repository's existing Rust tools)
+- `python3 tools/validate.py` (also requires the repository's pinned quality and Rust tools)
+
+The hygiene entrypoint delegates to its existing mandatory inventory. The
+storage artifact checker is registered once in `hygiene.json` and once in the
+component partition of `validation-partitions.json`; it is not separately run
+by the entrypoint. Integration tests reject missing/duplicate coverage and
+missing checker files. Existing gates, image pins and static debt baselines
+remain unchanged.
 
 The standard-library test run covers existing isolation, stale-epoch, redirect,
 expiry, cleanup, rotation and canary cases plus explicit forgetting, retention

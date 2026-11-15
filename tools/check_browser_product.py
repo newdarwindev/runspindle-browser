@@ -21,6 +21,9 @@ MANIFEST = "docs/product/browser-artifact-manifest.json"
 # Any CSS edit, including whitespace, requires source review and a new signature.
 REVIEWED_CSS_SHA256 = "09c2d6807a623307ea823c12b96b22e593c399c9d1bdea04d806ac82c1870824"
 FILES = {
+    "hygiene.json": "mandatory_check_inventory",
+    "validation-partitions.json": "mandatory_partition_inventory",
+    "tests/test_product_hygiene.py": "integration_regression_tests",
     "tools/validate.py": "required_validation_entrypoint",
     "provenance.json": "public_source_provenance",
     PAGE: "original_static_explanation",
