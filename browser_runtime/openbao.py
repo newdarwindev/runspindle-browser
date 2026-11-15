@@ -344,12 +344,18 @@ class Vault:
         success = False
         try:
             with self._lock:
-                entry = self._current(handle, grant)
-                del self._entries[
-                    cast(Handle, handle)
-                ]  # consume before possible effect
-                check(self._scope(grant) == entry.mapping)
-                success = sink(entry.secret) is True
+                try:
+                    entry = self._current(handle, grant)
+                    del self._entries[
+                        cast(Handle, handle)
+                    ]  # consume before possible effect
+                    check(self._scope(grant) == entry.mapping)
+                    success = sink(entry.secret) is True
+                finally:
+                    # Failed metadata validation must also consume the handle
+                    # before a waiting caller can acquire the process lock.
+                    if type(handle) is Handle:
+                        self._entries.pop(handle, None)
         except Exception:
             pass
         finally:
