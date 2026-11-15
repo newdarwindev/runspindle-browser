@@ -84,6 +84,15 @@ release on abandonment or forget on teardown; no background sweeper is installed
 Process restart loses handles and does not authorize replay. No durable credential
 store or remote secret deletion is implemented.
 
+Unsuccessful `current` validation invalidates only the affected handle while the
+existing process lock is still held. Waiting consumers cannot reuse it between
+lock release and error cleanup. Ordinary exceptions still return `False`;
+cancellation and other `BaseException` interruptions propagate unchanged after
+invalidation. Trusted callbacks must therefore keep cancellation exceptions free
+of private values. A successful validation retains its handle for subsequent
+one-shot use; unrelated handles are unchanged. This is process-local cleanup,
+not durable cancellation, memory zeroization or a new retry grant.
+
 The sink is a pinned trusted injection helper running under the existing atomic
 browser/lease fence. It alone receives plaintext. Metadata reread is not an atomic
 remote rotation fence: rotation after observation remains possible. Production use
@@ -121,3 +130,14 @@ Deliberate framing and private-read guard mutations violate the corresponding
 zero-effect and bounded-read observations. These tests do not qualify TLS, sockets,
 OpenBao interoperability or real authority. Commands and hashes are recorded in
 [the framing evidence](../docs/openbao-http-framing-evidence.json).
+
+`tests/test_openbao_cancellation.py` reuses the unchanged in-memory HTTP peer to
+exercise actual Vault/HTTPS lifecycle code. Authority, token, metadata-return and
+post-response authority interruptions propagate while later reuse has zero token,
+HTTP or injection effects. Tests also cover another handle's independence,
+ordinary sanitized failure, Resolver cleanup and no retry, and a consumer entering
+immediately after lock exit. Deliberately missing and delayed cleanup mutations
+permit an independently observed injection. These are synthetic callback and
+controlled-interleaving tests, not production scheduling or live-provider evidence.
+[Cancellation evidence](../docs/openbao-cancellation-evidence.json) records this
+revision separately; earlier adapter and HTTP-framing receipts remain unchanged.
