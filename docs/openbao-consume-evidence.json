@@ -1,0 +1,128 @@
+{
+  "evidence_class": "synthetic_protocol_consume_cleanup_component",
+  "base_revision": "3860e63938086efde71dbf8d59c1a153f56dbac9",
+  "base_tree": "b795bcc00844a6a29ea54d54aa7d04536bf0f65f",
+  "scope": "Partial Browser #13/#6. Failed consume handle invalidation under the existing process lock; no provider, browser or authority qualification.",
+  "entrypoint": "browser_runtime.openbao.Vault.consume",
+  "real_boundaries": [
+    "Existing Vault, HTTPS request and stdlib response-parser implementations",
+    "Actual process threading.Lock and a real second-thread consumer"
+  ],
+  "synthetic_boundaries": [
+    "In-memory HTTP byte peer",
+    "Authority, token, clock and injection callbacks",
+    "A lock wrapper controlling when the competing thread enters"
+  ],
+  "behavior": {
+    "before": "An ordinary metadata failure returned False, or cancellation propagated, while a waiting consumer reused the handle before outside-lock cleanup and caused one independently recorded injection.",
+    "after": "Failed consume removes only the affected handle under the existing process lock before another consumer can enter. Success still consumes before the final scope check and sink effect. Ordinary failure stays False; cancellation propagates unchanged.",
+    "cancellation_classes": [
+      "asyncio.CancelledError",
+      "KeyboardInterrupt",
+      "SystemExit"
+    ],
+    "interruption_points": [
+      "authority",
+      "token",
+      "metadata return",
+      "post-response authority",
+      "final scope check",
+      "sink after an independently recorded effect",
+      "lock acquisition before entering protected body",
+      "read callbacks before handle registration"
+    ],
+    "independent_oracles": [
+      "Token calls",
+      "Transport calls",
+      "HTTP requests",
+      "Injection effects",
+      "Handle visibility before unlock and before sink",
+      "Response closure",
+      "Worker completion and no retained worker thread"
+    ],
+    "mutations_detected": [
+      "Restoring outside-lock cleanup permits one injection by a real second-thread consumer after ordinary failure and cancellation",
+      "Removing cleanup permits one injection on reuse after cancellation"
+    ],
+    "unchanged": [
+      "Consume-before-sink ordering",
+      "Outer idempotent release after interrupted acquisition",
+      "Successful and unrelated handle lifecycle",
+      "read registration only after callbacks and validation",
+      "current invalidation under lock",
+      "Idempotent release and local forget",
+      "Nonreentrant lock, transport framing and Resolver implementation"
+    ]
+  },
+  "handle_lifecycle_audit": {
+    "read": "Callback failures occur before insertion; there is no callback after handle registration. Synthetic failures leave only the previously issued unrelated handle.",
+    "current": "Existing PR26 invalidation remains under the held lock and byte-unchanged.",
+    "consume": "New finally removes the handle under the held lock; prior pre-sink deletion and outer cleanup remain.",
+    "release_and_forget": "Existing entry removal occurs under the same lock; no network effects or retry authority.",
+    "limits": "Bounded trusted non-reentrant callbacks remain required. No guarantee of cleanup if cleanup itself is interrupted, asynchronous cancellation at every bytecode, memory zeroization, restart replay prevention, or remote session revocation."
+  },
+  "provenance": "Original repository code and synthetic tests only. No dependency, historical source or third-party implementation imported.",
+  "tools": {
+    "python": "3.12.14",
+    "ruff": "0.14.5",
+    "mypy": "1.18.2",
+    "cargo": "unavailable",
+    "rustc": "unavailable"
+  },
+  "passed": [
+    "163 Python tests normally and optimized, zero skips; includes 10 new tests with subcases and two deliberate cleanup mutations",
+    "Scaffold, reference hashes, artifact integrity and both source-accounting checkers",
+    "Strict mypy: nine production/fixture/test modules, zero diagnostics",
+    "Ruff E4/E7/E9/F/I and formatting on both changed Python modules",
+    "Expanded Ruff E/F/I/UP/B/SIM excluding E501 on new test module",
+    "git diff --check",
+    "AGENTS, previous evidence, earlier OpenBao tests, workflows, tools, status and provenance remain byte-identical to base"
+  ],
+  "aggregate": {
+    "command": "python3 tools/validate.py",
+    "exit_code": 1,
+    "status": "blocked",
+    "completed": "All preceding Python/source checks and 163 unit tests passed",
+    "blocker": "FileNotFoundError at required cargo fmt: Cargo/rustc are unavailable. Rust formatting/tests/Clippy did not run."
+  },
+  "failed": [],
+  "unavailable_invocations": [
+    "An additional exploratory tools/check_shared_fixtures.py invocation returned exit 2 because this repository has no such script. It is not a mandatory entrypoint here; shared-fixture unit tests and the existing aggregate source checks passed."
+  ],
+  "blocked": [
+    "Aggregate Rust checks because Cargo/rustc are unavailable"
+  ],
+  "not_run": [
+    "Exact-head remote CI",
+    "Live OpenBao, TLS and DNS interoperability",
+    "Authenticated Core/Host/browser fencing",
+    "Real browser injection",
+    "Product acceptance or deployment"
+  ],
+  "independent_review": "Required on the frozen candidate before publication; not claimed by these author checks.",
+  "reproduction": [
+    "timeout 180 python3 -m unittest discover -s tests -v",
+    "timeout 180 python3 -O -m unittest discover -s tests -v",
+    "python3 tools/check_scaffold.py",
+    "python3 tools/validate.py",
+    "ruff check --isolated --select E4,E7,E9,F,I browser_runtime/openbao.py tests/test_openbao_consume.py",
+    "ruff check --isolated --select E,F,I,UP,B,SIM --ignore E501 tests/test_openbao_consume.py",
+    "ruff format --isolated --check browser_runtime/openbao.py tests/test_openbao_consume.py",
+    "mypy --strict --follow-imports=skip --explicit-package-bases --no-incremental browser_runtime/*.py tests/test_openbao.py tests/test_openbao_http.py tests/test_openbao_cancellation.py tests/test_openbao_consume.py"
+  ],
+  "source_sha256": {
+    "browser_runtime/openbao.py": "9a2403e36cb9a8418f97e5fdd130ade9e25cdd356e6f57549def4ba78bfe37da",
+    "browser_runtime/credentials.py": "94fb13543caf48c25d64482d3793de17bc48c32b519162c4690407308fd1fe67",
+    "tests/test_openbao_consume.py": "802e3f469deadf5fa08b9e124723eb692438496b85a8afa23df82fa0b2996746",
+    "tests/test_openbao_cancellation.py": "3058ceca9dc945c85346120940ba9387899f00b578b16368eb90f83122552262",
+    "tests/test_openbao_http.py": "1f3a77606d55578dbe2ab37834b4b26cb9f13086457b42b3d950509b175babde",
+    "tests/test_openbao.py": "e14500098413ad40f9aa9231fa10abafbb3279ea5a45aca040f13c63699fcb4d",
+    "specs/openbao-kv-adapter.md": "25cc133c8bfd69635f30af7c7a4e8bf1efe3db5bf6b70435878a726f19cacb4c"
+  },
+  "preserved_receipt_sha256": {
+    "docs/openbao-adapter-evidence.json": "10a75da418871f9ce2a49dc717e39f6a2baaff8e6c263c2adc87262cfa24c1bd",
+    "docs/openbao-http-framing-evidence.json": "70f0bfbbdd8bde26ccd05a70661f177b33027a6ae6f104f80893553e659bbe3f",
+    "docs/openbao-cancellation-evidence.json": "c6e75f50cfcf8211708073b1e815a12b392dcd153833f1bdf6da70910ad8624f"
+  },
+  "limits": "Local synthetic callback/thread evidence only. No credentials, real accounts, provider/native/browser actions, installations, services, jobs, runner settings, permission changes, CI dispatches or retries."
+}
