@@ -1,0 +1,129 @@
+{
+  "evidence_class": "component_http_framing_with_in_memory_stdlib_parser",
+  "base_sha": "a5446d9fab1f2384b0d2ea0a051b7fd56a8af00b",
+  "issues": [
+    13,
+    6
+  ],
+  "entrypoints": [
+    "browser_runtime.openbao.HTTPS.__call__",
+    "browser_runtime.openbao._BoundedHTTPResponse._safe_read",
+    "browser_runtime.openbao.Vault.read/current/consume",
+    "browser_runtime.credentials.Resolver.resolve_and_inject"
+  ],
+  "fixture": "Invented raw HTTP byte streams, account/origin identifiers, secret canaries and token. Actual stdlib HTTPResponse parses in-memory file-like sockets; real HTTPConnection request/getresponse is also exercised with inert socket methods. No network or provider.",
+  "python": {
+    "implementation": "CPython",
+    "version": "3.12.14",
+    "http_client_source_sha256": "c2c0694155837d72fc710a4138e5d1e53ae1a652b117a2e23a5b1b0db527a0f9",
+    "private_hook": "HTTPResponse._safe_read; other interpreter/toolchain versions require qualification"
+  },
+  "source_sha256": {
+    "browser_runtime/openbao.py": "c67ac8e74b16f906719d272d7fcb2b5bc8280977e67f0b24b4de38620b50c727",
+    "tests/test_openbao.py": "e14500098413ad40f9aa9231fa10abafbb3279ea5a45aca040f13c63699fcb4d",
+    "tests/test_openbao_http.py": "1f3a77606d55578dbe2ab37834b4b26cb9f13086457b42b3d950509b175babde",
+    "specs/openbao-kv-adapter.md": "98dba3d4e355358ffab7a40ad7811d87f791719013dbd6807a99d4d321181c4c",
+    "docs/credential-storage/artifact-manifest.json": "ef2948214afba16843dd1971b3a24ed7cb351fdeabb257e45332afaebdda90b6"
+  },
+  "commands": [
+    {
+      "command": "python3 -m unittest discover -s tests -p 'test_openbao*.py' -v",
+      "status": "passed",
+      "tests": 29,
+      "new_framing_tests": 19,
+      "skips": 0
+    },
+    {
+      "command": "python3 -O -m unittest discover -s tests -p 'test_openbao*.py' -v",
+      "status": "passed",
+      "tests": 29,
+      "skips": 0
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -v",
+      "status": "passed",
+      "tests": 146,
+      "skips": 0
+    },
+    {
+      "command": "python3 -O -m unittest discover -s tests -v",
+      "status": "passed",
+      "tests": 146,
+      "skips": 0
+    },
+    {
+      "command": "python3 tools/check_scaffold.py",
+      "status": "passed",
+      "includes": "reference bytes/syntax and product artifact hashes"
+    },
+    {
+      "command": "python3 tools/check_credential_storage.py",
+      "status": "passed"
+    },
+    {
+      "command": "python3 tools/check_browser_product.py",
+      "status": "passed",
+      "scope": "source structure only; rendered acceptance unchanged"
+    },
+    {
+      "command": "ruff check --select E4,E7,E9,F,I browser_runtime/openbao.py tests/test_openbao.py tests/test_openbao_http.py",
+      "status": "passed",
+      "tool_version": "0.14.5"
+    },
+    {
+      "command": "ruff check --select E,F,I,UP,B,SIM --ignore E501 tests/test_openbao_http.py",
+      "status": "passed",
+      "tool_version": "0.14.5"
+    },
+    {
+      "command": "ruff format --check browser_runtime/openbao.py tests/test_openbao.py tests/test_openbao_http.py",
+      "status": "passed",
+      "tool_version": "0.14.5"
+    },
+    {
+      "command": "mypy --strict --explicit-package-bases browser_runtime/openbao.py tests/test_openbao.py tests/test_openbao_http.py",
+      "status": "passed",
+      "tool_version": "1.18.2"
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    },
+    {
+      "command": "python3 tools/validate.py",
+      "status": "blocked",
+      "completed": "All source/artifact checks and full 146-test Python suite",
+      "reason": "Cargo unavailable; Rust formatting, tests and Clippy did not run; aggregate is not a pass"
+    }
+  ],
+  "observations": [
+    "A complete KV JSON object with a declared body ten bytes longer previously created a handle and reached an injection sink after equally truncated metadata. Fixed read, current and consume paths deny without retained handles or injection.",
+    "Exact encoded-byte Content-Length equality is required; duplicate, invalid or conflicting framing and exposed header-parser defects deny before body reads. Valid fixed, chunked and EOF-delimited responses remain distinct.",
+    "Negative chunk-size variants would cause the unguarded stdlib parser to call read(-1). The guarded response denies before any underlying body read; direct oversized internal requests also deny before read.",
+    "An independent buffer spy observes at most 65537 payload bytes through many chunks, plus separately counted chunk delimiters; oversized bodies deny before returning a Response.",
+    "Every normal or rejected HTTP path attempts both response and connection cleanup without retry. Real HTTPConnection detachment tests retain live exception tracebacks to prove files close; ordinary cleanup failures deny without handles, expose no canaries and do not mask a primary framing failure.",
+    "Canary scans cover formatted public exceptions, stdout and stderr. Independent sink-effect and underlying-byte-read observations detect deliberate framing and private-read guard mutations.",
+    "The SRC-006 manifest updates only the hash of the existing protocol test fixture to account for its HTTPMessage headers; original source coverage, provenance, pending acceptance and historical evidence records remain unchanged."
+  ],
+  "limits": [
+    "Not comprehensive RFC framing validation: retained stdlib behavior is permissive about some chunk delimiter bytes and final trailer termination.",
+    "The body cap is not a total wire-byte, trailer-count or wall-clock bound. DNS and trusted callbacks still require upstream execution bounds.",
+    "Private-hook behavior is qualified only on the recorded CPython version; no runner or dependency pin was changed.",
+    "No TLS/socket/OpenBao interoperability, real authenticated Core/Host authority, atomic browser fencing, native helper, encrypted profile, durable lease or live acceptance is established.",
+    "Historical source lift, product activation and the fail-closed Rust activation stub are unchanged. No real secret, installation, credential, security setting, service, backup or persistent job was used."
+  ],
+  "not_run": [
+    "Exact-head isolated CI",
+    "Rust format/test/Clippy",
+    "Live provider/browser/native integration",
+    "Deployment and product acceptance"
+  ],
+  "review": "Independent review of the frozen candidate is required before publication; publication receipts bind the resulting commit and tree.",
+  "completion": "Bounded follow-up for #13/#6. Neither issue closes; #14/#15/#16 dependencies and broader acceptance remain open.",
+  "review_correction": {
+    "earlier_local_candidate_tree": "57947383dd854be19d2676a0b3f957cd820af534",
+    "outcome": "not_approved",
+    "finding": "A fake connection.close initially masked stdlib detachment of close-delimited responses. Independent review reproduced retained response files on rejection.",
+    "resolution": "Explicit response cleanup, primary-error preservation, cleanup-failure sanitation and real getresponse lifecycle regressions added before publication. Earlier candidate commit and evidence remain preserved locally; final frozen tree needs its own independent approval."
+  }
+}

@@ -33,6 +33,43 @@ must supply those execution bounds. Expired return values are rejected. The conc
 transport is an internal trusted helper dependency, not an agent-facing API; Vault
 sanitizes its exceptions before returning an outcome.
 
+### HTTP body framing
+
+Reject header-parser defects rather than treating hidden framing fields as an
+EOF-delimited response. A present Content-Length must be a single ASCII decimal
+value no greater than 64 KiB; duplicate or comma-joined lengths deny even when
+equal. The received body must contain exactly that many encoded bytes, not Unicode
+characters. A complete JSON object inside a prematurely closed length-framed body
+still denies. A zero length means an empty body, never an EOF fallback.
+
+Transfer-Encoding is admitted only as one case-insensitive `chunked` value without
+Content-Length. Other codings, duplicate fields and conflicting framing deny
+before the body read. When neither framing header is present, the existing
+close-delimited response behavior remains. The bounded `MAX_BODY + 1` read detects
+oversized bodies in each mode; the connection closes after one response without
+retry or interpretation of bytes beyond a declared body as another response.
+Cleanup explicitly closes the returned response file as well as the connection:
+the stdlib may already have detached a close-delimited response from its connection
+before returning it. A rejection must not leave that file open through a traceback.
+Both close operations are attempted. An ordinary cleanup error denies an otherwise
+valid response with a fixed error category and does not mask a prior framing error;
+failed cleanup is not reported as successful resource release.
+
+The connection selects a narrow stdlib HTTPResponse subclass whose `_safe_read`
+guard rejects negative or oversized read requests before reading the underlying
+buffer. This prevents a negative chunk size accepted by the stdlib integer parser
+from becoming an unbounded `read(-1)`. The stdlib still owns HTTP/chunk parsing;
+this is not a replacement parser. Tests qualify the private hook on CPython
+3.12.14, so other interpreter/toolchain versions need the same qualification.
+No dependency or runner-toolchain pin is changed by this fix.
+
+This does not claim complete RFC syntax enforcement: the retained stdlib parser
+is permissive about some chunk delimiter bytes and final trailer termination.
+The body limit is not a total wire-byte, trailer-count or wall-clock limit. DNS,
+socket inactivity and trusted callback limits remain as described above. Error
+sanitization is provided by Vault/Resolver, not by exposing this internal
+transport's raw exceptions.
+
 ## Handle lifecycle and helper contract
 
 `Vault.read/current/release` implements the existing resolver protocol. Handles carry
@@ -72,3 +109,15 @@ Core/Host authority, production deployment and full issue acceptance remain bloc
 Run `python3 -m unittest discover -s tests -p test_openbao.py -v` and the optimized
 variant, then the repository validation command. Missing Cargo remains a failed gate,
 not a skip or a synthetic substitute.
+
+The framing regressions in `tests/test_openbao_http.py` feed invented HTTP bytes
+through the configured response class and real stdlib parser over in-memory
+buffers. Actual HTTPConnection request/getresponse tests separately exercise
+detached-response cleanup without coupling socket close to file close. Tests
+record underlying byte reads, connection closure and independent
+injection effects; network calls are forbidden. Read, current-version validation
+and consume each reject truncated replies without a remaining handle or injection.
+Deliberate framing and private-read guard mutations violate the corresponding
+zero-effect and bounded-read observations. These tests do not qualify TLS, sockets,
+OpenBao interoperability or real authority. Commands and hashes are recorded in
+[the framing evidence](../docs/openbao-http-framing-evidence.json).
