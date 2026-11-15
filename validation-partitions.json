@@ -18,6 +18,7 @@
     ],
     "component": [
       "check-credential-storage",
+      "check-browser-product",
       "check-artifacts",
       "check-references",
       "python-tests",

@@ -49,6 +49,20 @@
       "timeout_seconds": 300
     },
     {
+      "id": "check-browser-product",
+      "command": [
+        "python3",
+        "tools/check_browser_product.py"
+      ],
+      "required_files": [
+        "tools/check_browser_product.py",
+        "docs/product/browser-artifact-manifest.json",
+        "docs/product/browser-coverage.json",
+        "docs/product/browser.html"
+      ],
+      "timeout_seconds": 300
+    },
+    {
       "id": "check-artifacts",
       "command": [
         "python3",

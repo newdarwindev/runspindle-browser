@@ -16,7 +16,7 @@
       "implementation_evidence": false,
       "kind": "new_support_document",
       "path": "docs/product/README.md",
-      "sha256": "540228d4d791c897134cb279f493e9d53ca262fc4bffdcd52c5f17cf53a745a8",
+      "sha256": "2c65460fc062036b291213b72a304fc68d6e594f36ced79d1209b3a9370645e6",
       "source_ids": [],
       "source_relationship": "new authoring/build metadata"
     },
@@ -25,7 +25,7 @@
       "implementation_evidence": false,
       "kind": "new_support_document",
       "path": "docs/product/THIRD_PARTY_NOTICES.md",
-      "sha256": "43548c3d62b980a5e0d03105821e8a49836bb856b0410b09c003dab8afc4987c",
+      "sha256": "9f999ad58a8a8b7b257f01a6979767a841b54947d25bbf3a844b4fb4d6cc3f5c",
       "source_ids": [
         "SRC-002",
         "SRC-009",
@@ -38,11 +38,11 @@
       "implementation_evidence": false,
       "kind": "new_static_html",
       "path": "docs/product/browser.html",
-      "sha256": "cfa1744917d2088f430e588c489590f1b3c3adf25bf15b277012345d6a2245c5",
+      "sha256": "afab98f2e8fab8ac27ef29e9ee2499ae2a2fffd9e2aa09fbdcb877bbb1ef2f9e",
       "source_ids": [
         "SRC-009"
       ],
-      "source_relationship": "conceptual adaptation of the listed source material; not a faithful re-render"
+      "source_relationship": "New static equivalent of reviewed SRC-009 design intent; original expression and interactive dependencies excluded; rendered acceptance pending."
     },
     {
       "historical_original": false,
@@ -71,12 +71,45 @@
         "SRC-013"
       ],
       "source_relationship": "conceptual adaptation of the listed source material; not a faithful re-render"
+    },
+    {
+      "historical_original": false,
+      "implementation_evidence": false,
+      "kind": "source_accounting",
+      "path": "docs/product/browser-source-review.md",
+      "source_ids": [
+        "SRC-009"
+      ],
+      "source_relationship": "Original source disposition, integrity and pending acceptance record; no historical source expression.",
+      "sha256": "a239d0603f423067cf8b7669f6ec431380c051bf01e3c71da9537fd536aae325"
+    },
+    {
+      "historical_original": false,
+      "implementation_evidence": false,
+      "kind": "source_accounting",
+      "path": "docs/product/browser-coverage.json",
+      "source_ids": [
+        "SRC-009"
+      ],
+      "source_relationship": "Original source disposition, integrity and pending acceptance record; no historical source expression.",
+      "sha256": "9d158a43b587cdcb2f3b9f0df801038f4d5b6950aef2253047621bdf2530a378"
+    },
+    {
+      "historical_original": false,
+      "implementation_evidence": false,
+      "kind": "source_accounting",
+      "path": "docs/product/browser-artifact-manifest.json",
+      "source_ids": [
+        "SRC-009"
+      ],
+      "source_relationship": "Original source disposition, integrity and pending acceptance record; no historical source expression.",
+      "sha256": "1a2d137fef905cfd867b242a1cfa774b616ab1e09fe48f1270e4d3eec688320b"
     }
   ],
   "migration_status": "partial",
   "schema_version": 1,
   "verification": {
-    "html": "browser_visual_qa_pending",
+    "html": "source_structure_checked_separately_rendered_keyboard_acceptance_not_run",
     "pdf": "ReportLab output; pages rendered and visually reviewed",
     "tex": "compile_blocked_missing_formats_and_ini"
   }

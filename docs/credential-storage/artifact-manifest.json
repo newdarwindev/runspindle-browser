@@ -25,11 +25,11 @@
     },
     "hygiene.json": {
       "classification": "mandatory_check_inventory",
-      "sha256": "974630be9daa4b8fbe1eb2b6d17ff921f85da0a0a0dc50ebff13ee20165d4287"
+      "sha256": "8311a93317e273135611178085e4ec2f7eba3725085b924052231d45ba12d69e"
     },
     "provenance.json": {
       "classification": "public_provenance",
-      "sha256": "c9228fa5ac7bedfeb3a8a7caa43b09c6d59aa29bbd5495d85628504ec3e8e411"
+      "sha256": "a855484e1622bb0349a19f115fa74a97a0e1ee28769feae84b7c03e8da74a155"
     },
     "specs/credentials-handoff.md": {
       "classification": "adapted_specification",
@@ -69,7 +69,7 @@
     },
     "validation-partitions.json": {
       "classification": "mandatory_partition_inventory",
-      "sha256": "49bce75e31d53667558886302b3a9f698f5ceb3f807e62da517bdbc825a7ae5e"
+      "sha256": "b7a5a282ab743b764bcd2260df5fad208c08046bc7ddc1c93c954ea462879384"
     }
   }
 }

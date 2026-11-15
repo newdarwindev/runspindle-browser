@@ -78,18 +78,25 @@
       "status": "adapted_spec"
     },
     {
-      "adaptation_limits": "New concise conceptual derivatives, not faithful historical re-renders or live implementation. Detailed historical dependencies preserved privately.",
+      "adaptation_limits": "Source accounting with safe exclusions only. Rendered desktop/mobile, keyboard acceptance, independent review and umbrella synchronization remain pending. Runtime and overall migration are separate.",
       "destination": "docs/product/browser.html",
-      "license_review": "No executable or binary import completed. Retain all required third-party notices when importing.",
+      "license_review": "No project-wide source license found; all original authored expression, source history and 404 non-root locked package records excluded. Original replacement prose, semantic diagram and CSS only. Dependency license metadata is not redistribution clearance.",
       "migration_status": "partial",
-      "modifications": "Created and reviewed a new concise conceptual adaptation. Historical original and dependency closure retained privately, not republished. Complete migration and faithful re-render remain unverified.",
+      "modifications": "New dependency-free static equivalent accounts for 25 intent units, 17 source asset slots and 6 explicit exclusions. No historical expression, interactive island, third-party dependency, original publication workflow or legacy success claim imported.",
       "published_adaptations": [
         "docs/product"
       ],
       "rights_basis": "Owner-directed adaptation. Original rights retained; no blanket relicense.",
       "source_description": "Owner-selected legacy material; detailed source mapping retained privately.",
       "source_id": "SRC-009",
-      "status": "adapted_document"
+      "status": "adapted_document",
+      "selected_artifact_status": "source_accounted_rendered_acceptance_pending",
+      "artifact_manifest": "docs/product/browser-artifact-manifest.json",
+      "coverage": "docs/product/browser-coverage.json",
+      "source_review": "Author review complete; independent review required before publication.",
+      "runtime_acceptance": "not_run",
+      "canonical_source": "docs/product/browser.html",
+      "umbrella_mirror": "pending"
     },
     {
       "adaptation_limits": "New concise conceptual derivatives, not faithful historical re-renders or live implementation. Detailed historical dependencies preserved privately.",
