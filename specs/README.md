@@ -63,3 +63,8 @@ opaque-handle behavior; live authority/provider/fencing qualification is blocked
 SQLite crash recovery, local writer fencing and logical forgetting. Browser
 directory restoration, production key custody and full #14 acceptance remain
 blocked integration work; preferred dependency/image qualification is separate.
+
+[Local profile-key custody leases](profile-key-custody-v1.md) add a separate
+version-pinned material reader and real two-database local custody boundary.
+Synthetic integration does not qualify production enrollment, live OpenBao,
+browser authority or distributed custody; credential revocation is unchanged.
