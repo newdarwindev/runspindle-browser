@@ -19,7 +19,7 @@ MANIFEST = "docs/product/browser-artifact-manifest.json"
 # The only supported stylesheet is the reviewed newly authored static source.
 # This is a byte-integrity boundary, not a generalized CSS parser or sanitizer.
 # Any CSS edit, including whitespace, requires source review and a new signature.
-REVIEWED_CSS_SHA256 = "09c2d6807a623307ea823c12b96b22e593c399c9d1bdea04d806ac82c1870824"
+REVIEWED_CSS_SHA256 = "e9fcb059cb207815c878910ace7c14091f68ab1b0a19ad5ab3d138d8b8516f83"
 FILES = {
     "hygiene.json": "mandatory_check_inventory",
     "validation-partitions.json": "mandatory_partition_inventory",

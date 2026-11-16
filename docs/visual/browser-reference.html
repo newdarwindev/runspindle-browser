@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browser architecture reference candidate</title>
+  <style>
+    :root { font: 16px/1.45 system-ui, sans-serif; color: #183149; background: #f4f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0 auto; width: min(100% - 2rem, 72rem); }
+    a { color: #064d8b; }
+    a:focus-visible { outline: 3px solid #713c00; outline-offset: 4px; }
+    header { padding: 1.2rem 0; border-bottom: 2px solid #96afc8; }
+    h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1.12; }
+    h2 { font-size: 1.35rem; }
+    p, li { overflow-wrap: anywhere; }
+    .flag { font-weight: 700; color: #764400; }
+    .intro { max-width: 68ch; }
+    .roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; list-style: none; padding: 0; }
+    .roles li { min-width: 0; border: 1px solid #9db5ce; border-radius: .4rem; background: white; padding: .75rem; }
+    .roles strong { display: block; }
+    .roles span { display: block; }
+    .state { padding: .75rem; margin: .6rem 0; border-left: .35rem solid #365d86; background: white; }
+    .state strong { display: block; }
+    .relation { padding-left: 1.25rem; }
+    footer { border-top: 2px solid #96afc8; margin-top: 1rem; padding: 1rem 0; }
+    @media (max-width: 44rem) { .roles { grid-template-columns: minmax(0, 1fr); } }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="flag">REFERENCE CANDIDATE · synthetic layout · not runtime evidence</p>
+    <h1>One account. One browser. One current controller.</h1>
+    <p class="intro">A static equivalent of the reviewed Browser architecture explanation. All relationships remain readable without scripts, images, hover or motion. This reference does not change the canonical product page.</p>
+    <a href="#roles">Skip to seven component roles</a>
+  </header>
+  <main>
+    <section id="roles" aria-labelledby="roles-title">
+      <h2 id="roles-title">Seven ownership boundaries</h2>
+      <ul class="roles">
+        <li><strong>Core</strong><span>Authorizes a bounded task and coordinates durable intent.</span></li>
+        <li><strong>Host</strong><span>Preserves the selected machine, workspace and native session identity.</span></li>
+        <li><strong>Browser</strong><span>Fences account-scoped actions, credentials, profile and handoff.</span></li>
+        <li><strong>Tether</strong><span>Delivers sanitized events and feedback within its own grant.</span></li>
+        <li><strong>Refinery</strong><span>Evaluates replayable examples under separate approval.</span></li>
+        <li><strong>Console</strong><span>Displays observed status; a view grants no control.</span></li>
+        <li><strong>Platform</strong><span>Pins composition and qualifies distribution and rollback.</span></li>
+      </ul>
+    </section>
+    <section aria-labelledby="relationship-title">
+      <h2 id="relationship-title">Relationship, not a credential chain</h2>
+      <ol class="relation">
+        <li>Core's task grant and Host's selected identity reach Browser's command boundary.</li>
+        <li>Browser keeps PinchTab actions and KasmVNC human input mutually exclusive at the current lease epoch.</li>
+        <li>An OpenBao helper may resolve a scoped reference only after trusted account and origin observations.</li>
+      </ol>
+    </section>
+    <section aria-labelledby="states-title">
+      <h2 id="states-title">Capability and outcome labels</h2>
+      <div class="state"><strong>Supported locally, synthetic</strong> SQLite fencing and scripted effect reconciliation have bounded component tests.</div>
+      <div class="state"><strong>Unsupported here</strong> Passive status is no input grant; missing browser or vault adapters cannot be inferred from this page.</div>
+      <div class="state"><strong>Unknown or unqualified</strong> Actual same-browser identity, viewer revocation, provider behavior and live submission need independent observations.</div>
+    </section>
+  </main>
+  <footer>Editable visual reference for Browser #11 and SRC-009. The canonical page and its source review remain authoritative.</footer>
+</body>
+</html>

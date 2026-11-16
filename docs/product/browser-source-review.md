@@ -1,9 +1,10 @@
 # SRC-009 Browser page: source adaptation record
 
-Status: source-only candidate, independent review required before publication.
-Selected source accounting is complete with safe exclusions. Rendered acceptance,
-keyboard acceptance and the composition mirror are pending. Browser issue #5
-remains open. This document does not qualify a runtime or authorize deployment.
+Status: source accounting plus bounded local visual candidate; independent review
+required before visual baseline approval. Selected source accounting is complete
+with safe exclusions. Full rendered and manual keyboard acceptance and the
+composition mirror are pending. Browser issues #5 and #11 remain open. This
+document does not qualify a runtime or authorize deployment.
 
 ## Scope and rights decision
 
@@ -128,15 +129,33 @@ properties even after refreshing hashes. They fail under normal and optimized
 Python without relying on assertions. This is structural source evidence, not a
 replacement for independent semantic review or a browser accessibility audit.
 
-## Remaining acceptance and publication receipt
+## Local visual candidate and remaining acceptance
 
-No browser was launched for this candidate. Prior renderer access/sandbox limits
-were not bypassed. Desktop/mobile and keyboard acceptance are **not run**.
-Independent review is required before any publication. Check, on a permitted
-renderer, at least 1280×800 and 390×844, 200% zoom, narrow overflow, text visibility,
-keyboard-only skip and every link, visible focus, repeated anchors, reload,
-Back/Forward, disabled JavaScript and reduced motion. Record browser/version,
-viewport, exact commit and outcomes; fix problems and rerun before updating status.
+The separate [visual reference set](../visual/README.md) uses newly authored
+synthetic HTML and the installed pinned Chrome 157.0.8103.78. Its disposable
+local runs measured the canonical page at 320, 390, 768 and 1440 CSS pixels.
+The real DOM checks covered map labels, anchors, focused skip link, computed
+focus outline, card count and horizontal layout. A narrow 195 CSS-pixel probe
+approximated the reflow pressure of 200% browser zoom at 390 physical pixels;
+it is not a browser-zoom qualification. That probe found the large heading made
+the document 212 pixels wide. Adding `overflow-wrap: anywhere` to the heading
+reduced it to the 195-pixel viewport. A deliberately removed map label failed
+the DOM check. A second disposable render produced identical output hashes.
+
+The generated reference PNGs are **candidates, not approved baselines**. An
+actual browser did render the canonical page locally, but the visual comparison
+is pending reviewer disposition. Programmatic keyboard Tab/focus was checked;
+manual keyboard and assistive-technology review, actual 200% browser zoom,
+font-file digest qualification, missing-asset behavior on an external renderer,
+reload/Back/Forward, disabled-JavaScript navigation and the umbrella derivative
+remain **not run**. Historical source migration and runtime/browser integration
+do not inherit these local visual results.
+
+Independent review is required before visual baseline approval. The prior
+broader acceptance list remains: desktop/mobile, actual 200% zoom, narrow
+overflow, text visibility, keyboard-only skip and every link, repeated anchors,
+reload, Back/Forward, disabled JavaScript and reduced motion. Record the browser,
+font environment, exact commit and outcomes before updating any broad status.
 
 Do not mark issue #5 complete until those checks pass and the umbrella mirror
 matches the reviewed canonical bytes. The composition generator must stop
