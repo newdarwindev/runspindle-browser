@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "scope": "Browser #16 / #9 partial pending-transfer reconciliation",
+  "base_commit": "712f56d74027c730e8e07d829f1cd75eeee0fcc0",
+  "source_sha256": {
+    "browser_runtime/control_leases.py": "52f61447fc514343f35f68705e81c8248268b3eaacf20cbabd6d39681cd316e5",
+    "tests/test_control_reconciliation.py": "4cd9a4a0d34ad6c996d314cc9e43ec150da19687d532e97faf93bbcf3e5146f1"
+  },
+  "evidence_class": "manual synthetic component; actual SQLite pending state and independent backend closure/input records",
+  "runtime": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "50.0.0 compatibility"
+  },
+  "checks": {
+    "focused_normal": 16,
+    "focused_optimized": 16,
+    "independent_focused_review": "16 normal and optimized tests passed; no concrete blockers",
+    "full_normal": 433,
+    "full_optimized": 433,
+    "scaffold": "passed",
+    "whitespace": "passed",
+    "source_mutation": "removing closure age check allows stale activation and one forbidden synthetic input versus zero pristine inputs",
+    "declared_aggregate": {
+      "status": "failed",
+      "exit": 1,
+      "blockers": [
+        "Ruff package metadata missing; static lint/format/types blocked",
+        "Cargo missing; Rust fmt/test/Clippy not run"
+      ]
+    }
+  },
+  "source_boundary": "Final runtime and test source unchanged throughout full suite and aggregate runs; this evidence JSON added afterward. No remote CI qualification claimed.",
+  "semantics": [
+    "separate fresh Recovery authority",
+    "immutable exact stored transition binding",
+    "renewed exact handback release",
+    "read-only inspector, never fence retry",
+    "stale/wrong/missing evidence leaves pending",
+    "fresh-process readback and lost-return idempotence",
+    "newer epochs reject stale recovery"
+  ],
+  "not_qualified": [
+    "production issuer or inspector",
+    "real browser/viewer closure proof",
+    "distributed fencing or shared clock",
+    "power-loss durability",
+    "CI or runner image",
+    "full issue acceptance"
+  ],
+  "provenance": "Original extension and invented synthetic fixtures; no legacy lift, private data, credentials, service or access changes"
+}
