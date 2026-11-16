@@ -180,11 +180,22 @@ class Store:
     def close(self) -> None:
         if not self._lock.acquire(blocking=False):
             raise Denied("profile store busy")
+        failed = False
+        cancelled = False
         try:
-            self._db.close()
-            self._closed = True
+            if not self._closed:
+                self._closed = True  # Never retry an uncertain connection close.
+                try:
+                    self._db.close()
+                except BaseException as error:
+                    failed = True
+                    cancelled = not isinstance(error, Exception)
         finally:
             self._lock.release()
+        if cancelled:
+            raise Cancelled("profile close cancelled")
+        if failed:
+            raise Denied("profile close failed")
 
     def _check(self, guard: Guard, grant: Grant) -> None:
         # Trusted callbacks may block. Sample observation/time only after the
@@ -419,11 +430,20 @@ class Store:
             except BaseException as error:
                 cancelled = not isinstance(error, Exception)
             finally:
-                try:
-                    if self._db.in_transaction:
-                        self._db.execute("ROLLBACK")
-                except BaseException:
-                    result = None
+                if not self._closed:
+                    try:
+                        if self._db.in_transaction:
+                            self._db.execute("ROLLBACK")
+                    except BaseException as error:
+                        result = None
+                        cancelled = cancelled or not isinstance(error, Exception)
+                        # Failed cleanup leaves transaction state uncertain. Fence
+                        # this instance before attempting close, once only.
+                        self._closed = True
+                        try:
+                            self._db.close()
+                        except BaseException as error:
+                            cancelled = cancelled or not isinstance(error, Exception)
         finally:
             self._lock.release()
         # Outside handlers: even __context__ does not retain upstream material.

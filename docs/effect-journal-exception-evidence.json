@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "classification": "real-sqlite-journal-and-independent-synthetic-site-ledger; injected-errors-and-cancellations",
+  "source_commit": "6bd9e725d83ae8ac28c778bd349ffcb64d4fe08d",
+  "source_tree": "cca1ffdc1536d11c1bfcdb76792c9a420392e4c6",
+  "base_commit": "eb243dca95023d34f48987a78ad08cbac1c3971e",
+  "issue_scope": "Partial Browser #15/#8; public Journal failure/cancellation boundary only",
+  "source_sha256": {
+    "browser_runtime/effect_schema.py": "32f7f737923e7ed7457a0e4dcf1470e4be93201a104a201741155d0d10099d34",
+    "browser_runtime/effects.py": "c2df79c791b5f9686e781797a2e09d02e084c63c07a0e3ce1fd34c76fb9c8eb8",
+    "specs/effect-journal-v1.md": "21fa83ba73c903732e8cd1ce5f469889dd7824ea283ff2b6a5f57b8efa1c96ce",
+    "tests/test_effect_exceptions.py": "b33a0a397d303a423213d9449a3dd515cc2c296cf1cb92bca2f39527702d4913",
+    "tests/test_effect_journal.py": "11f2fdd1954795ad399b7498475048028060af29a5878cd71632c24dde721ddf",
+    "tests/test_effect_schema.py": "640f0a8044f6c51139a4ef8639fd7ac3b6d323f84b6298d7d96f76fc646d84f7"
+  },
+  "verified_behavior": [
+    "Fixed public Denied/Cancelled errors do not retain upstream arguments, notes, cause/context or original callback traceback.",
+    "Active caller exception context is cleared before the fixed public exception is rethrown.",
+    "Ordinary accepted/lost submit failures and unusable observations retain unknown; cancellation never becomes a normal unknown return.",
+    "Unknown reservation survives errors after real COMMIT; fresh processes never resubmit that operation.",
+    "Readback failure after real COMMIT may retain a terminal stored result; failed return is not rollback proof.",
+    "Rollback failure poisons the instance and attempts close once; later calls neither invoke callbacks nor retry an uncertain close.",
+    "Ordinary cleanup errors do not mask cancellation, including model, read-only and writer admission connections.",
+    "Nested dispatch/reconcile/close deny before altering the outer connection transaction."
+  ],
+  "checks": {
+    "full_suite": {
+      "command": "python3 [-O] -m unittest discover -s tests -v",
+      "tests_each_mode": 267,
+      "normal": "passed",
+      "optimized": "passed",
+      "normal_seconds": 12.86,
+      "optimized_seconds": 19.884
+    },
+    "new_focused_tests": {
+      "path": "tests/test_effect_exceptions.py",
+      "count": 17,
+      "included_in_full_suite": true
+    },
+    "author_source_mutations": {
+      "pristine_controls": "passed in normal and optimized modes",
+      "detected_each_mode": 7,
+      "variants": [
+        "context-clear",
+        "operation-envelope",
+        "swallow-submit-cancellation",
+        "rollback",
+        "poisoned-instance",
+        "admission-cancellation",
+        "reentrancy"
+      ],
+      "qualification": "Expected assertion/component-path failures only; import/syntax failures do not qualify. Independent review is separate."
+    },
+    "existing_mutation_oracles": "Existing duplicate-effect and schema-bypass tests still execute meaningful runtime mutations; no skip or unconditional pass.",
+    "source_checkers": {
+      "result": "passed",
+      "scripts": [
+        "check_scaffold.py",
+        "check_repo_hygiene.py",
+        "check_credential_storage.py",
+        "check_browser_product.py",
+        "check_artifacts.py",
+        "check_references.py"
+      ],
+      "pr_body": "not supplied"
+    },
+    "static_quality": {
+      "result": "passed",
+      "existing_debt": 148,
+      "new_diagnostics": 0,
+      "pins": "unchanged requirements-quality.txt",
+      "environment_note": "Existing pinned quality venv with primary Python site-packages on PYTHONPATH."
+    },
+    "targeted_strict": {
+      "result": "passed",
+      "tools": [
+        "Ruff 0.14.5 lint/format",
+        "mypy 1.18.2 --strict --follow-imports=skip"
+      ],
+      "files": [
+        "browser_runtime/effects.py",
+        "browser_runtime/effect_schema.py",
+        "tests/test_effect_exceptions.py"
+      ]
+    }
+  },
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "feature_dependencies": "Python standard library only",
+    "full_suite_profile_dependencies": {
+      "cryptography": "50.0.0",
+      "cffi": "2.1.1",
+      "pycparser": "3.0"
+    },
+    "profile_dependency_evidence": "Existing installed compatibility only; preferred dependency lock/image qualification remains separate."
+  },
+  "boundaries": {
+    "independent_review_at_receipt": "pending",
+    "ci": "not run",
+    "rust": "not run; Cargo unavailable locally",
+    "unchanged": "SQLite schema identity/DDL, WAL/FULL, reservation order, adapter signatures, pins, workflows, gates, manifests, hygiene baseline and operational configuration",
+    "not_claimed": [
+      "end-to-end browser/site exactly-once execution",
+      "live browser/provider or production authority",
+      "memory zeroization or debugger/frame-local/caller-source redaction",
+      "successful close when underlying close itself fails",
+      "rollback of already committed data or external effects",
+      "full Browser #15/#8 acceptance"
+    ]
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "evidence_class": "local_real_filesystem_crypto_sqlite_synthetic_authority",
+  "component": "browser",
+  "partial_issues": [
+    14,
+    7
+  ],
+  "source_commit": "afddbc7ec9af04d1adc3b7bf500dec082b9e7a41",
+  "base_commit": "eb243dca95023d34f48987a78ad08cbac1c3971e",
+  "artifact_sha256": {
+    "browser_runtime/profile_directory.py": "d8e5802a455d084318e5a329c7a0897fc126a75949ba0403f4e0c52a4303dae1",
+    "tests/test_profile_directory.py": "af3b5d1fabe0d85975f0489fb08304740be74ec651ff319f71d61b9b04cf2dc6",
+    "specs/profile-directory-v1.md": "b17ffb881443d9e4bf6fac970b49b0d7e6b098e2bb861af9fa0cfd8f1c47ca0b",
+    "browser_runtime/profile_store.py": "418d899fd0977a1a6c2c8a64080f0b22cab09531d0b7108f813fc7541863b780",
+    "browser_runtime/profile_schema.py": "078c45da6db546215166dbb6151f7c161977468bb4da73cd5876a86f2cffac7f",
+    "browser_runtime/credentials.py": "94fb13543caf48c25d64482d3793de17bc48c32b519162c4690407308fd1fe67",
+    "browser_testing/profile_store_fixtures.py": "8d793ab687003f28fdf7a5b3e3c76002b558a621aca8d12a57603bf31ad7f745",
+    "requirements-profile.txt": "96f356c53e8b8c4fb2f8dca5d1a31036148e3004996467a55b238291812ae252"
+  },
+  "commands": {
+    "focused": "python -m unittest discover -s tests -p test_profile_directory.py -v",
+    "focused_optimized": "python -O -m unittest discover -s tests -p test_profile_directory.py -v",
+    "full_normal": "python -m unittest discover -s tests -v",
+    "full_optimized": "python -O -m unittest discover -s tests -v",
+    "aggregate": "python tools/validate.py",
+    "preferred_dependencies": "python tools/check_profile_store.py"
+  },
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "openssl": "OpenSSL 4.0.1 9 Jun 2026",
+    "installed_dependencies": {
+      "cryptography": "50.0.0",
+      "cffi": "2.1.1",
+      "pycparser": "3.0"
+    },
+    "quality_tools": {
+      "ruff": "0.14.5",
+      "mypy": "1.18.2"
+    },
+    "quality_environment": "Existing prepared quality environment exposed to installed compatibility dependencies for this bounded local run. No installation or qualified-image change."
+  },
+  "checks": {
+    "directory_normal": {
+      "status": "passed",
+      "tests": 23,
+      "skipped": 0
+    },
+    "directory_optimized": {
+      "status": "passed",
+      "tests": 23,
+      "skipped": 0
+    },
+    "full_normal": {
+      "status": "passed",
+      "tests": 273,
+      "skipped": 0
+    },
+    "full_optimized": {
+      "status": "passed",
+      "tests": 273,
+      "skipped": 0
+    },
+    "scaffold": {
+      "status": "passed"
+    },
+    "static_quality": {
+      "status": "passed",
+      "new_diagnostics": 0,
+      "existing_debt": 148
+    },
+    "artifact_and_provenance_checks": {
+      "status": "passed"
+    },
+    "aggregate": {
+      "status": "failed",
+      "failed_checks": [
+        "rust-format",
+        "rust-test",
+        "rust-clippy"
+      ],
+      "reason": "Cargo is absent. All non-Rust checks pass; no aggregate pass is claimed."
+    },
+    "rust_format_test_clippy": {
+      "status": "blocked",
+      "observed_harness_status": "failed",
+      "reason": "cargo unavailable"
+    },
+    "preferred_dependency_gate": {
+      "status": "blocked",
+      "exit_code": 2,
+      "reason": "Expected cryptography 50.0.2; installed 50.0.0. Compatibility tests do not qualify the preferred lock or image."
+    },
+    "independent_review": {
+      "status": "passed",
+      "source_commit": "afddbc7ec9af04d1adc3b7bf500dec082b9e7a41",
+      "scope": "Source independently reviewed; 23 focused tests normal and optimized and scaffold passed. Independent cancellation, partial-write/revoked-authority recovery and fixed-lock replacement probes passed. No production or whole-issue acceptance."
+    }
+  },
+  "crash_protocol": {
+    "method": "Fresh synthetic subprocesses terminate with os._exit before and after instrumented boundaries; no filesystem unmount, power cut or host setting changes.",
+    "restore_observed_directory_fsync_boundaries": 29,
+    "forget_observed_directory_fsync_boundaries": 12,
+    "swept_sides": [
+      "before",
+      "after"
+    ],
+    "other_boundaries": [
+      "stage generation rename before/after",
+      "BUILDING and CLEANUP metadata transitions",
+      "after first plaintext write",
+      "encrypted forget commit before directory FORGOTTEN publication"
+    ],
+    "observations": [
+      "Restore recovery leaves a complete prior/new tree without abandoned candidate generations.",
+      "Revoked authority may leave private plaintext pending fresh authenticated recovery; the test observes this explicitly.",
+      "A durable unknown restore is not replayed when recovery cleans pending files.",
+      "Ciphertext tombstone denies directory preparation in the exact cross-store forget gap.",
+      "Fresh authorized forget reconciles residual materialized files and retains terminal state."
+    ],
+    "deliberate_mutation": {
+      "change": "Test-only bypass of encrypted profile and checkpoint gates before directory preparation.",
+      "normal_forbidden_prepare_calls": 0,
+      "mutated_forbidden_prepare_calls": 1
+    }
+  },
+  "real_boundaries": [
+    "Descriptor-relative regular-file capture and complete tree reconstruction",
+    "Exclusive creation, fsync and atomic metadata reference replacement",
+    "Contained bounded generation cleanup and real process flock contention",
+    "PyCA AEAD and SQLite transactions from the existing encrypted store"
+  ],
+  "injected_boundaries": [
+    "Authenticated scope, lease, fresh observation and atomic authority/quiescence guard",
+    "Synthetic key provider",
+    "Pre-provisioned cooperative private directory",
+    "No browser process or launcher integration"
+  ],
+  "negative_observations": [
+    "Traversal, duplicate paths, invalid scope/owner/epoch and oversized inventories deny.",
+    "Symlinks, hardlinks, FIFO, permissions and root/lock substitution deny without following outside targets.",
+    "Unknown objects and malformed metadata fail closed without guessed deletion.",
+    "File mutation during capture denies; constructor, IO, unlock and cancellation failures are sanitized.",
+    "Encrypted SQLite files contain no synthetic profile canary; successful forgetting removes inventoried materialized canaries."
+  ],
+  "not_run": [
+    "Real browser account/profile/provider/launcher use",
+    "Real production key access",
+    "Preferred dependency installation or qualified-image closure",
+    "Qualified runner CI, Rust formatting/tests/clippy and deployment",
+    "Actual power-cut, firmware or network filesystem qualification",
+    "Physical-media erasure, external-copy deletion or backups"
+  ],
+  "limits": [
+    "A trusted future launcher must check the encrypted permanent tombstone before resolving any READY generation; reading directory metadata confers no authority.",
+    "Standalone DirectoryProfileIO is an injected trusted helper, not an alternate admission or usable-session endpoint.",
+    "Only metadata reference publication is atomic, not replacement of a nonempty browser directory.",
+    "Private plaintext can remain after abrupt interruption or revoked authority until fresh admitted recovery. close() does not erase a profile.",
+    "Routine session-end discard with retained checkpoint and actual Chrome/Firefox path integration remain unimplemented.",
+    "Cooperative protected local namespace only; hostile same-UID/root races, mount manipulation and copied/rolled-back stores are not qualified.",
+    "Logical forgetting is not remote session revocation, credential deletion or physical erasure.",
+    "Browser issues 14 and 7 remain open; no production activation, service, security-setting change or new dependency is included."
+  ]
+}

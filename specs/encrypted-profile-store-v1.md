@@ -152,6 +152,40 @@ handler, and do not retain upstream exception cause/context. This is not Python
 memory zeroization, protection against debugger/local-variable capture, swap or
 process core dumps. Suppressing guard/key contexts cannot synthesize success.
 
+### Cleanup failure and instance lifetime
+
+Rollback cleanup preserves cancellation precedence: a cancellation from the
+operation, transaction-state inspection, rollback or attempted close produces the
+fixed `Cancelled` category even when a later ordinary cleanup error occurs.
+Ordinary cleanup failure produces fixed `Denied`, never a successful result.
+A failure inspecting transaction state or rolling back marks this Store instance
+unusable before attempting connection close once. Later `run` calls deny before
+acquiring authority or invoking key/capture/consume callbacks; later `close` calls
+are no-ops. The failed rollback and uncertain close are never retried. Explicit
+`close` also marks the instance unusable before touching the connection and
+sanitizes its failure/cancellation. Successful rollback leaves the instance usable
+under fresh ordinary admission.
+
+This fence is process-local instance state, not a durable poison marker. A failed
+close may leave the underlying connection, transaction or lock alive; the component
+does not claim successful resource release. It must not be interpreted as permission
+to open another instance or replay uncertain consumption. Existing committed
+checkpoint, nonce and restore records remain authoritative: a failure reported
+after commit does not undo the commit. Reopening still requires the existing
+trusted construction/admission and uncertainty rules. No new salvage, retry,
+recovery authority, browser operation or storage format is introduced.
+
+`tests/test_profile_cleanup.py` covers real temporary SQLite with synthetic
+adapters and fault wrappers. It separately checks pre/post-rollback faults,
+transaction-state inspection, close failure, cancellation precedence, no later
+adapter acquisition, successful rollback reuse and retained committed/unknown
+records. Deliberate cancellation-loss and closed-admission mutations must fail the
+independent assertions. Run `python3 -m unittest discover -s tests -p
+ test_profile_cleanup.py -v` (without the line break), and repeat with `python3 -O`.
+On macOS, set `TMPDIR=/private/tmp` so synthetic temporary directories do not traverse
+symlink ancestors; the production path checks remain unchanged. This evidence is
+not live browser, production custody, power-loss or runtime-image qualification.
+
 ## Precise logical forgetting
 
 Fresh authorized profile forget atomically deletes every checkpoint row for the

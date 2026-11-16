@@ -68,3 +68,10 @@ blocked integration work; preferred dependency/image qualification is separate.
 version-pinned material reader and real two-database local custody boundary.
 Synthetic integration does not qualify production enrollment, live OpenBao,
 browser authority or distributed custody; credential revocation is unchanged.
+
+## Managed directory component
+
+[Bounded profile directory IO](profile-directory-v1.md) captures and materializes
+real synthetic regular-file trees, recovers interrupted generation transitions,
+and explicitly sequences ciphertext forgetting before plaintext cleanup. Actual
+browser/launcher integration and full #14 acceptance remain unqualified.

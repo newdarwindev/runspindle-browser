@@ -31,6 +31,21 @@ redirects are not permission to broaden scope. The helper must revalidate guard,
 exact destination and secret version atomically with actual injection. Sequential
 Python checks alone cannot prevent an external browser TOCTOU race.
 
+Within each of those three checks, matching observation validation precedes the
+current-authority callback, and time is sampled only after both callbacks and
+validation complete. Preserve observe -> current ordering so revocation discovered
+by observation still denies. A trusted current callback may block; carrying a
+timestamp sampled before it would permit a vault read or helper call after the
+observation aged out or the grant expired. The same guard still covers the whole
+operation, and this change adds neither a new lease nor automatic retry authority.
+
+The injected clock is trusted composition, defaults to `time.monotonic`, and must
+share the observation/deadline time base. Age zero through `max_age` inclusive is
+accepted; `now == deadline` is expired. Boolean/non-numeric/non-finite clock values
+deny, as does a backwards sample making the observation appear future-dated.
+No wall-clock conversion or cross-machine clock synchronization is provided, and
+mutually dishonest clock/observation adapters are not authenticated by arithmetic.
+
 The narrow vault adapter returns only an opaque helper-owned handle. Reference
 selection comes from admission, not input. No secret is returned by the resolver.
 The pinned vault/helper implementation owns KV parsing, redirect refusal, transport,
@@ -70,6 +85,15 @@ redirects, stale epochs/freshness, vault denial/timeout, version revocation,
 uncertainty/no retry and cancellation cleanup. A deliberate monkeypatch removes
 observation checks; the independent zero-effect invariant fails as expected.
 The adapter fakes do not establish real atomic fencing or provider integration.
+
+`tests/test_resolver_freshness.py` also composes the actual Resolver and OpenBao
+Vault/JSON/opaque-handle path with synthetic admission, byte transport and sink.
+Independent adapter/request/sink counters cover a slow current or observation
+callback at every use boundary, exact age/deadline limits, malformed clock values,
+authority ordering, handle cleanup and one-shot denial. An ordering-only mutation
+reintroduces forbidden provider reads and synthetic sink use, demonstrating that
+the final denial alone would miss a secret already retrieved. No real HTTP request,
+browser injection, provider, credential or atomic browser fence is exercised.
 
 Run `python3 -m unittest discover -s tests -p test_trusted_credentials.py -v`.
 Run the full repository checks separately; missing Cargo does not pass native tests.
