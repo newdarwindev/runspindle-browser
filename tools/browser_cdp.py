@@ -41,6 +41,7 @@ PROBE = """(() => {
     visibleMap: map.every(e => e.getBoundingClientRect().height > 0)
   };
 })()"""
+OPERATION_TIMEOUT = 5.0
 
 
 class DevTools:
@@ -53,7 +54,6 @@ class DevTools:
         self.connection = socket.create_connection(
             (parsed.hostname, parsed.port or 80), 5
         )
-        self.connection.settimeout(5)
         self.buffer = b""
         self.next_id = 0
         self.loaded = False
@@ -63,26 +63,45 @@ class DevTools:
             f"Upgrade: websocket\r\nConnection: Upgrade\r\n"
             f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n"
         )
-        self.connection.sendall(request.encode("ascii"))
-        header = b""
-        while b"\r\n\r\n" not in header:
-            header += self.connection.recv(4096)
-            if len(header) > 16384:
-                raise RuntimeError("Chrome handshake too large")
-        head, self.buffer = header.split(b"\r\n\r\n", 1)
-        expected = base64.b64encode(
-            hashlib.sha1(
-                (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()
-            ).digest()
-        )
-        if b" 101 " not in head.split(b"\r\n", 1)[0] or expected not in head:
-            raise RuntimeError("Chrome WebSocket handshake failed")
+        try:
+            deadline = time.monotonic() + OPERATION_TIMEOUT
+            self.connection.settimeout(self._remaining(deadline))
+            self.connection.sendall(request.encode("ascii"))
+            header = b""
+            while b"\r\n\r\n" not in header:
+                self.connection.settimeout(self._remaining(deadline))
+                chunk = self.connection.recv(4096)
+                if not chunk:
+                    raise RuntimeError("Chrome WebSocket handshake closed")
+                header += chunk
+                if len(header) > 16384:
+                    raise RuntimeError("Chrome handshake too large")
+            head, self.buffer = header.split(b"\r\n\r\n", 1)
+            expected = base64.b64encode(
+                hashlib.sha1(
+                    (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()
+                ).digest()
+            )
+            if b" 101 " not in head.split(b"\r\n", 1)[0] or expected not in head:
+                raise RuntimeError("Chrome WebSocket handshake failed")
+        except BaseException:
+            self.connection.close()
+            raise
 
     def close(self) -> None:
         self.connection.close()
 
-    def _take(self, count: int) -> bytes:
+    @staticmethod
+    def _remaining(deadline: float) -> float:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("Chrome DevTools operation deadline exceeded")
+        return remaining
+
+    def _take(self, count: int, deadline: float) -> bytes:
+        self._remaining(deadline)
         while len(self.buffer) < count:
+            self.connection.settimeout(self._remaining(deadline))
             chunk = self.connection.recv(max(count - len(self.buffer), 4096))
             if not chunk:
                 raise RuntimeError("Chrome DevTools connection closed")
@@ -90,7 +109,7 @@ class DevTools:
         result, self.buffer = self.buffer[:count], self.buffer[count:]
         return result
 
-    def _send(self, opcode: int, data: bytes) -> None:
+    def _send(self, opcode: int, data: bytes, deadline: float) -> None:
         length = len(data)
         header = bytes([0x80 | opcode])
         if length < 126:
@@ -100,26 +119,28 @@ class DevTools:
         else:
             header += b"\xff" + length.to_bytes(8, "big")
         mask = os.urandom(4)
+        self.connection.settimeout(self._remaining(deadline))
         self.connection.sendall(
             header
             + mask
             + bytes(byte ^ mask[index % 4] for index, byte in enumerate(data))
         )
 
-    def _read(self) -> dict[str, Any]:
+    def _read(self, deadline: float) -> dict[str, Any]:
         while True:
-            first, second = self._take(2)
+            self._remaining(deadline)
+            first, second = self._take(2, deadline)
             length = second & 0x7F
             if length == 126:
-                length = int.from_bytes(self._take(2), "big")
+                length = int.from_bytes(self._take(2, deadline), "big")
             elif length == 127:
-                length = int.from_bytes(self._take(8), "big")
+                length = int.from_bytes(self._take(8, deadline), "big")
             if second & 0x80 or length > 25_000_000:
                 raise RuntimeError("unexpected Chrome WebSocket frame")
-            payload = self._take(length)
+            payload = self._take(length, deadline)
             opcode = first & 0x0F
             if opcode == 9:
-                self._send(10, payload)
+                self._send(10, payload, deadline)
                 continue
             if opcode != 1:
                 raise RuntimeError("unexpected Chrome WebSocket opcode")
@@ -129,6 +150,7 @@ class DevTools:
             return message
 
     def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        deadline = time.monotonic() + OPERATION_TIMEOUT
         self.next_id += 1
         identifier = self.next_id
         self._send(
@@ -136,17 +158,19 @@ class DevTools:
             json.dumps(
                 {"id": identifier, "method": method, "params": params or {}}
             ).encode(),
+            deadline,
         )
         while True:
-            message = self._read()
+            message = self._read(deadline)
             if message.get("id") == identifier:
                 if "error" in message:
                     raise RuntimeError(f"Chrome {method}: {message['error']}")
                 return cast(dict[str, Any], message["result"])
 
     def wait_loaded(self) -> None:
+        deadline = time.monotonic() + OPERATION_TIMEOUT
         while not self.loaded:
-            self._read()
+            self._read(deadline)
 
 
 def render(

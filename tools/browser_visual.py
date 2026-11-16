@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from browser_cdp import render
+from tools.browser_cdp import render
 
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL = ROOT / "docs/product/browser.html"

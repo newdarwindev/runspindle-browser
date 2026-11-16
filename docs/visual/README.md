@@ -34,7 +34,7 @@ desktop screenshot or runtime data.
 From a clean checkout with macOS, Google Chrome `157.0.8103.78` and Python
 3.14.10, run one bounded command:
 
-    /opt/homebrew/bin/python3.14 tools/browser_visual.py --output /tmp/browser-visual-new
+    /opt/homebrew/bin/python3.14 -m tools.browser_visual --output /tmp/browser-visual-new
 
 The command refuses a nonempty output directory, launches only disposable local
 Chrome profiles, uses loopback DevTools and denies external hostname resolution.

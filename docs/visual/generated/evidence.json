@@ -11,8 +11,8 @@
   "font_stack": "system-ui, sans-serif; exact installed font digest not pinned",
   "source_sha256": "cb3850490c4cd430ef58490ad997c0d205205d170869c937d757eaed12a13da7",
   "reference_source_sha256": "b4ce70e9a6c0d3f319bf396e4d2cb456a53e0ee6eda8d5d76a52429c3604fe2d",
-  "driver_sha256": "d8996a3911df239fde1d6ab3b0ee0eeaeffe4b63d1a0089aff91b9731c72868e",
-  "generator_sha256": "43179d561ad4c669cf8f35ed63ce89b27eb8c7989feadabe2929a4dbad96a55f",
+  "driver_sha256": "a9cd1b2e4c7c62d5b61930bf0991dce8707a5b92f6ac88dbe3c9d0df40074d0f",
+  "generator_sha256": "9bc490eb845e410026a811b942c9f05f36ac6de5a33927512801f369679ba356",
   "missing_label_mutation_detected": true,
   "scenarios": [
     {
