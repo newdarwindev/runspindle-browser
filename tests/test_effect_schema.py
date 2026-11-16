@@ -17,7 +17,7 @@ from typing import Any
 from unittest.mock import patch
 
 from browser_runtime import effects
-from browser_runtime.effects import Binding, Denied, Journal, Readback
+from browser_runtime.effects import Binding, Cancelled, Denied, Journal, Readback
 from browser_testing.effect_site import Site
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -443,7 +443,7 @@ class EffectSchemaTests(unittest.TestCase):
             return connection
 
         with patch.object(sqlite3, "connect", side_effect=cancelled):
-            with self.assertRaises(KeyboardInterrupt):
+            with self.assertRaises(Cancelled):
                 Journal(self.path)
         self.assertEqual(self.snapshot(), before)
         for connection in connections:
