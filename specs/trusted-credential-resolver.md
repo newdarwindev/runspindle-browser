@@ -71,8 +71,16 @@ restart does not gain retry authority. No durable credential guarantee is claime
 
 The resolver calls release on each returned handle and closes the guard on normal
 success, failure and cancellation. A read that raises before returning a handle
-must clean up its own resources. Cancellation propagates; trusted adapters must
-never put private values into cancellation exceptions. Python memory zeroization,
+must clean up its own resources. Cancellation propagates as the shared `browser_runtime.effects.Cancelled`
+category (also imported by `credentials`), not the original adapter exception.
+Callers that previously caught `KeyboardInterrupt`, `SystemExit` or `asyncio.CancelledError` from this
+entrypoint must instead handle `Cancelled` and stop; this is an intentional
+public error-contract change. Its message is fixed and provider exception
+context is stripped. Cancellation is latched before handle release and guard
+exit, so cleanup replacement or suppression cannot reclassify it as ordinary
+denial or success. Acquisition/exit cancellation is sanitized too. A cancellation
+after injection remains uncertain and does not authorize retry. Adapters must
+still avoid private exception payloads and honor cancellation cooperatively. Python memory zeroization,
 traceback-local secrecy, screenshots and malicious in-process code are not covered.
 A privileged debugger can inspect locals; no raw exceptions should be logged.
 
@@ -102,3 +110,9 @@ acceptance blockers. Host authenticated observations/atomic fencing, pinned actu
 vault/helper adapters and isolated native integration also remain blocked. Live
 acceptance, production activation and historical-source port #3 are not completed.
 See `docs/trusted-credential-evidence.json` for source/fixture/tool hashes and scope.
+
+`tests/test_resolver_cancellation.py` exercises callback/cleanup/guard cancellation,
+fixed public errors, one-shot denial and independent read/injection/release counts.
+A source-copy mutation removes cancellation latching and demonstrates the lost
+classification under a suppressing guard. No real secrets, provider or browser
+are involved. See `docs/resolver-cancellation-evidence.json`.

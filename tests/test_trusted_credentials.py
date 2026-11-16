@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from browser_runtime.credentials import (
     AdapterSet,
+    Cancelled,
     Denied,
     Grant,
     Observation,
@@ -333,7 +334,7 @@ class TrustedCredentialsTests(unittest.TestCase):
         adapter = Adapters()
         resolver = adapter.resolver()
         with patch.object(adapter, "inject", side_effect=KeyboardInterrupt):
-            with self.assertRaises(KeyboardInterrupt):
+            with self.assertRaises(Cancelled):
                 resolver.resolve_and_inject(adapter.ticket)
         self.assertIn("release", adapter.calls)
         self.assertFalse(adapter.active)
