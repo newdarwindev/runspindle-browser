@@ -9,6 +9,7 @@ import unittest
 from collections.abc import Iterator
 from unittest.mock import patch
 
+from browser_runtime.credentials import Cancelled as ResolverCancelled
 from browser_runtime.credentials import Denied as ResolverDenied
 from browser_runtime.credentials import Grant
 from browser_runtime.openbao import Handle, Response, Vault
@@ -266,9 +267,10 @@ class CancellationTests(unittest.TestCase):
         error = asyncio.CancelledError()
         f.arm("metadata", error)
         with f.peer.installed(), patch.object(f.vault, "release", recorded_release):
-            with self.assertRaises(asyncio.CancelledError) as caught:
+            with self.assertRaises(ResolverCancelled) as caught:
                 current.resolve_and_inject(object())
-            self.assertIs(caught.exception, error)
+            self.assertEqual(str(caught.exception), "credential resolution cancelled")
+            self.assertIsNone(caught.exception.__context__)
             self.assertEqual(len(releases), 1)
             self.assertEqual(len(f.vault._entries), 0)
             self.assert_revoked(f, releases[0])

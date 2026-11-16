@@ -57,7 +57,7 @@
     },
     "tests/test_trusted_credentials.py": {
       "classification": "existing_synthetic_adapter_tests",
-      "sha256": "468fc0d3323755e3245b718c9c2f5a56f327b1ad2ee7f8c24ef15228ec3ff8f1"
+      "sha256": "39a53a1cf9e4ece33599b58214e9a7ebdd031c1bb6c957d98f42d7dd5c19cddf"
     },
     "tools/check_credential_storage.py": {
       "classification": "structural_artifact_checker",

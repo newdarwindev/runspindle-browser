@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "scope": "Partial Browser #13/#6; cancellation/error contract only, independent of draft #41",
+  "base_commit": "712f56d74027c730e8e07d829f1cd75eeee0fcc0",
+  "evidence_class": "synthetic component with real resolver and OpenBao handle lifecycle; no live provider/browser",
+  "source_sha256": {
+    "browser_runtime/credentials.py": "d237655dce633788c5d2c0d1c6417164fc5715a2e9f399ab5295219fcd2e7161",
+    "tests/test_resolver_cancellation.py": "1488cad4a96d6c202fbd986dec3854f2784ea899a80255880fed897e581c357e",
+    "tests/test_trusted_credentials.py": "39a53a1cf9e4ece33599b58214e9a7ebdd031c1bb6c957d98f42d7dd5c19cddf",
+    "tests/test_openbao_cancellation.py": "0f33061d54121a34eb31dbf027fee9f5b8c00a620c7b3b669a64030ed22a8ad4",
+    "specs/trusted-credential-resolver.md": "82af3d79a9cb0144f7fa6097969ca8482a0860a5a6737955a74daedb723b320a",
+    "docs/credential-storage/artifact-manifest.json": "d95dae4f76b5eb3fd235c18eb7783bfcbcca0a20c6a691e227f38e218aa52068",
+    "requirements-quality.txt": "9cbe1331549216b953f2922f1e8321357ca82bb985e1ea595c87fcee8a8fdc84",
+    "requirements-profile.txt": "96f356c53e8b8c4fb2f8dca5d1a31036148e3004996467a55b238291812ae252",
+    "hygiene.json": "8311a93317e273135611178085e4ec2f7eba3725085b924052231d45ba12d69e"
+  },
+  "commands": [
+    {
+      "command": "python3 -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 424,
+      "seconds": 34.654
+    },
+    {
+      "command": "python3 -O -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 424,
+      "seconds": 81.071
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p test_resolver_cancellation.py -v",
+      "status": "passed",
+      "tests": 7,
+      "independent_review": "normal and optimized repeated"
+    },
+    {
+      "command": "python3 tools/check_scaffold.py",
+      "status": "passed"
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    },
+    {
+      "command": "python3 tools/validate.py",
+      "status": "failed",
+      "blockers": [
+        "Ruff distribution metadata unavailable",
+        "Cargo unavailable: Rust fmt/test/Clippy not run"
+      ]
+    }
+  ],
+  "runtime": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "50.0.0 compatibility, not preferred 50.0.2 qualification"
+  },
+  "scenarios": [
+    "callback cancellation",
+    "release failure replacing injection cancellation",
+    "guard suppression/replacement",
+    "acquisition/exit cancellation",
+    "active caller exception sanitization",
+    "independent reads/injections/releases and one-shot no retry",
+    "source-copy latch-removal mutation loses cancellation category"
+  ],
+  "compatibility": "Resolver now raises shared effects.Cancelled rather than raw KeyboardInterrupt/SystemExit/asyncio.CancelledError. Consumers must catch fixed category and stop; no retry authority. OpenBao direct API unchanged.",
+  "limits": [
+    "real authority, atomic physical guard and browser injection not qualified",
+    "cooperative callback cancellation only; no forced timeout",
+    "no plaintext memory/traceback-local secrecy guarantee",
+    "no distributed durable ticket admission or native conformance",
+    "static/CI/runner-image qualification blocked; no installations or gate changes",
+    "no service activation, credentials, paid calls or security/access changes"
+  ],
+  "provenance": "Original code and synthetic fixtures. Existing notices retained; no third-party source lift. Test artifact manifest updates only changed test bytes, not acceptance rules."
+}

@@ -8,13 +8,23 @@ An opaque vault handle, not plaintext, crosses into the pinned injection helper.
 import math
 import re
 from dataclasses import dataclass, field
-from typing import Callable, ContextManager, Protocol, cast
+from typing import Callable, ContextManager, NoReturn, Protocol, cast
 
-from browser_runtime.effects import Binding
+from browser_runtime.effects import Binding, Cancelled
 
 
 class Denied(ValueError):
     """Fixed public error without provider exception context."""
+
+
+def _fail(cancelled: bool = False) -> NoReturn:
+    try:
+        if cancelled:
+            raise Cancelled("credential resolution cancelled")
+        raise Denied("credential resolution denied")
+    except (Cancelled, Denied) as error:
+        error.__cause__ = error.__context__ = None
+        raise
 
 
 @dataclass(frozen=True)
@@ -163,9 +173,10 @@ class Resolver:
             attempted = self._attempted
             self._attempted = True
         if attempted:
-            raise Denied("credential resolution denied")
+            _fail()
         success = False
         completed = False
+        cancelled = False
         try:
             adapters = self._adapters
             if (
@@ -177,38 +188,48 @@ class Resolver:
             ):
                 raise ValueError
             with adapters.authority.acquire() as fence:
-                grant = fence.admit(ticket)
-                if type(grant) is not Grant or type(grant.target) is not Target:
-                    raise ValueError
-                grant.target.validate()
-                if (
-                    type(grant.reference) is not str
-                    or re.fullmatch(
-                        r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", grant.reference
-                    )
-                    is None
-                ):
-                    raise ValueError
-                self._check(fence, grant)
-                handle = adapters.vault.read(grant)
                 try:
-                    # Check after retrieval AND version validation. No caller may
-                    # replace target/ref/epoch or supply its own observations.
-                    self._check(fence, grant)
-                    if adapters.vault.current(handle, grant) is not True:
+                    grant = fence.admit(ticket)
+                    if type(grant) is not Grant or type(grant.target) is not Target:
+                        raise ValueError
+                    grant.target.validate()
+                    if (
+                        type(grant.reference) is not str
+                        or re.fullmatch(
+                            r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", grant.reference
+                        )
+                        is None
+                    ):
                         raise ValueError
                     self._check(fence, grant)
-                    if adapters.helper.inject(handle, grant, fence) is not True:
-                        raise ValueError
-                finally:
-                    adapters.vault.release(handle)
-                # A guard may suppress exceptions. Only explicit injection AND
-                # successful handle release can establish completion.
-                completed = True
+                    handle = adapters.vault.read(grant)
+                    try:
+                        try:
+                            # Check after retrieval AND version validation. No caller may
+                            # replace target/ref/epoch or supply its own observations.
+                            self._check(fence, grant)
+                            if adapters.vault.current(handle, grant) is not True:
+                                raise ValueError
+                            self._check(fence, grant)
+                            if adapters.helper.inject(handle, grant, fence) is not True:
+                                raise ValueError
+                        except BaseException as error:
+                            cancelled = not isinstance(error, Exception)
+                            raise
+                    finally:
+                        adapters.vault.release(handle)
+                    # A guard may suppress exceptions. Only explicit injection AND
+                    # successful handle release can establish completion.
+                    completed = True
+                except BaseException as error:
+                    cancelled = cancelled or not isinstance(error, Exception)
+                    raise
             success = completed
-        except Exception:
-            pass
+        except BaseException as error:
+            cancelled = cancelled or not isinstance(error, Exception)
         # Raised outside the handler: provider exception is not __context__.
+        if cancelled:
+            _fail(True)
         if not success:
-            raise Denied("credential resolution denied")
+            _fail()
         return "injected"
