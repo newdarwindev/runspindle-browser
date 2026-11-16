@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "scope": "Browser #16 / #9 partial local durable exclusive control",
+  "base_commit": "dfbbe8e7d88f17473bac118d5952546ce1bd6989",
+  "source_sha256": {
+    "browser_runtime/control_leases.py": "adbb01165c09df23dc4dc2968dfc09fb29d980acc5ab4a4eb7fe988ee82c2d4a",
+    "tests/test_control_leases.py": "a13d0c0e24c7e4ba6fa4a8deb2bb715625fa98e51be7d82262aeebb44f667a15"
+  },
+  "evidence_class": "manual synthetic component composition with real SQLite, subprocess contention and file-backed effect ledgers",
+  "runtime": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "50.0.0 compatibility"
+  },
+  "checks": {
+    "final_focused_normal": 14,
+    "final_focused_optimized": 14,
+    "full_normal": 417,
+    "full_optimized": 417,
+    "scaffold": "passed",
+    "whitespace": "passed",
+    "independent_review": "12-test precursor repeated normally and optimized; second-release-callback expiry probe denied with zero fence effects after correction",
+    "source_mutation": "removing holder comparison changes wrong-holder input effect ledger from zero to one",
+    "declared_aggregate": {
+      "status": "failed",
+      "exit": 1,
+      "blockers": [
+        "Ruff metadata missing; lint/format/type qualification blocked",
+        "Cargo missing; Rust fmt/test/Clippy not run"
+      ]
+    }
+  },
+  "review_correction": "Resample authority/observation/time after both authenticated-release callbacks before reservation/fence; delayed callback cannot authorize an expired fence.",
+  "source_boundary": "Runtime source unchanged throughout final full suites. Final test-only timeout cleanup and documentation amendments followed full-suite start; final focused 14 tests repeated normally/optimized afterward. No result is relabeled as CI.",
+  "not_qualified": [
+    "production authority issuer",
+    "real browser/viewer input fencing",
+    "raw interactive streaming",
+    "pending-transition reconciliation",
+    "distributed authority",
+    "OS isolation",
+    "power-loss durability",
+    "CI or runner image",
+    "full issue completion"
+  ],
+  "provenance": "original new code and invented synthetic fixtures; no legacy executable lift, private data, provider calls or service changes"
+}
