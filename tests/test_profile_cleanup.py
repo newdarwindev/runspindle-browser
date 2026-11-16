@@ -81,7 +81,9 @@ class ProfileCleanupTests(unittest.TestCase):
         self.fake.grant = grant(action)
         return self.store.run("trusted-ticket")
 
-    def safe_failure(self, call: Callable[[], object], kind: type[BaseException]) -> None:
+    def safe_failure(
+        self, call: Callable[[], object], kind: type[BaseException]
+    ) -> None:
         try:
             call()
         except BaseException as error:
@@ -90,7 +92,9 @@ class ProfileCleanupTests(unittest.TestCase):
             self.assertIsNone(error.__context__)
             self.assertEqual(getattr(error, "__notes__", []), [])
             self.assertNotIn(CANARY.decode(), repr(error.args))
-            self.assertNotIn(CANARY.decode(), "".join(traceback.format_exception(error)))
+            self.assertNotIn(
+                CANARY.decode(), "".join(traceback.format_exception(error))
+            )
         else:
             self.fail("cleanup failure reported success")
 
@@ -242,7 +246,8 @@ class ProfileCleanupTests(unittest.TestCase):
                 namespace = dict(Store.run.__globals__)
                 exec(
                     compile(
-                        "from __future__ import annotations\n" + source.replace(old, new),
+                        "from __future__ import annotations\n"
+                        + source.replace(old, new),
                         "synthetic-cleanup-mutation",
                         "exec",
                     ),
