@@ -359,6 +359,9 @@ class DirectoryProfileIO:
         require(grant.scope() == self._scope)
         require(guard.current(grant) is True and guard.quiescent(grant) is True)
         observed = guard.observe()
+        # Observation may discover revocation or a resumed writer. Revalidate
+        # before effects, then sample time after every trusted callback.
+        require(guard.current(grant) is True and guard.quiescent(grant) is True)
         now = self._clock()
         require(type(now) in (int, float) and math.isfinite(now))
         require(type(observed) is Observation and observed.target == grant.target)
