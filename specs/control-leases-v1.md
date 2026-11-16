@@ -64,10 +64,10 @@ readback/passive viewing grants no authority; no viewer API exists here.
 
 Process death before/after fencing, lost replies, incomplete viewer closure,
 wrong receipts or post-reservation denial retain pending and block both holders.
-There is deliberately **no automatic startup recovery, timeout handback, retry,
-force release, admin override or pending-transition reconciliation**. A future
-separately authenticated recovery protocol must resolve actual backend state;
-deleting the database is not recovery. Existing active metadata after restart
+There is no automatic startup recovery, timeout handback, fence retry, force
+release or admin override. The separately authenticated `reconcile_transfer`
+path below may resolve pending state only from exact fresh backend evidence.
+Deleting the database is not recovery. Existing active metadata after restart
 still requires fresh authorization for every input and cannot recreate a grant.
 
 Cleanup failure poisons an instance; failed close does not prove resource release.
@@ -84,6 +84,52 @@ wrong holder/scope/epoch, forged release, delayed-release expiry, incomplete or
 wrong closure receipts, cancellation and a source mutation exposing forbidden
 wrong-holder input. All identities and payloads are invented; no browser, account
 or provider is accessed. No live physical-input exclusivity, distributed lock,
-power-loss durability, trusted grant issuer, OS confinement, CI/image, complete
-handoff recovery or full issue acceptance is claimed. Both parent issues remain
+power-loss durability, trusted grant issuer, OS confinement, CI/image, live backend
+recovery qualification or full issue acceptance is claimed. Both parent issues remain
 open. Existing pins, workflows, access and operational gates are unchanged.
+
+
+## Separately authorized pending-transfer readback
+
+`Recovery(transfer, deadline)` is a distinct admission type. The nested Transfer
+must exactly match the immutable stored transition, including its original
+scope, source/destination, operation, epochs and deadline. Its original deadline
+may have expired; the new Recovery has its own current authorization and deadline.
+An original Transfer/Input ticket does not authorize reconciliation. Existing
+issuers must explicitly support this new type and bind the full nested request;
+unknown types deny. No production issuer or provisioning is installed here.
+
+The optional, separately pinned `Inspector` performs read-only backend
+inspection under the same held physical guard and lease writer transaction.
+It must not navigate, submit input, fence, repair state or trigger cleanup.
+Absent inspector or unknown/contradictory evidence never activates a holder.
+A `FenceObservation` binds the exact original Transfer and a trusted monotonic
+observation time to the claim that all previous inputs are closed. This means
+old-epoch rights and queued inputs remain fenced, not merely that no input is
+happening now or a viewer window is hidden. A historical successful fence event
+alone is insufficient: the inspector must establish current backend state.
+
+Before inspection, the locked row must still be the same pending transition.
+After inspection, current grant/physical scope and the observation age/deadline
+are rechecked. Handback also needs renewed authenticated release for the exact
+source holder/epoch through `released(Recovery)`, checked before and after
+inspection with time resampled afterward. A blocked release callback cannot
+extend the recovery deadline or make stale closure evidence fresh.
+
+Only exact current closure evidence commits the existing pending row to active.
+No new epoch or transition is minted; `Backend.fence` is never called. Missing,
+incomplete, stale, future, malformed or wrong-target evidence keeps the row
+pending. A newer row/epoch rejects the stale Recovery before inspection. Repeating
+an exact already-active Recovery reads retained metadata without inspecting or
+refencing and still grants no input by itself. Commit/return uncertainty is
+preserved; fresh input always requires its separate grant through GuardedJournal.
+
+The supplemental `test_control_reconciliation.py` suite covers fresh-process
+readback, expired original transfers with fresh recovery authority, no-fence
+reservation uncertainty, missing/wrong/stale evidence, renewed release,
+cancellation, inspector delay, lost post-commit return, newer epochs and a
+source mutation exposing forbidden input after stale closure activation.
+Run `python3 [-O] -m unittest discover -s tests -p test_control_reconciliation.py -v`.
+Its independent backend closure record and input ledger are synthetic. Actual
+viewer/backend readback, durable remote epoch proof, distributed clocks and
+production recovery remain unqualified. No automatic monitor is installed.

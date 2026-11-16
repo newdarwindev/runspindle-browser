@@ -104,6 +104,26 @@ class Transfer:
 
 
 @dataclass(frozen=True)
+class Recovery:
+    """Fresh readback authority for one immutable, already reserved transfer."""
+    transfer: Transfer
+    deadline: float
+
+    def validate(self) -> None:
+        if type(self.transfer) is not Transfer:
+            raise ValueError
+        self.transfer.validate()
+        _time(self.deadline)
+
+
+@dataclass(frozen=True)
+class FenceObservation:
+    transfer: Transfer
+    previous_inputs_closed: bool
+    observed_at: float
+
+
+@dataclass(frozen=True)
 class Input:
     effect: EffectGrant
     holder: Holder
@@ -116,10 +136,10 @@ class FenceReceipt:
 
 
 class Guard(Protocol):
-    def admit(self, ticket: object) -> Transfer | Input | None: ...
-    def current(self, grant: Transfer | Input) -> bool: ...
+    def admit(self, ticket: object) -> Transfer | Recovery | Input | None: ...
+    def current(self, grant: Transfer | Recovery | Input) -> bool: ...
     def observe(self) -> Observation | None: ...
-    def released(self, transfer: Transfer) -> bool:
+    def released(self, transfer: Transfer | Recovery) -> bool:
         """Authenticate release by the exact source holder, target and epoch."""
         ...
 
@@ -131,6 +151,12 @@ class Authority(Protocol):
 class Backend(Protocol):
     def fence(self, transfer: Transfer, guard: Guard) -> FenceReceipt:
         """Stop/drain all previous input paths, including viewer inputs on handback."""
+        ...
+
+
+class Inspector(Protocol):
+    def inspect(self, recovery: Recovery, guard: Guard) -> FenceObservation | None:
+        """Read exact current closure evidence without input, navigation or fencing."""
         ...
 
 
@@ -147,18 +173,20 @@ class LeaseStore:
     """One local SQLite writer lock covers each admitted helper/input lifetime.
 
     A transfer first durably blocks inputs, then invokes its fence at most once.
-    Crashed/uncertain pending transfers remain blocked; this version intentionally
-    has no automatic timeout, startup recovery, admin override or fence retry.
+    Crashed/uncertain pending transfers remain blocked unless separately admitted
+    readback proves closure. No automatic timeout, admin override or fence retry.
     """
 
     def __init__(
         self, path: str | Path, *, authority: Authority | None = None,
-        backend: Backend | None = None, clock: Callable[[], float] = time.monotonic,
+        backend: Backend | None = None, inspector: Inspector | None = None,
+        clock: Callable[[], float] = time.monotonic,
         max_age: float = 1.0,
     ) -> None:
         self._lock = threading.Lock()
         self._authority = authority
         self._backend = backend
+        self._inspector = inspector
         self._clock = clock
         self._max_age = _time(max_age)
         self._closed = True
@@ -198,10 +226,13 @@ class LeaseStore:
         if failed:
             _fail(cancelled)
 
-    def _check(self, guard: Guard, grant: Transfer | Input) -> None:
+    def _check(self, guard: Guard, grant: Transfer | Recovery | Input) -> None:
         if type(grant) is Transfer:
             grant.validate()
             target, deadline = grant.target, grant.deadline
+        elif type(grant) is Recovery:
+            grant.validate()
+            target, deadline = grant.transfer.target, grant.deadline
         elif type(grant) is Input and type(grant.effect) is EffectGrant and type(grant.holder) is Holder:
             grant.holder.validate()
             target, deadline = grant.effect.target, grant.effect.deadline
@@ -318,6 +349,55 @@ class LeaseStore:
                                  (grant.target.binding.browser,))
                 self._db.execute("COMMIT")
                 outcome = "active"
+        return outcome
+
+    def reconcile_transfer(self, ticket: object) -> str:
+        """Never resend a fence: activate only from fresh exact closure readback."""
+        outcome = "unknown"
+        with self._session() as guard:
+            grant = guard.admit(ticket)
+            if type(grant) is not Recovery or self._inspector is None:
+                raise ValueError
+            self._check(guard, grant)
+            transfer = grant.transfer
+            self._db.execute("BEGIN IMMEDIATE")
+            self._check(guard, grant)  # A writer wait cannot preserve old authority.
+            row = self._row(transfer.target)
+            expected = (
+                _scope(transfer.target), transfer.target.binding.epoch,
+                _encode(asdict(transfer.destination)),
+            )
+            if (row is None or row[:3] != expected
+                    or row[4] != _encode(asdict(transfer))):
+                raise ValueError
+            if row[3] == "active":
+                return "active"  # Retained metadata, not a new input capability.
+            if row[3] != "pending":
+                raise ValueError
+            if transfer.action == "handback":
+                if guard.released(grant) is not True:
+                    raise ValueError
+                self._check(guard, grant)
+            observed = self._inspector.inspect(grant, guard)
+            self._check(guard, grant)
+            if (type(observed) is not FenceObservation
+                    or type(observed.transfer) is not Transfer
+                    or observed.transfer != transfer
+                    or observed.previous_inputs_closed is not True):
+                return "unknown"
+            if transfer.action == "handback":
+                if guard.released(grant) is not True:
+                    raise ValueError
+                self._check(guard, grant)
+            now = _time(self._clock())
+            if not 0 <= now - _time(observed.observed_at) <= self._max_age:
+                raise ValueError  # Stale closure is not activation authority.
+            if now >= _time(grant.deadline):
+                raise ValueError
+            self._db.execute("UPDATE leases SET phase='active' WHERE browser=?",
+                             (transfer.target.binding.browser,))
+            self._db.execute("COMMIT")
+            outcome = "active"
         return outcome
 
     def journal(self, path: str | Path, site: Site) -> GuardedJournal:

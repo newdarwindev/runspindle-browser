@@ -86,4 +86,5 @@ component evidence is separate from live browser/authority integration.
 
 [Exclusive control leases](control-leases-v1.md) gate the existing guarded effect
 journal with durable holder/epoch transitions and authenticated handback checks.
-Actual viewer/backend qualification and uncertain-transition recovery remain open.
+Explicit pending-transfer readback is separately authenticated; actual
+viewer/backend and recovery qualification remain open.
