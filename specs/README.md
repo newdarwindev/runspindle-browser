@@ -75,3 +75,9 @@ browser authority or distributed custody; credential revocation is unchanged.
 real synthetic regular-file trees, recovers interrupted generation transitions,
 and explicitly sequences ciphertext forgetting before plaintext cleanup. Actual
 browser/launcher integration and full #14 acceptance remain unqualified.
+
+## Trusted website-effect composition
+
+[Guarded effect journal](guarded-effect-journal-v1.md) binds fresh authenticated
+full-target admission to the existing durable operation journal. Synthetic
+component evidence is separate from live browser/authority integration.
