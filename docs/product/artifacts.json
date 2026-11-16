@@ -38,7 +38,7 @@
       "implementation_evidence": false,
       "kind": "new_static_html",
       "path": "docs/product/browser.html",
-      "sha256": "afab98f2e8fab8ac27ef29e9ee2499ae2a2fffd9e2aa09fbdcb877bbb1ef2f9e",
+      "sha256": "cb3850490c4cd430ef58490ad997c0d205205d170869c937d757eaed12a13da7",
       "source_ids": [
         "SRC-009"
       ],
@@ -81,7 +81,7 @@
         "SRC-009"
       ],
       "source_relationship": "Original source disposition, integrity and pending acceptance record; no historical source expression.",
-      "sha256": "a239d0603f423067cf8b7669f6ec431380c051bf01e3c71da9537fd536aae325"
+      "sha256": "7208c092981072a7ed0878aa8937081ca531cd95224f2f6af7a1993f20132134"
     },
     {
       "historical_original": false,
@@ -103,7 +103,7 @@
         "SRC-009"
       ],
       "source_relationship": "Original source disposition, integrity and pending acceptance record; no historical source expression.",
-      "sha256": "1d1d0b23c0de4929661a0768478be91906e14d4f05be766d785230c4fa44ba4d"
+      "sha256": "ad802e5c808b7c43e08fa8cf23e2950950c9e01ce16577bc89338ee82913e390"
     }
   ],
   "migration_status": "partial",

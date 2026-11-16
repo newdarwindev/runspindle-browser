@@ -35,11 +35,11 @@
     },
     "docs/product/browser.html": {
       "classification": "original_static_explanation",
-      "sha256": "afab98f2e8fab8ac27ef29e9ee2499ae2a2fffd9e2aa09fbdcb877bbb1ef2f9e"
+      "sha256": "cb3850490c4cd430ef58490ad997c0d205205d170869c937d757eaed12a13da7"
     },
     "docs/product/browser-source-review.md": {
       "classification": "source_review_and_pending_acceptance",
-      "sha256": "a239d0603f423067cf8b7669f6ec431380c051bf01e3c71da9537fd536aae325"
+      "sha256": "7208c092981072a7ed0878aa8937081ca531cd95224f2f6af7a1993f20132134"
     },
     "docs/product/browser-coverage.json": {
       "classification": "source_intent_and_asset_inventory",
@@ -47,7 +47,7 @@
     },
     "tools/check_browser_product.py": {
       "classification": "structural_checker_not_renderer",
-      "sha256": "2e07cdc82c4811c73b9222033c63a0d2295437a403870fb0dc67b2a5d6bd47cb"
+      "sha256": "feb8a0ba8382f3dcdd70b33b8f4a26bfc9188a4c90ab87612a232dfc89ac2dcc"
     },
     "tests/test_browser_product.py": {
       "classification": "structural_negative_tests",

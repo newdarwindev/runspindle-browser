@@ -1,0 +1,168 @@
+{
+  "evidence_class": "local_chrome_visual_candidate",
+  "chrome": "Google Chrome 157.0.8103.78",
+  "os": "macOS-27.2-arm64-arm-64bit-Mach-O",
+  "dpr": 1,
+  "locale": "en-US",
+  "timezone": "UTC",
+  "animation": "none_on_source",
+  "clock": "no_time_dependent_page_content",
+  "seed": "fixed_static_fixture",
+  "font_stack": "system-ui, sans-serif; exact installed font digest not pinned",
+  "source_sha256": "cb3850490c4cd430ef58490ad997c0d205205d170869c937d757eaed12a13da7",
+  "reference_source_sha256": "b4ce70e9a6c0d3f319bf396e4d2cb456a53e0ee6eda8d5d76a52429c3604fe2d",
+  "driver_sha256": "d8996a3911df239fde1d6ab3b0ee0eeaeffe4b63d1a0089aff91b9731c72868e",
+  "generator_sha256": "43179d561ad4c669cf8f35ed63ce89b27eb8c7989feadabe2929a4dbad96a55f",
+  "missing_label_mutation_detected": true,
+  "scenarios": [
+    {
+      "scenario": "mobile-320",
+      "viewport": [
+        320,
+        900
+      ],
+      "dom": {
+        "width": 320,
+        "docWidth": 320,
+        "mapCount": 5,
+        "labels": [
+          "Console and Browser broker",
+          "Core and Temporal",
+          "Browser actions and human surface",
+          "Trusted helper and OpenBao",
+          "Identity provider and route proxy"
+        ],
+        "outside": [],
+        "overflowNodes": [],
+        "missingAnchors": [],
+        "headingCount": 1,
+        "focusTarget": true,
+        "focusOutline": true,
+        "cards": 6,
+        "fontReady": true,
+        "visibleMap": true
+      },
+      "reference_sha256": "f0b08364e2055d4a21d3c8771136d3569756ffc9890ef4c987b33d90562be4f8",
+      "canonical_sha256": "2fc2c0297aaed0a5c2c9994a358da93bf3e5b419ffa904e3f667d106739d9a48"
+    },
+    {
+      "scenario": "mobile-390",
+      "viewport": [
+        390,
+        900
+      ],
+      "dom": {
+        "width": 390,
+        "docWidth": 390,
+        "mapCount": 5,
+        "labels": [
+          "Console and Browser broker",
+          "Core and Temporal",
+          "Browser actions and human surface",
+          "Trusted helper and OpenBao",
+          "Identity provider and route proxy"
+        ],
+        "outside": [],
+        "overflowNodes": [],
+        "missingAnchors": [],
+        "headingCount": 1,
+        "focusTarget": true,
+        "focusOutline": true,
+        "cards": 6,
+        "fontReady": true,
+        "visibleMap": true
+      },
+      "reference_sha256": "f11f4446d0dee160387860e942ffc522e0968eee0b0e521b40bfa91ab7853e68",
+      "canonical_sha256": "c77fe1417b373f8dab06823512d8cd17fb2a88c4d4396c536f188e29b77aca02"
+    },
+    {
+      "scenario": "tablet-768",
+      "viewport": [
+        768,
+        900
+      ],
+      "dom": {
+        "width": 768,
+        "docWidth": 768,
+        "mapCount": 5,
+        "labels": [
+          "Console and Browser broker",
+          "Core and Temporal",
+          "Browser actions and human surface",
+          "Trusted helper and OpenBao",
+          "Identity provider and route proxy"
+        ],
+        "outside": [],
+        "overflowNodes": [],
+        "missingAnchors": [],
+        "headingCount": 1,
+        "focusTarget": true,
+        "focusOutline": true,
+        "cards": 6,
+        "fontReady": true,
+        "visibleMap": true
+      },
+      "reference_sha256": "520b050e4fa689cc738832c02016608319854933209b25daaae63ba00df56638",
+      "canonical_sha256": "eac6b7b0d7670f2da487bdb675f4c2c2a8ff573e867d7b82d804cb77f9331997"
+    },
+    {
+      "scenario": "desktop-1440",
+      "viewport": [
+        1440,
+        900
+      ],
+      "dom": {
+        "width": 1440,
+        "docWidth": 1440,
+        "mapCount": 5,
+        "labels": [
+          "Console and Browser broker",
+          "Core and Temporal",
+          "Browser actions and human surface",
+          "Trusted helper and OpenBao",
+          "Identity provider and route proxy"
+        ],
+        "outside": [],
+        "overflowNodes": [],
+        "missingAnchors": [],
+        "headingCount": 1,
+        "focusTarget": true,
+        "focusOutline": true,
+        "cards": 6,
+        "fontReady": true,
+        "visibleMap": true
+      },
+      "reference_sha256": "a2266df7ee4369d1dabc21fcd1bdab707499d33f999b63c3ab3b8f141dcc644e",
+      "canonical_sha256": "4f9fe39a749e40158f2038ec65fab44d8605701cd5f36d0dffa8a449664351c3"
+    }
+  ],
+  "zoom_200_percent_layout_proxy": {
+    "width": 195,
+    "docWidth": 195,
+    "mapCount": 5,
+    "labels": [
+      "Console and Browser broker",
+      "Core and Temporal",
+      "Browser actions and human surface",
+      "Trusted helper and OpenBao",
+      "Identity provider and route proxy"
+    ],
+    "outside": [],
+    "overflowNodes": [],
+    "missingAnchors": [],
+    "headingCount": 1,
+    "focusTarget": true,
+    "focusOutline": true,
+    "cards": 6,
+    "fontReady": true,
+    "visibleMap": true
+  },
+  "contact_sheet_sha256": "e804e751b1d15521a173b0ee464512bfe4f81ef5d0acec4fba02d8aa18b2e650",
+  "reference_review": "generated_not_reviewed",
+  "canonical_render": "locally_observed_instrumented_copy",
+  "pixel_baseline_comparison": "not_run_no_approved_baseline",
+  "manual_keyboard_and_assistive_technology": "not_run",
+  "actual_browser_zoom_200_percent": "not_run_layout_proxy_only",
+  "umbrella_mirror": "not_run",
+  "runtime_browser_integration": "not_run"
+}
