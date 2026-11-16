@@ -133,3 +133,10 @@ Run `python3 [-O] -m unittest discover -s tests -p test_control_reconciliation.p
 Its independent backend closure record and input ledger are synthetic. Actual
 viewer/backend readback, durable remote epoch proof, distributed clocks and
 production recovery remain unqualified. No automatic monitor is installed.
+
+## Passive status admission
+
+The separate [passive status contract](passive-control-status-v1.md) defines
+`PassiveStatus` and `LeaseStore.status`. It reports scoped historical ownership
+without changing a lease or granting input. Pending exposes no active holder;
+every control and credential route retains its distinct admission type.
