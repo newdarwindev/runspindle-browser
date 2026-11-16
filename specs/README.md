@@ -88,3 +88,10 @@ component evidence is separate from live browser/authority integration.
 journal with durable holder/epoch transitions and authenticated handback checks.
 Explicit pending-transfer readback is separately authenticated; actual
 viewer/backend and recovery qualification remain open.
+
+## Lease-gated credential resolution
+
+[Credential resolution under durable exclusive control](lease-credentials-v1.md)
+composes the existing Resolver with the active lease holder/epoch gate. Distinct
+credential admission and pinned trusted adapters remain required; synthetic
+component checks do not qualify real provider or browser integration.

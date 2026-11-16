@@ -17,7 +17,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, ContextManager, Iterator, NoReturn, Protocol, cast
 
-from browser_runtime.credentials import Observation, Target
+from browser_runtime.credentials import (
+    AdapterSet, Grant as CredentialGrant, Helper, Observation, Resolver, Target, Vault,
+)
 from browser_runtime.effects import Cancelled, Denied, Outcome
 from browser_runtime.guarded_effects import Grant as EffectGrant
 from browser_runtime.guarded_effects import GuardedJournal, Site
@@ -130,14 +132,21 @@ class Input:
 
 
 @dataclass(frozen=True)
+class CredentialInput:
+    """Distinct exact credential admission; effect tickets confer no vault rights."""
+    credential: CredentialGrant
+    holder: Holder
+
+
+@dataclass(frozen=True)
 class FenceReceipt:
     transfer: Transfer
     previous_inputs_closed: bool
 
 
 class Guard(Protocol):
-    def admit(self, ticket: object) -> Transfer | Recovery | Input | None: ...
-    def current(self, grant: Transfer | Recovery | Input) -> bool: ...
+    def admit(self, ticket: object) -> Transfer | Recovery | Input | CredentialInput | None: ...
+    def current(self, grant: Transfer | Recovery | Input | CredentialInput) -> bool: ...
     def observe(self) -> Observation | None: ...
     def released(self, transfer: Transfer | Recovery) -> bool:
         """Authenticate release by the exact source holder, target and epoch."""
@@ -226,16 +235,25 @@ class LeaseStore:
         if failed:
             _fail(cancelled)
 
-    def _check(self, guard: Guard, grant: Transfer | Recovery | Input) -> None:
+    def _check(self, guard: Guard, grant: Transfer | Recovery | Input | CredentialInput) -> None:
         if type(grant) is Transfer:
             grant.validate()
             target, deadline = grant.target, grant.deadline
         elif type(grant) is Recovery:
             grant.validate()
             target, deadline = grant.transfer.target, grant.deadline
-        elif type(grant) is Input and type(grant.effect) is EffectGrant and type(grant.holder) is Holder:
+        elif type(grant) in (Input, CredentialInput):
+            if type(grant.holder) is not Holder:
+                raise ValueError
             grant.holder.validate()
-            target, deadline = grant.effect.target, grant.effect.deadline
+            if type(grant) is Input:
+                if type(grant.effect) is not EffectGrant:
+                    raise ValueError
+                target, deadline = grant.effect.target, grant.effect.deadline
+            else:
+                if type(grant.credential) is not CredentialGrant:
+                    raise ValueError
+                target, deadline = grant.credential.target, grant.credential.deadline
             if type(target) is not Target:
                 raise ValueError
             target.validate()
@@ -260,8 +278,8 @@ class LeaseStore:
             (target.binding.browser,),
         ).fetchone()
 
-    def _input(self, grant: Input) -> None:
-        target = grant.effect.target
+    def _input(self, grant: Input | CredentialInput) -> None:
+        target = grant.effect.target if type(grant) is Input else grant.credential.target
         row = self._row(target)
         if row is None or row[:4] != (
             _scope(target), target.binding.epoch, _encode(asdict(grant.holder)), "active"
@@ -405,6 +423,20 @@ class LeaseStore:
         return GuardedJournal(path, authority=_InputAuthority(self), site=site,
                               clock=self._clock, max_age=self._max_age)
 
+    def credential_resolver(
+        self, vault: Vault, helper: Helper, *, adapter_digest: str, expected_digest: str,
+    ) -> Resolver:
+        """Trusted composition only: pin this lease-bound authority/vault/helper set.
+
+        The digest must attest this composition, not an unrelated raw resolver.
+        Matching strings do not authenticate adapters. Resolver retains its own
+        one-attempt rule, pin checks, scoped reference checks and handle cleanup.
+        """
+        return Resolver(
+            AdapterSet(adapter_digest, _CredentialAuthority(self), vault, helper),
+            expected_digest=expected_digest, clock=self._clock, max_age=self._max_age,
+        )
+
     def close(self) -> None:
         if not self._lock.acquire(blocking=False):
             _fail(False)
@@ -466,3 +498,47 @@ class _InputGuard:
         # Epoch comes from the locked durable authority row, not the page.
         self.store._input(grant)
         return Observation(grant.effect.target, observed.observed_at)
+
+
+class _CredentialAuthority:
+    def __init__(self, store: LeaseStore) -> None:
+        self.store = store
+
+    @contextmanager
+    def acquire(self) -> Iterator[_CredentialGuard]:
+        with self.store._session() as guard:
+            self.store._db.execute("BEGIN IMMEDIATE")
+            yield _CredentialGuard(self.store, guard)
+
+
+class _CredentialGuard:
+    def __init__(self, store: LeaseStore, guard: Guard) -> None:
+        self.store, self.guard = store, guard
+        self.grant: CredentialInput | None = None
+
+    def admit(self, ticket: object) -> CredentialGrant | None:
+        grant = self.guard.admit(ticket)
+        if type(grant) is not CredentialInput:
+            return None
+        self.store._check(self.guard, grant)
+        self.store._input(grant)
+        self.grant = grant
+        return grant.credential
+
+    def current(self, credential: CredentialGrant) -> bool:
+        grant = self.grant
+        if grant is None or grant.credential != credential:
+            return False
+        self.store._check(self.guard, grant)
+        self.store._input(grant)
+        return True
+
+    def observe(self) -> Observation | None:
+        observed = self.guard.observe()
+        grant = self.grant
+        if (grant is None or type(observed) is not Observation
+                or type(observed.target) is not Target
+                or _scope(observed.target) != _scope(grant.credential.target)):
+            return None
+        self.store._input(grant)
+        return Observation(grant.credential.target, observed.observed_at)
