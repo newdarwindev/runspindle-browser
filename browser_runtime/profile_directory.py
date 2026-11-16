@@ -25,15 +25,18 @@ from browser_runtime.profile_store import (
     MAX_BYTES,
     Adapters,
     Authority,
-    Cancelled,
-    Denied,
     Grant,
     Guard,
     Keys,
     Result,
     Store,
+    _fail,
     encoded,
 )
+
+# Preserve existing module-level error aliases.
+from browser_runtime.profile_store import Cancelled as Cancelled
+from browser_runtime.profile_store import Denied as Denied
 
 MAX_DATA = 8 * 1024 * 1024
 MAX_NODES = 512
@@ -174,8 +177,8 @@ class DirectoryProfileIO:
                         cancelled = cancelled or not isinstance(error, Exception)
             self._closed = True
             if cancelled:
-                raise Cancelled("profile directory initialization cancelled")
-            raise Denied("profile directory unavailable")
+                _fail("profile directory initialization cancelled", cancelled=True)
+            _fail("profile directory unavailable")
 
     def _safe(self, info: os.stat_result, *, directory: bool) -> None:
         require(info.st_uid == os.getuid() and info.st_dev == self._root_stat.st_dev)
@@ -412,7 +415,7 @@ class DirectoryProfileIO:
         self, grant: Grant, guard: Guard, action: str, operation: Callable[[], T]
     ) -> T:
         if not self._mutex.acquire(blocking=False):
-            raise Denied("profile directory busy")
+            _fail("profile directory busy")
         result: T | None = None
         success = False
         locked = False
@@ -437,8 +440,9 @@ class DirectoryProfileIO:
                 if entered:
                     try:
                         self._recover(grant, guard)
-                    except BaseException:
-                        pass  # Cleanup failure is pending, never successful erasure.
+                    except BaseException as error:
+                        cancelled = cancelled or not isinstance(error, Exception)
+                        # Cleanup failure is pending, never successful erasure.
             finally:
                 if locked:
                     try:
@@ -449,9 +453,9 @@ class DirectoryProfileIO:
         finally:
             self._mutex.release()
         if cancelled:
-            raise Cancelled("profile directory operation cancelled")
+            _fail("profile directory operation cancelled", cancelled=True)
         if not success:
-            raise Denied("profile directory operation denied")
+            _fail("profile directory operation denied")
         return cast(T, result)
 
     def _walk(
@@ -758,7 +762,7 @@ class DirectoryProfileIO:
 
     def close(self) -> None:
         if not self._mutex.acquire(blocking=False):
-            raise Denied("profile directory busy")
+            _fail("profile directory busy")
         failed = False
         cancelled = False
         try:
@@ -774,9 +778,9 @@ class DirectoryProfileIO:
         finally:
             self._mutex.release()
         if cancelled:
-            raise Cancelled("profile directory close cancelled")
+            _fail("profile directory close cancelled", cancelled=True)
         if failed:
-            raise Denied("profile directory close failed")
+            _fail("profile directory close failed")
 
 
 class MaterializedStore(Store):
