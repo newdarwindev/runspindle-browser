@@ -9,9 +9,11 @@ import traceback
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 from unittest.mock import patch
 
+import browser_testing.vault as fixture_vault
 from browser_testing.vault import (
     Denied,
     Entry,
@@ -211,6 +213,94 @@ class SyntheticVaultTests(unittest.TestCase):
             )
         self.assertNotIn(CANARY, str(caught.exception))
         self.assertEqual(self.vault.audit, [])
+
+    def final_freshness_case(
+        self, module: Any, final_clock: Any, *, vault_time: int = 12
+    ) -> tuple[str, list[object], list[str], int, int]:
+        scope = module.Scope(
+            "principal",
+            "account",
+            "https://top.example",
+            "https://frame.example",
+            "fill",
+            "session",
+            7,
+        )
+        vault_calls = 0
+        clock_calls = 0
+
+        def vault_clock() -> int:
+            nonlocal vault_calls
+            vault_calls += 1
+            return 10 if vault_calls == 1 else vault_time
+
+        def clock() -> Any:
+            nonlocal clock_calls
+            clock_calls += 1
+            return 10 if clock_calls < 3 else final_clock
+
+        vault = module.FakeVault(vault_clock)
+        vault.put(REFERENCE, module.Entry(scope, module.Secret(CANARY, 1), 20))
+        observed = module.ScriptedObservations([module.Observation(scope, 10)] * 2)
+        effects: list[object] = []
+        try:
+            result = module.resolve_and_inject(
+                scope, REFERENCE, observed, vault, effects.append, clock, max_age=1
+            )
+        except module.Denied:
+            result = "denied"
+        return result, effects, vault.audit, observed.calls, clock_calls
+
+    def test_final_freshness_after_vault_revalidation(self) -> None:
+        for final_clock in (12, 9, True, None, 11.0, "11"):
+            with self.subTest(final_clock=final_clock):
+                result, effects, audit, observations, clocks = (
+                    self.final_freshness_case(fixture_vault, final_clock)
+                )
+                self.assertEqual(result, "denied")
+                self.assertEqual(effects, [])
+                self.assertEqual(audit, ["read_attempt", "read_allowed"])
+                self.assertEqual(observations, 2)
+                self.assertEqual(clocks, 3)
+
+    def test_final_freshness_inclusive_boundary(self) -> None:
+        result, effects, audit, observations, clocks = self.final_freshness_case(
+            fixture_vault, 11, vault_time=11
+        )
+        self.assertEqual(result, "injected")
+        self.assertEqual(effects, [Secret(CANARY, 1)])
+        self.assertEqual(audit, ["read_attempt", "read_allowed"])
+        self.assertEqual((observations, clocks), (2, 3))
+
+    def test_final_freshness_does_not_override_vault_expiry(self) -> None:
+        result, effects, audit, observations, clocks = self.final_freshness_case(
+            fixture_vault, 11, vault_time=20
+        )
+        self.assertEqual(result, "denied")
+        self.assertEqual(effects, [])
+        self.assertEqual(audit, ["read_attempt", "read_allowed"])
+        self.assertEqual((observations, clocks), (2, 2))
+
+    def test_missing_final_freshness_guard_has_forbidden_injection(self) -> None:
+        source = (ROOT / "browser_testing/vault.py").read_text()
+        anchor = "if type(now) is not int or not 0 <= now - second.at <= max_age:"
+        self.assertEqual(source.count(anchor), 1)
+        module = ModuleType("mutated_final_freshness")
+        sys.modules[module.__name__] = module
+        self.addCleanup(sys.modules.pop, module.__name__)
+        exec(
+            compile(
+                source.replace(anchor, "if False:"), "<synthetic-mutation>", "exec"
+            ),
+            module.__dict__,
+        )
+        result, effects, audit, observations, clocks = self.final_freshness_case(
+            module, 12
+        )
+        self.assertEqual(result, "injected")
+        self.assertEqual(len(effects), 1)
+        self.assertEqual(audit, ["read_attempt", "read_allowed"])
+        self.assertEqual((observations, clocks), (2, 3))
 
     def test_deliberate_missing_second_scope_guard_has_forbidden_effect(self) -> None:
         source = (ROOT / "browser_testing/vault.py").read_text()

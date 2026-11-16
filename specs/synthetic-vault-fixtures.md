@@ -10,7 +10,13 @@ Scope binds principal, account, exact HTTPS top/frame origins, operation, sessio
 and positive epoch. The harness checks freshness and equality before the vault
 read and again before the injected spy. After the second observation, it revalidates
 the exact read entry and monotonic generation, its scope, expiry and vault
-availability. Forgetting, rotation, same-secret replacement and forget/restore
+availability. After that revalidation, the harness samples its observation clock
+again and checks the retained second observation, without calling the observer
+again. A stale, future-dated or malformed final clock denies injection; age equal
+to max_age remains permitted. This sequential snapshot check does not provide
+atomicity or impose a shared-clock authority contract on the fake vault.
+The vault's own identity-expiry check remains separate and cannot be overridden
+by a fresh observation. Forgetting, rotation, same-secret replacement and forget/restore
 during the second observation therefore deny injection. Exhausted observations deny rather than
 reusing a stale value. Vault identity expiry is synthetic clock-controlled input,
 not a new credential retention TTL. Explicit forgetting removes only the fake

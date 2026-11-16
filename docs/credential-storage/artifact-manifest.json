@@ -13,7 +13,7 @@
     },
     "browser_testing/vault.py": {
       "classification": "existing_synthetic_model",
-      "sha256": "28957420788c002e261e1c0021989979156c64d8d785f583990c37037b9d90d8"
+      "sha256": "306a6901b31d9f733623e0d5e04d2299690c4ee89487b560ec4e2961d32821dc"
     },
     "docs/credential-storage/README.md": {
       "classification": "adapted_review_documentation",
@@ -53,7 +53,7 @@
     },
     "tests/test_synthetic_vault.py": {
       "classification": "existing_synthetic_tests",
-      "sha256": "5e319fb89768ef2e8d892a57c64003890eda3065ee602f7877248e1adea767c0"
+      "sha256": "31277ed2bd1692865a8ea83c97cb45047936bc8d23d1e785d4191fbcc39075f1"
     },
     "tests/test_trusted_credentials.py": {
       "classification": "existing_synthetic_adapter_tests",

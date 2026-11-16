@@ -195,6 +195,9 @@ def resolve_and_inject(
         if second.scope != expected:
             raise Denied("synthetic destination changed")
         vault.revalidate(reference, expected, read)
+        now = clock()
+        if type(now) is not int or not 0 <= now - second.at <= max_age:
+            raise Denied("synthetic observation unavailable")
         inject(secret)
         return "injected"
     except Exception:
