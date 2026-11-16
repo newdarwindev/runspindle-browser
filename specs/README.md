@@ -81,3 +81,9 @@ browser/launcher integration and full #14 acceptance remain unqualified.
 [Guarded effect journal](guarded-effect-journal-v1.md) binds fresh authenticated
 full-target admission to the existing durable operation journal. Synthetic
 component evidence is separate from live browser/authority integration.
+
+## Durable local control gate
+
+[Exclusive control leases](control-leases-v1.md) gate the existing guarded effect
+journal with durable holder/epoch transitions and authenticated handback checks.
+Actual viewer/backend qualification and uncertain-transition recovery remain open.
