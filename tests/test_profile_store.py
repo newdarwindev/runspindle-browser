@@ -312,7 +312,8 @@ class ProfileStoreTests(unittest.TestCase):
                 CANARY.decode(), "".join(traceback.format_exception(caught.exception))
             )
         self.fake.suppress = True
-        with self.assertRaises(Denied):
+        # The still-installed Stop cancellation must survive guard suppression.
+        with self.assertRaises(Cancelled):
             self.run_action("save")
         self.fake.suppress = False
         self.fake.after_capture = lambda: None

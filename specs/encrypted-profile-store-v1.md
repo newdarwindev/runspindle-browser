@@ -264,3 +264,33 @@ candidate rename leaves BUILDING pending without publishing CLEANUP; only fresh
 admission recovers it. Source mutants deleting either post-observation gate fail
 the corresponding independent effect assertions. This is local synthetic
 component evidence, not browser/provider/distributed authority qualification.
+
+## Cancellation through trusted cleanup contexts
+
+Store wraps its authority and key context boundaries with a local cancellation
+latch. A `BaseException` cancellation from admission, key entry, capture, consume
+or context exit remains a fixed profile `Cancelled`, even if a later key or
+authority exit suppresses it or replaces it with an ordinary error. The latch is
+per invocation, not mutable instance authority. Existing completion checks still
+deny swallowed ordinary operation errors. Public profile `Denied`/`Cancelled`
+exits also clear cause/context when the caller already has an active exception;
+fixed messages and existing exception types are retained.
+
+Cancellation does not roll back committed effects or authorize retry. A nonce
+burned before failed capture stays burned. A restore interrupted during consume
+remains UNKNOWN and is not consumed twice. Cancellation during key release after
+a committed delivery still reports cancellation, while a later independently
+admitted lookup reports the recorded DELIVERED outcome without replay. Likewise,
+a committed save remains retained when authority exit cancels. These outcomes
+are verified with synthetic adapters and real local SQLite/AES storage in
+`tests/test_profile_cancellation.py`, normally and with optimization enabled.
+Durable rows are observed in the real store within the test process; no new
+fresh-process cancellation-recovery qualification is claimed. A separate Python
+source mutant bypasses the wrapper and makes the cancellation assertions fail
+with Denied instead, including under optimization.
+
+The scope is these Store context boundaries and public profile error sanitation,
+not universal cancellation preservation inside arbitrary adapter internals.
+Raw cancellation during Store construction and `DependencyUnavailable` remain
+outside this change. No schema/action, provider, service, access or deployment
+behavior changes, and no live browser/provider qualification is claimed.

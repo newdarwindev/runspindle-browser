@@ -12,9 +12,19 @@ import math
 import os
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, ContextManager, Literal, Protocol, cast
+from typing import (
+    Callable,
+    ContextManager,
+    Iterator,
+    Literal,
+    NoReturn,
+    Protocol,
+    TypeVar,
+    cast,
+)
 
 from browser_runtime.credentials import Observation, Target
 from browser_runtime.profile_schema import Location, open_store, require, token
@@ -30,6 +40,42 @@ class Denied(ValueError):
 
 class Cancelled(BaseException):
     """Sanitized cancellation; callers must stop, not blindly retry consumption."""
+
+
+def _fail(message: str, *, cancelled: bool = False) -> NoReturn:
+    try:
+        if cancelled:
+            raise Cancelled(message)
+        raise Denied(message)
+    except (Cancelled, Denied) as error:
+        error.__cause__ = error.__context__ = None
+        raise
+
+
+T = TypeVar("T")
+
+
+@contextmanager
+def _cancellation_guard(context: ContextManager[T]) -> Iterator[T]:
+    """Latch cancellation before a trusted key/authority context can hide it.
+
+    This covers these context boundaries, not arbitrary nested adapter cleanup.
+    Ordinary errors retain existing suppression/completion semantics.
+    """
+    cancelled = False
+    try:
+        with context as value:
+            try:
+                yield value
+            except BaseException as error:
+                cancelled = not isinstance(error, Exception)
+                raise
+    except BaseException as error:
+        cancelled = cancelled or not isinstance(error, Exception)
+        raise
+    finally:
+        if cancelled:
+            _fail("profile operation cancelled", cancelled=True)
 
 
 class DependencyUnavailable(RuntimeError):
@@ -176,11 +222,11 @@ class Store:
         except Exception:
             pass
         if not success:
-            raise Denied("profile store unavailable")
+            _fail("profile store unavailable")
 
     def close(self) -> None:
         if not self._lock.acquire(blocking=False):
-            raise Denied("profile store busy")
+            _fail("profile store busy")
         failed = False
         cancelled = False
         try:
@@ -194,9 +240,9 @@ class Store:
         finally:
             self._lock.release()
         if cancelled:
-            raise Cancelled("profile close cancelled")
+            _fail("profile close cancelled", cancelled=True)
         if failed:
-            raise Denied("profile close failed")
+            _fail("profile close failed")
 
     def _check(self, guard: Guard, grant: Grant) -> None:
         # Trusted callbacks may block. Sample observation/time only after the
@@ -309,7 +355,9 @@ class Store:
         )
         self._check(guard, grant)
         completed = False
-        with adapters.keys.acquire(self._store_id, grant, None) as key:
+        with _cancellation_guard(
+            adapters.keys.acquire(self._store_id, grant, None)
+        ) as key:
             self._check(guard, grant)
             fingerprint = self._key(key)
             nonce = os.urandom(12)
@@ -368,7 +416,9 @@ class Store:
         version, nonce, ciphertext = self._checkpoint(grant)
         self._check(guard, grant)
         completed = False
-        with adapters.keys.acquire(self._store_id, grant, version) as key:
+        with _cancellation_guard(
+            adapters.keys.acquire(self._store_id, grant, version)
+        ) as key:
             self._check(guard, grant)
             fingerprint = self._key(key, version)
             require(
@@ -408,11 +458,11 @@ class Store:
     def _discard(self, guard: Guard, grant: Grant) -> Result:
         # Plaintext cleanup is a separate explicit component capability. Never
         # interpret the new admission as ciphertext forgetting or a key request.
-        raise Denied("profile discard unsupported")
+        _fail("profile discard unsupported")
 
     def run(self, ticket: object) -> Result:
         if not self._lock.acquire(blocking=False):
-            raise Denied("profile store busy")
+            _fail("profile store busy")
         result: Result | None = None
         cancelled = False
         try:
@@ -420,7 +470,7 @@ class Store:
                 require(not self._closed and type(self._adapters) is Adapters)
                 adapters = cast(Adapters, self._adapters)
                 completed: Result | None = None
-                with adapters.authority.acquire() as guard:
+                with _cancellation_guard(adapters.authority.acquire()) as guard:
                     grant = guard.admit(ticket)
                     require(type(grant) is Grant)
                     grant = cast(Grant, grant)
@@ -457,9 +507,9 @@ class Store:
                             cancelled = cancelled or not isinstance(error, Exception)
         finally:
             self._lock.release()
-        # Outside handlers: even __context__ does not retain upstream material.
+        # Sanitize even when called from an active caller exception handler.
         if cancelled:
-            raise Cancelled("profile operation cancelled")
+            _fail("profile operation cancelled", cancelled=True)
         if result is None:
-            raise Denied("profile operation denied")
+            _fail("profile operation denied")
         return result

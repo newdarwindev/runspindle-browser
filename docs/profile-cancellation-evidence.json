@@ -1,0 +1,86 @@
+{
+  "evidence_class": "local_synthetic_component",
+  "scope": "Browser #14/#7 bounded profile cancellation and public error sanitation",
+  "base_commit": "7e23f3a32216b6889d2a3d8d55d3099e08de396e",
+  "files": {
+    "browser_runtime/profile_store.py": "4726442eb38421ac6c07c20e323f8a9df850328de6494b95ee28dd2c783212b2",
+    "browser_runtime/profile_directory.py": "ea8c47e12ed5c8975f8d6bd0038800a94e5e22a8f1dfef3df505e8ad1511e18e",
+    "tests/test_profile_cancellation.py": "f7570ab8074a4bb52be71bcc95e33bd9a29b7c70152fa1c5f2f16ec147cca9a6",
+    "specs/encrypted-profile-store-v1.md": "57c29411f7515d3510798289d43fb578e1d447cd4068a15600c6c07f4584cf96",
+    "specs/profile-directory-v1.md": "e85e3cb393234a5a3d75a9cc05b6d3077844ab5ee42c7fdfb46e6aab6c69fc8b",
+    "tests/test_profile_store.py": "4108d745cefc7b80ff189820c73a943bb5f7bd72a69f19863609c96321f77bfb",
+    "browser_testing/profile_store_fixtures.py": "8d793ab687003f28fdf7a5b3e3c76002b558a621aca8d12a57603bf31ad7f745",
+    "tests/test_profile_directory.py": "af3b5d1fabe0d85975f0489fb08304740be74ec651ff319f71d61b9b04cf2dc6",
+    "requirements-quality.txt": "9cbe1331549216b953f2922f1e8321357ca82bb985e1ea595c87fcee8a8fdc84",
+    "requirements-profile.txt": "96f356c53e8b8c4fb2f8dca5d1a31036148e3004996467a55b238291812ae252",
+    "hygiene.json": "8311a93317e273135611178085e4ec2f7eba3725085b924052231d45ba12d69e"
+  },
+  "verification": {
+    "focused_normal": {
+      "command": "python3 -m unittest discover -s tests -p test_profile_cancellation.py -v",
+      "status": "passed",
+      "tests": 8
+    },
+    "focused_optimized": {
+      "command": "python3 -O -m unittest discover -s tests -p test_profile_cancellation.py -v",
+      "status": "passed",
+      "tests": 8
+    },
+    "scaffold": "passed",
+    "whitespace": "passed",
+    "full_suite": {
+      "command": "python3 -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 465,
+      "seconds": 39.269
+    },
+    "aggregate": {
+      "command": "python3 tools/validate.py",
+      "status": "failed",
+      "exit": 1,
+      "blockers": [
+        "missing Ruff distribution metadata; static lint/format/type qualification not run",
+        "missing Cargo; Rust fmt/test/Clippy not run"
+      ],
+      "source_stability": "passed, final sources frozen during all final runs"
+    },
+    "required_ci": "not_run",
+    "full_optimized": {
+      "command": "python3 -O -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 465,
+      "seconds": 83.05
+    }
+  },
+  "reproduced_before_fix": [
+    "capture cancellation replaced by key release ordinary error produced Denied",
+    "public Denied retained active caller exception context"
+  ],
+  "assertions": [
+    "key and authority suppression/replacement preserve Cancelled",
+    "key/capture/consume/release counts",
+    "unknown restore never reconsumed",
+    "committed delivered restore and saved checkpoint survive cancellation",
+    "ordinary operation suppression does not produce success",
+    "recovery cancellation overrides ordinary directory error",
+    "public cause/context and formatted tracebacks exclude synthetic canary",
+    "wrapper bypass source mutant in subprocess loses cancellation and fails regression"
+  ],
+  "limitations": [
+    "trusted synthetic authority and keys only",
+    "no universal adapter or low-level filesystem cancellation guarantee",
+    "raw Store constructor cancellation outside scope",
+    "no real providers or browsers",
+    "no service, access, schema or action changes",
+    "durable SQLite rows observed in test process, not fresh-process cancellation recovery"
+  ],
+  "compatibility_regression": "Existing suppression test now expects Cancelled for Stop(BaseException), replacing its prior Denied expectation; cancellation contract correction, ordinary errors still Denied.",
+  "existing_test_sha256": "4108d745cefc7b80ff189820c73a943bb5f7bd72a69f19863609c96321f77bfb",
+  "independent_review": "Runtime and tests independently reviewed; 8 focused tests independently repeated normally and optimized. No concrete blockers found.",
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "50.0.0 compatibility; preferred 50.0.2 unqualified"
+  },
+  "provenance": "Original code and synthetic fixtures; no third-party source imported. Only this JSON is generated evidence. No deployments, provider calls, services, credentials, backups or access/security settings changed."
+}

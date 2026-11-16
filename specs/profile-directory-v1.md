@@ -213,3 +213,17 @@ candidate rename leaves BUILDING pending without publishing CLEANUP; only fresh
 admission recovers it. Source mutants deleting either post-observation gate fail
 the corresponding independent effect assertions. This is local synthetic
 component evidence, not browser/provider/distributed authority qualification.
+
+## Cancellation during failure recovery
+
+If an ordinary directory operation error is followed by cancellation in its
+best-effort recovery call, cancellation takes precedence as the existing fixed
+profile `Cancelled` category. Recovery failures never claim completed cleanup;
+locks still release and durable pending state retains its existing interpretation.
+A new operation requires fresh explicit admission, not an automatic retry.
+Public directory lifecycle `Denied`/`Cancelled` exits clear cause/context even
+inside a caller's active exception handler. Tests use only synthetic trees and
+callbacks. Arbitrary deeper filesystem-helper cleanup replacement, raw Store
+constructor cancellation, real browser integration and physical erasure are not
+qualified by this bounded change. See the encrypted-store cancellation contract
+and `tests/test_profile_cancellation.py`.
