@@ -1,0 +1,262 @@
+{
+  "base_commit": "eb243dca95023d34f48987a78ad08cbac1c3971e",
+  "boundaries": [
+    "invented identities, fixed public test key and synthetic cookie canary only",
+    "no real browser profile, account, provider, network request, install or security/access change",
+    "existing profile regressions include bounded subprocess synthetic crash/SQLite tests; no production process touched",
+    "poisoning is instance-local, not durable state or recovery authority",
+    "failed close may leave underlying connection/transaction/lock alive; test harness explicitly owns final synthetic resource cleanup",
+    "no live browser, authenticated Core/Host composition, physical erasure, power-loss or end-to-end acceptance claim",
+    "no secrets, private paths or raw host logs included"
+  ],
+  "environment": {
+    "cryptography": "50.0.2",
+    "machine": "arm64",
+    "os": "Darwin",
+    "python": "3.15.2",
+    "qualification": "installed component compatibility only; no dependency or runner-image qualification",
+    "sqlite": "3.54.1"
+  },
+  "evidence_class": "synthetic_component_with_real_local_sqlite",
+  "independent_review": {
+    "findings": "No blocking findings in runtime, final tests and specification",
+    "focused_tests_normal": 15,
+    "focused_tests_optimized": 15,
+    "reviewed_sha256": {
+      "browser_runtime/profile_store.py": "442565e9392f3e3406fae86adc9c9e4c5ef9342d116bc9deb95816b80ac1124a",
+      "specs/encrypted-profile-store-v1.md": "92ca84c3ef3ed3ab59e240cfcd3ab8db0f9baafb1d47da327cc59b07c0066552",
+      "tests/test_profile_cleanup.py": "ac320401fd8d0fe0277793db14529198c27546ae48713e3c0b39320258a7d647"
+    },
+    "status": "passed"
+  },
+  "initial_reviewed_source_sha256": {
+    "browser_runtime/profile_schema.py": "078c45da6db546215166dbb6151f7c161977468bb4da73cd5876a86f2cffac7f",
+    "browser_runtime/profile_store.py": "442565e9392f3e3406fae86adc9c9e4c5ef9342d116bc9deb95816b80ac1124a",
+    "browser_testing/profile_store_fixtures.py": "8d793ab687003f28fdf7a5b3e3c76002b558a621aca8d12a57603bf31ad7f745",
+    "specs/encrypted-profile-store-v1.md": "92ca84c3ef3ed3ab59e240cfcd3ab8db0f9baafb1d47da327cc59b07c0066552",
+    "tests/test_profile_cleanup.py": "ac320401fd8d0fe0277793db14529198c27546ae48713e3c0b39320258a7d647",
+    "tests/test_profile_store.py": "1a3a21ada177215203cf9aa1849babecf169cdc0ab9c0c349a4d824a3120ee7b"
+  },
+  "observations": [
+    "ordinary operation denial plus cleanup cancellation remains Cancelled",
+    "original cancellation survives later ordinary rollback/close errors",
+    "failed transaction inspection/rollback marks instance unusable before one close attempt",
+    "future run/close calls have zero authority/key/capture/consume callbacks and no repeated cleanup",
+    "successful rollback retains normal instance reuse",
+    "failure after committed save or delivered restore retains actual committed state",
+    "accepted synthetic consumption then cleanup cancellation leaves durable unknown; fresh Store with fresh synthetic admission does not consume twice"
+  ],
+  "qualification_followup": {
+    "direct_source_checks": {
+      "artifact_integrity": "passed",
+      "browser_product_source": "passed",
+      "credential_storage": "passed",
+      "reference_integrity": "passed",
+      "repository_hygiene_and_PR_body": "passed",
+      "scaffold": "passed"
+    },
+    "full_tests": {
+      "command": "TMPDIR=/private/tmp python3 [-O] -m unittest discover -s tests -v",
+      "normal": {
+        "skipped": 0,
+        "status": "passed",
+        "tests": 265
+      },
+      "notes": "Existing tests emit unclosed SQLite ResourceWarnings under this interpreter; zero test failures.",
+      "optimized": {
+        "skipped": 0,
+        "status": "passed",
+        "tests": 265
+      },
+      "runtime": "CPython 3.15.2 / SQLite 3.54.1 / cryptography 50.0.2 / cffi 2.1.1 / pycparser 3.12 / macOS arm64"
+    },
+    "independent_review": {
+      "focused_tests_normal": 15,
+      "focused_tests_optimized": 15,
+      "format_diff": "three line-wrap-only changes; AST identical",
+      "runtime_sha256": "442565e9392f3e3406fae86adc9c9e4c5ef9342d116bc9deb95816b80ac1124a",
+      "status": "passed",
+      "tests_sha256": "bf657262a1938b6f5529f001160ff453a22f27d8d38f52fcdf3bf6569c14a99d"
+    },
+    "limits": [
+      "No single-environment static/aggregate pass or qualified runner image claimed",
+      "No installation, provider/browser/profile operation, credential/security change, workflow dispatch or merge",
+      "Preferred crypto dependency closure is not qualified: installed pycparser 3.12 differs from preferred 3.0",
+      "Receipt refresh changes evidence only after final executable-source checks"
+    ],
+    "local_aggregate": {
+      "command": "python3 tools/validate.py",
+      "exit_code": 1,
+      "failing_checks": [
+        "static-quality: missing ruff in CPython 3.15.2"
+      ],
+      "notes": "Separate existing quality environment has pinned tools but lacks cryptography. Combined direct evidence is not a single-environment aggregate pass.",
+      "other_checks": [
+        {
+          "id": "reproducible-inputs",
+          "status": "passed"
+        },
+        {
+          "id": "scaffold",
+          "status": "passed"
+        },
+        {
+          "id": "repository-hygiene",
+          "status": "passed"
+        },
+        {
+          "id": "check-credential-storage",
+          "status": "passed"
+        },
+        {
+          "id": "check-browser-product",
+          "status": "passed"
+        },
+        {
+          "id": "check-artifacts",
+          "status": "passed"
+        },
+        {
+          "id": "check-references",
+          "status": "passed"
+        },
+        {
+          "id": "python-tests",
+          "status": "passed"
+        },
+        {
+          "id": "rust-format",
+          "status": "passed"
+        },
+        {
+          "id": "rust-test",
+          "status": "passed"
+        },
+        {
+          "id": "rust-clippy",
+          "status": "passed"
+        },
+        {
+          "id": "distributable-build",
+          "status": "not_applicable"
+        }
+      ],
+      "status": "failed"
+    },
+    "partition_aggregate": {
+      "category": "missing_file",
+      "command": "python3 tools/partition_validation.py aggregate",
+      "exit_code": 2,
+      "notes": "Qualified guest instance/image metadata absent; no gate or identity bypass.",
+      "stage": "instance_metadata",
+      "status": "blocked"
+    },
+    "prior_remote_head": "9c9fe52a71b5a2fc18db7c013f32623e6d21cbb5",
+    "recorded_at": "2026-11-16T01:31:56.830161+00:00",
+    "remote_checks_at_last_read": "No check runs or workflow runs on prior remote head; missing checks are not diagnosed as infrastructure failure. New-head CI remains separate.",
+    "rust": {
+      "cargo": "1.94.1",
+      "clippy": "passed; warnings denied",
+      "commands": [
+        "cargo fmt --all -- --check",
+        "cargo test --offline --locked",
+        "cargo clippy --offline --locked --all-targets -- -D warnings"
+      ],
+      "format": "passed",
+      "isolation": "Existing toolchain, auto-install disabled, offline mode, temporary Cargo home/target; no dependencies fetched.",
+      "rustc": "1.94.1",
+      "test": "passed; one fail-closed stub test, zero doctests"
+    },
+    "source_change": "Three test-only line-wrap changes from pinned Ruff; AST independently identical; runtime and specification unchanged.",
+    "source_identity": "Local snapshot initially had exact remote tree 924ffb0e95df7bd278eeb07eaf67587c1ac5e443 but a synthetic local Git commit, not remote HEAD. Final source identified by file hashes; aggregate local commit identity is not claimed as the remote commit.",
+    "static": {
+      "missing_imports": [
+        "browser_runtime/profile_store.py: cryptography.hazmat.primitives.ciphers.aead",
+        "tools/check_profile_store.py: cryptography.hazmat.backends.openssl.backend"
+      ],
+      "no_baseline_changes": true,
+      "pinned_full_checker": "failed: 148 existing debt and 2 new missing-cryptography import diagnostics in quality-only environment",
+      "pins": {
+        "PyYAML": "6.0.3",
+        "mypy": "1.18.2",
+        "mypy_extensions": "1.2.0",
+        "pathspec": "1.1.1",
+        "ruff": "0.14.5",
+        "shellcheck-py": "0.11.0.1",
+        "typing_extensions": "4.16.0",
+        "yamllint": "1.37.1"
+      },
+      "quality_python": "3.12.16",
+      "targeted_ruff_format": "passed",
+      "targeted_ruff_lint": "passed",
+      "targeted_strict_mypy": "passed with explicit --python-executable pointing to existing CPython 3.15.2 for dependency lookup; not default single-environment qualification"
+    }
+  },
+  "recorded_at": "2026-11-16T01:14:51.015930+00:00",
+  "results": [
+    {
+      "check": "focused_cleanup",
+      "command": "TMPDIR=/private/tmp python3 [-O] -m unittest discover -s tests -p test_profile_cleanup.py -v",
+      "normal": "passed",
+      "optimized": "passed",
+      "tests_each": 15
+    },
+    {
+      "check": "existing_profile_regressions",
+      "command": "TMPDIR=/private/tmp python3 [-O] -m unittest discover -s tests -p test_profile_store.py -v",
+      "normal": "passed",
+      "optimized": "passed",
+      "tests_each": 22
+    },
+    {
+      "check": "deliberate_mutations",
+      "normal": "detected",
+      "optimized": "detected",
+      "pristine_controls": "passed in focused suite",
+      "variants": [
+        "drop cleanup cancellation propagation",
+        "bypass closed-instance admission denial"
+      ]
+    },
+    {
+      "artifact_files": 9,
+      "check": "scaffold_references_artifacts",
+      "command": "python3 tools/check_scaffold.py",
+      "reference_files": 2,
+      "status": "passed"
+    },
+    {
+      "check": "changed_python_syntax_and_trailing_whitespace",
+      "not_equivalent_to": "lint or type checking",
+      "status": "passed"
+    },
+    {
+      "check": "ruff_and_mypy",
+      "reason": "not installed in selected existing interpreter; no installation attempted",
+      "status": "blocked"
+    },
+    {
+      "check": "full_repository_aggregate_required_CI",
+      "reason": "bounded partial source workspace and isolated cleanup/profile test scope; no aggregate qualification",
+      "status": "not_run"
+    },
+    {
+      "check": "initial_existing_profile_run_default_TMPDIR",
+      "reason": "Mac default temporary path has symlink ancestors rejected by unchanged Location checks; repeated with explicit non-symlink /private/tmp and passed, no production check relaxed",
+      "status": "failed",
+      "tests": 22
+    }
+  ],
+  "results_phase": "Initial bounded evidence before additional full qualification; retained historically below",
+  "schema": "runspindle.component-evidence.v1",
+  "scope": "Browser #14/#7 bounded profile cleanup failure handling; issues remain open",
+  "source_materialization": "Exact base GitHub blobs; 55 unchanged materialized blobs verified by Git blob SHA-1. Only listed runtime/spec modification and new tests/this evidence are proposed for publication.",
+  "source_sha256": {
+    "browser_runtime/profile_schema.py": "078c45da6db546215166dbb6151f7c161977468bb4da73cd5876a86f2cffac7f",
+    "browser_runtime/profile_store.py": "442565e9392f3e3406fae86adc9c9e4c5ef9342d116bc9deb95816b80ac1124a",
+    "browser_testing/profile_store_fixtures.py": "8d793ab687003f28fdf7a5b3e3c76002b558a621aca8d12a57603bf31ad7f745",
+    "specs/encrypted-profile-store-v1.md": "92ca84c3ef3ed3ab59e240cfcd3ab8db0f9baafb1d47da327cc59b07c0066552",
+    "tests/test_profile_cleanup.py": "bf657262a1938b6f5529f001160ff453a22f27d8d38f52fcdf3bf6569c14a99d",
+    "tests/test_profile_store.py": "1a3a21ada177215203cf9aa1849babecf169cdc0ab9c0c349a4d824a3120ee7b"
+  }
+}
