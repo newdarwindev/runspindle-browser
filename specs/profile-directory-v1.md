@@ -193,3 +193,23 @@ No qualified runner, persistent service, host setting or source license changed.
 Primary implementation references: [Python descriptor-relative filesystem APIs](https://docs.python.org/3.12/library/os.html),
 [nonblocking flock](https://docs.python.org/3.12/library/fcntl.html), and
 [file and directory fsync requirements](https://man7.org/linux/man-pages/man2/fsync.2.html).
+
+## Observation-discovered revocation
+
+Each profile check retains fast current/quiescent denial before observation and
+rechecks both immediately after `observe`, before sampling the clock. A matching
+target observation is not proof that the guard remains current or the browser
+remains stopped: observation can discover lost authority or a resumed writer.
+Neither key acquisition, plaintext capture/consumption nor directory metadata
+publication may cross that known loss merely because a later check would deny.
+Time is sampled after the second callbacks, so their delay cannot preserve an
+expired admission or stale observation. This is not universal TOCTOU immunity;
+trusted bounded callbacks and an atomic, coherent guard are still required.
+
+`tests/test_profile_observation_fence.py` exercises invented guards and keys with
+real temporary SQLite/filesystem state. Negative effect spies cover key reads,
+capture, consume, directory claim and candidate publication. Lost authority after
+candidate rename leaves BUILDING pending without publishing CLEANUP; only fresh
+admission recovers it. Source mutants deleting either post-observation gate fail
+the corresponding independent effect assertions. This is local synthetic
+component evidence, not browser/provider/distributed authority qualification.

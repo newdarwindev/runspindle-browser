@@ -1,0 +1,84 @@
+{
+  "evidence_class": "local_synthetic_component",
+  "scope": "Browser #14/#7 observation-discovered revocation checks; no schema or external service change",
+  "base_commit": "595dd6e75b85ce2069e8aa8a8adb5a9271ab67e3",
+  "files": {
+    "browser_runtime/profile_store.py": "a9d4775b9669faf4baee871ed327ab6803a370d2f513cd23a667510774d63c2b",
+    "browser_runtime/profile_directory.py": "71e6fa35a190af5f0a2507ed81b4a1d0666c1d5c3d57f02a0c587822e2569747",
+    "tests/test_profile_observation_fence.py": "99e239ff500b5364d7f59dbd0bbcb253b02e0f97d39df4e3fd6d701eae0ad458",
+    "specs/encrypted-profile-store-v1.md": "82be751c5ba035d6ad3a9f861855a531e3a7d4c20c0aff9e42fa4ba66b6fb95a",
+    "specs/profile-directory-v1.md": "62c2a069c899112b0777e90a3ecd65953b336c3d1356efdf2ee1149c4bee71e9",
+    "browser_testing/profile_store_fixtures.py": "8d793ab687003f28fdf7a5b3e3c76002b558a621aca8d12a57603bf31ad7f745",
+    "tests/test_profile_directory.py": "af3b5d1fabe0d85975f0489fb08304740be74ec651ff319f71d61b9b04cf2dc6",
+    "requirements-quality.txt": "9cbe1331549216b953f2922f1e8321357ca82bb985e1ea595c87fcee8a8fdc84",
+    "requirements-profile.txt": "96f356c53e8b8c4fb2f8dca5d1a31036148e3004996467a55b238291812ae252",
+    "hygiene.json": "8311a93317e273135611178085e4ec2f7eba3725085b924052231d45ba12d69e"
+  },
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "50.0.0 compatibility; preferred 50.0.2 unqualified"
+  },
+  "verification": {
+    "focused_normal": {
+      "command": "python3 -m unittest discover -s tests -p test_profile_observation_fence.py -v",
+      "status": "passed",
+      "tests": 6
+    },
+    "focused_optimized": {
+      "command": "python3 -O -m unittest discover -s tests -p test_profile_observation_fence.py -v",
+      "status": "passed",
+      "tests": 6
+    },
+    "scaffold": "passed",
+    "whitespace": "passed",
+    "full_suite": {
+      "command": "python3 -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 446,
+      "seconds": 35.401
+    },
+    "aggregate": {
+      "command": "python3 tools/validate.py",
+      "status": "failed",
+      "exit": 1,
+      "blockers": [
+        "missing Ruff distribution metadata; static lint/format/type qualification not run",
+        "missing Cargo; Rust fmt/test/Clippy not run"
+      ],
+      "source_stability": "passed, runtime/tests/spec/evidence frozen throughout all final runs"
+    },
+    "required_ci": "not_run",
+    "full_optimized": {
+      "command": "python3 -O -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 446,
+      "seconds": 80.991
+    }
+  },
+  "regression": {
+    "before_fix": "Revocation inside pre-key observation still caused one key read before final denial.",
+    "after_fix": "Zero key reads at that boundary; zero capture/consume or directory publication when observation discovers revoked authority or lost quiescence.",
+    "mutations": "Deleting either new recheck causes independent effect-spy assertions to fail; both mutants executed normally and optimized."
+  },
+  "real_boundaries": [
+    "SQLite/AES checkpoint component",
+    "temporary private directory metadata and generated tree",
+    "isolated Python mutation subprocesses"
+  ],
+  "synthetic_boundaries": [
+    "authenticated guard",
+    "revocation and quiescence discovery",
+    "key bytes",
+    "profile contents"
+  ],
+  "unqualified": [
+    "real browser quiescence",
+    "live provider",
+    "distributed authority",
+    "universal TOCTOU immunity",
+    "production activation"
+  ],
+  "independent_review": "Six-line runtime diff and focused tests reviewed; focused suite independently repeated normally and optimized. No concrete blockers found.",
+  "provenance": "Original code and synthetic fixtures; no third-party source imported. Only this JSON is generated evidence. No deployments, provider calls, services, credentials, backups or access/security settings changed."
+}
