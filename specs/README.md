@@ -101,3 +101,9 @@ component checks do not qualify real provider or browser integration.
 [Loopback submission and readback](http-synthetic-site-v1.md) adds a bounded
 synthetic HTTP lane with independent site effects, fresh-client reconciliation
 and lease gating. No production/native browser qualification is implied.
+
+## Passive control metadata
+
+[Read-only control status](passive-control-status-v1.md) distinguishes absent,
+active and pending durable ownership through separate authenticated passive
+admission. Historical status never grants input, credentials or takeover.

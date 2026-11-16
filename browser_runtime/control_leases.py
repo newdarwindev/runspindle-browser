@@ -139,14 +139,37 @@ class CredentialInput:
 
 
 @dataclass(frozen=True)
+class PassiveStatus:
+    """Fresh observation permission only; never input or transition authority."""
+    target: Target
+    deadline: float
+
+    def validate(self) -> None:
+        if type(self.target) is not Target:
+            raise ValueError
+        self.target.validate()
+        _time(self.deadline)
+
+
+@dataclass(frozen=True)
+class ControlStatus:
+    """Historical durable metadata, not a lease or usable control capability."""
+    phase: str
+    epoch: int | None
+    holder: Holder | None
+    observed_at: float
+    scope: str
+
+
+@dataclass(frozen=True)
 class FenceReceipt:
     transfer: Transfer
     previous_inputs_closed: bool
 
 
 class Guard(Protocol):
-    def admit(self, ticket: object) -> Transfer | Recovery | Input | CredentialInput | None: ...
-    def current(self, grant: Transfer | Recovery | Input | CredentialInput) -> bool: ...
+    def admit(self, ticket: object) -> Transfer | Recovery | Input | CredentialInput | PassiveStatus | None: ...
+    def current(self, grant: Transfer | Recovery | Input | CredentialInput | PassiveStatus) -> bool: ...
     def observe(self) -> Observation | None: ...
     def released(self, transfer: Transfer | Recovery) -> bool:
         """Authenticate release by the exact source holder, target and epoch."""
@@ -235,13 +258,16 @@ class LeaseStore:
         if failed:
             _fail(cancelled)
 
-    def _check(self, guard: Guard, grant: Transfer | Recovery | Input | CredentialInput) -> None:
+    def _check(self, guard: Guard, grant: Transfer | Recovery | Input | CredentialInput | PassiveStatus) -> float:
         if type(grant) is Transfer:
             grant.validate()
             target, deadline = grant.target, grant.deadline
         elif type(grant) is Recovery:
             grant.validate()
             target, deadline = grant.transfer.target, grant.deadline
+        elif type(grant) is PassiveStatus:
+            grant.validate()
+            target, deadline = grant.target, grant.deadline
         elif type(grant) in (Input, CredentialInput):
             if type(grant.holder) is not Holder:
                 raise ValueError
@@ -271,6 +297,7 @@ class LeaseStore:
         now = _time(self._clock())
         if current is not True or not 0 <= now - observed_at <= self._max_age or now >= _time(deadline):
             raise ValueError
+        return now
 
     def _row(self, target: Target) -> tuple[object, ...] | None:
         return self._db.execute(
@@ -321,6 +348,43 @@ class LeaseStore:
                 self._lock.release()
         if failed or cancelled:
             _fail(cancelled)
+
+    def status(self, ticket: object) -> ControlStatus:
+        """Read exact-scope metadata without input, provider or backend callbacks.
+
+        A passive target does not select an epoch: the snapshot reports the
+        observed durable epoch. No status object is an admission or authority.
+        """
+        with self._session() as guard:
+            grant = guard.admit(ticket)
+            if type(grant) is not PassiveStatus:
+                raise ValueError
+            self._check(guard, grant)
+            self._db.execute("BEGIN")  # Read transaction only; never upgrade.
+            row = self._row(grant.target)
+            phase: str = "absent"
+            epoch: int | None = None
+            holder: Holder | None = None
+            if row is not None:
+                if (row[0] != _scope(grant.target) or type(row[1]) is not int
+                        or row[1] <= 0 or type(row[3]) is not str
+                        or row[3] not in ("active", "pending")
+                        or type(row[2]) is not str):
+                    raise ValueError
+                data = json.loads(row[2])
+                stored_holder = Holder(**data)
+                stored_holder.validate()
+                if _encode(asdict(stored_holder)) != row[2]:
+                    raise ValueError
+                phase, epoch = cast(str, row[3]), cast(int, row[1])
+                if phase == "active":
+                    holder = stored_holder
+                # Pending's stored destination is not an active holder.
+            # Sampled after the final observation/current callbacks and checked
+            # against the deadline; read waits cannot retain old permission.
+            observed_at = self._check(guard, grant)
+            result = ControlStatus(phase, epoch, holder, observed_at, _scope(grant.target))
+        return result  # _session rolls back the read transaction after guard exit.
 
     def transfer(self, ticket: object) -> str:
         outcome = "unknown"

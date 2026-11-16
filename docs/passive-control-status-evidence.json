@@ -1,0 +1,92 @@
+{
+  "evidence_class": "local_synthetic_component",
+  "scope": "Browser #16/#9 passive observation/control separation",
+  "base_commit": "f02e5129d74892fcb76833a9e6472d93f8d94b30",
+  "files": {
+    "browser_runtime/control_leases.py": "6aac8a60136a85dff9bc061e9ed41f57177c16736a78135445fe6b6a241de4d4",
+    "tests/test_passive_control_status.py": "387924f5525e663253ae1e97e5712d44690940dc183e769c8498fa9f739e5c66",
+    "specs/passive-control-status-v1.md": "f993e1b8a17c793d24b58c51e537da63f197ac5347421f8728cbb232f48ca6db",
+    "specs/control-leases-v1.md": "8b0f125ec241946902a90008912dd606bc5d499fb92ff4e221540f565dcb341a",
+    "specs/README.md": "7cc72b7aaa7005963dab1b6616ad00da58401924d1b9eb947d2a3f65e847bfe3",
+    "browser_runtime/credentials.py": "d237655dce633788c5d2c0d1c6417164fc5715a2e9f399ab5295219fcd2e7161",
+    "browser_runtime/guarded_effects.py": "c16f987eea15b3a6bf45b86bdb12affc41bf888fd88ff35a3c48e47cb2d2590e",
+    "tests/test_control_leases.py": "a13d0c0e24c7e4ba6fa4a8deb2bb715625fa98e51be7d82262aeebb44f667a15",
+    "tests/test_lease_credentials.py": "03945451717fa8c06083a42e9191d802c9083ef4157c5f1fa4eb0aebafb34338",
+    "requirements-quality.txt": "9cbe1331549216b953f2922f1e8321357ca82bb985e1ea595c87fcee8a8fdc84",
+    "requirements-profile.txt": "96f356c53e8b8c4fb2f8dca5d1a31036148e3004996467a55b238291812ae252",
+    "hygiene.json": "8311a93317e273135611178085e4ec2f7eba3725085b924052231d45ba12d69e"
+  },
+  "verification": {
+    "focused_normal": {
+      "command": "python3 -m unittest discover -s tests -p test_passive_control_status.py -v",
+      "status": "passed",
+      "tests": 8
+    },
+    "focused_optimized": {
+      "command": "python3 -O -m unittest discover -s tests -p test_passive_control_status.py -v",
+      "status": "passed",
+      "tests": 8
+    },
+    "scaffold": "passed",
+    "whitespace": "passed",
+    "full_suite": {
+      "command": "python3 -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 479,
+      "seconds": 41.969
+    },
+    "aggregate": {
+      "command": "python3 tools/validate.py",
+      "status": "failed",
+      "exit": 1,
+      "blockers": [
+        "missing Ruff metadata; static lint/format/type qualification not run",
+        "missing Cargo; Rust fmt/test/Clippy not run"
+      ],
+      "source_stability": "passed, all runtime/test/spec sources frozen during final runs; only this verification receipt followed"
+    },
+    "required_ci": "not_run",
+    "full_optimized": {
+      "command": "python3 -O -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 479,
+      "seconds": 87.874
+    }
+  },
+  "real_boundaries": [
+    "SQLite row/file-byte/total_changes observations",
+    "fresh process status on same database",
+    "read transaction rollback after authority context",
+    "independent effect/credential/fence counts",
+    "source mutation subprocess"
+  ],
+  "synthetic_boundaries": [
+    "authenticated admission and revocation",
+    "physical target observations",
+    "holder identities",
+    "backend/site/vault adapters"
+  ],
+  "observations": [
+    "absent null epoch and holder",
+    "pending reserved epoch and null holder",
+    "active scoped holder and epoch",
+    "passive rejected by transfer/recovery/effect/credential routes",
+    "no status row writes or helper calls",
+    "fresh authority after row read required",
+    "scope-check mutant fails wrong-account denial assertion"
+  ],
+  "limits": [
+    "status metadata not input authority",
+    "constructor schema initialization unchanged",
+    "no production viewer or browser",
+    "no service/access/schema changes",
+    "no full issue closure"
+  ],
+  "independent_review": "Runtime/types, scope separation and all eight tests independently reviewed; focused suite independently repeated normally/optimized, final full suites run independently. No concrete blockers.",
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "50.0.0 compatibility; preferred 50.0.2 unqualified"
+  },
+  "provenance": "Original component/types and synthetic fixtures, no third-party source lift. Existing notices preserved. Only this JSON is generated evidence. No schema, service, credential, provider, dependency/pin, workflow, security/access or deployment changes. Parent issues remain partial."
+}
