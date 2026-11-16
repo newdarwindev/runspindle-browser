@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "evidence_class": "local_real_sqlite_custody_crypto_synthetic_material",
+  "component": "browser",
+  "partial_issues": [
+    14,
+    13
+  ],
+  "source_commit": "76373649a28ddb6de9fd595bba480831566c5dae",
+  "base_commit": "eb243dca95023d34f48987a78ad08cbac1c3971e",
+  "source_tree": "ccc708587a1f0a1962cbc626450cb96348c347bb",
+  "artifact_sha256": {
+    "browser_runtime/profile_custody_schema.py": "0b7323ee12545eec6a362a73ee4c6e4e06b38998d65adb7e0c413af6702a3680",
+    "browser_runtime/profile_keys.py": "20bbeb2b005a80e33e3b135ec3eb06049b84387ab2584c9d3656b1f64829a66d",
+    "browser_testing/profile_keys_fixtures.py": "ae881d2489abd03a2e47bd1e44aa72aa52cdf9d93921da829991569b5d907561",
+    "specs/README.md": "536313fb2406dc0c73f381dc1ebc5fe8372c642ff2554eb2fc35d23c2c54c2d1",
+    "specs/profile-key-custody-v1.md": "3cb6cb7526b9f3cf5bed105098480c691aa53890a8ede509df48334877cda780",
+    "tests/test_profile_keys.py": "7dddbe5d1184ae30edb05ef4b080eea28d33133ed9d20abe8c7cfbe3be7ebae5"
+  },
+  "commands": {
+    "focused": "python3 -m unittest discover -s tests -p test_profile_keys.py -v",
+    "focused_optimized": "python3 -O -m unittest discover -s tests -p test_profile_keys.py -v",
+    "full": "python3 -m unittest discover -s tests -v",
+    "full_optimized": "python3 -O -m unittest discover -s tests -v",
+    "aggregate": "python3 tools/validate.py",
+    "preferred_cloud": "python3 tools/check_profile_store.py",
+    "installed_compatibility": "python3 tools/check_profile_store.py --compatibility"
+  },
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "openssl": "OpenSSL 4.0.1 9 Jun 2026",
+    "dependencies": {
+      "cryptography": "50.0.0",
+      "cffi": "2.1.1",
+      "pycparser": "3.0"
+    },
+    "static_tools": {
+      "ruff": "0.14.5",
+      "mypy": "1.18.2"
+    },
+    "quality_execution": "Existing prepared quality environment with primary runtime dependencies visible; no installs or image changes."
+  },
+  "checks": {
+    "focused_normal": {
+      "status": "passed",
+      "tests": 21,
+      "skipped": 0
+    },
+    "focused_optimized": {
+      "status": "passed",
+      "tests": 21,
+      "skipped": 0
+    },
+    "full_normal": {
+      "status": "passed",
+      "tests": 271,
+      "skipped": 0
+    },
+    "full_optimized": {
+      "status": "passed",
+      "tests": 271,
+      "skipped": 0
+    },
+    "scaffold": {
+      "status": "passed"
+    },
+    "static_quality": {
+      "status": "passed",
+      "new_diagnostics": 0,
+      "existing_debt": 148
+    },
+    "aggregate": {
+      "status": "failed",
+      "failed_checks": [
+        "rust-format",
+        "rust-test",
+        "rust-clippy"
+      ],
+      "reason": "Cargo is unavailable in this cloud execution environment. No aggregate pass is claimed."
+    },
+    "preferred_dependency_gate_this_cloud": {
+      "status": "blocked",
+      "exit_code": 2,
+      "reason": "Installed cryptography 50.0.0 differs from preferred 50.0.2; this does not describe other runners."
+    },
+    "existing_profile_compatibility_gate": {
+      "status": "passed",
+      "tests_per_mode": 22,
+      "modes": [
+        "normal",
+        "optimized"
+      ]
+    },
+    "new_custody_tests_on_preferred_runner": {
+      "status": "not_run",
+      "scope": "Not run by this worker; no runner-wide qualification claim."
+    },
+    "independent_review": {
+      "status": "passed",
+      "source_commit": "76373649a28ddb6de9fd595bba480831566c5dae",
+      "scope": "Independent source review and 21 focused tests normally/optimized plus scaffold. No blocking findings; cooperative local domain limits explicit."
+    }
+  },
+  "real_boundaries": [
+    "two SQLite databases with exclusive lease writer and independently committed admission gate",
+    "cross-process contention and process-death lock release",
+    "durable pending/issued/burned attempt metadata",
+    "fixed-version HTTP framing through existing HTTPS using injected byte peer",
+    "AES-256-GCM checkpoint Store roundtrip and precise forget"
+  ],
+  "injected_boundaries": [
+    "pre-provisioned invented registry and public test key",
+    "synthetic token/material responses and byte peer, no network",
+    "original test browser authority/quiescence and profile consumer"
+  ],
+  "deliberate_mutation": {
+    "status": "passed",
+    "change": "Bypass enabled-state checks after a provider callback disables new leases.",
+    "normal_forbidden_key_deliveries": 0,
+    "mutated_forbidden_key_deliveries": 1
+  },
+  "limits": [
+    "Profile-key leases only: local disablement blocks new acquisitions, not already issued leases.",
+    "Credential Vault rotation/deletion semantics and Store browser authority checks unchanged.",
+    "Fingerprints are unique within one pinned registry; external provisioning must ensure cross-domain uniqueness.",
+    "Provisioning, schema creation/repair, key generation/rotation/deletion and token creation are absent from production API.",
+    "Grant shape is not authentication; caller must be the pinned trusted Store under its real authority guard.",
+    "No default adapter, hard callback termination, zeroization, hostile same-UID protection, distributed fencing or rollback resistance.",
+    "No source import or changes from held directory-adapter PR; original Store/Vault implementations unchanged."
+  ],
+  "not_run": [
+    "live OpenBao/TLS/DNS interoperability",
+    "production registry/workload identity provisioning",
+    "real browser authority or directory integration",
+    "new custody tests on preferred 50.0.2 runner",
+    "physical erasure and rollback-resistant storage",
+    "full issue acceptance",
+    "deployment"
+  ]
+}
