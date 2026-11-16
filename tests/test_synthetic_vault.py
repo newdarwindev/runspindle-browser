@@ -254,8 +254,8 @@ class SyntheticVaultTests(unittest.TestCase):
     def test_final_freshness_after_vault_revalidation(self) -> None:
         for final_clock in (12, 9, True, None, 11.0, "11"):
             with self.subTest(final_clock=final_clock):
-                result, effects, audit, observations, clocks = self.final_freshness_case(
-                    fixture_vault, final_clock
+                result, effects, audit, observations, clocks = (
+                    self.final_freshness_case(fixture_vault, final_clock)
                 )
                 self.assertEqual(result, "denied")
                 self.assertEqual(effects, [])
@@ -289,7 +289,9 @@ class SyntheticVaultTests(unittest.TestCase):
         sys.modules[module.__name__] = module
         self.addCleanup(sys.modules.pop, module.__name__)
         exec(
-            compile(source.replace(anchor, "if False:"), "<synthetic-mutation>", "exec"),
+            compile(
+                source.replace(anchor, "if False:"), "<synthetic-mutation>", "exec"
+            ),
             module.__dict__,
         )
         result, effects, audit, observations, clocks = self.final_freshness_case(
