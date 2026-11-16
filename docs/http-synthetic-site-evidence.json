@@ -1,0 +1,124 @@
+{
+  "evidence_class": "local_loopback_http_synthetic_component",
+  "scope": "Browser #15/#8 test-only HTTP submission and reconciliation lane",
+  "base_commit": "7e23f3a32216b6889d2a3d8d55d3099e08de396e",
+  "files": {
+    "browser_testing/http_effect_site.py": "febb4d379b1c2ec4562e8ca86504c7a081bb6a412418ac44ed4561d21d582158",
+    "tests/test_http_effect_site.py": "e36ca3b16825c79a9c96524adcc32141eb56baf09be5a4b543a0e23bfecfe878",
+    "specs/http-synthetic-site-v1.md": "95b0251e7aa9c5c5ae6d3a0c03a479c1afb14b154d22b8054ce6dc57f0850d5a",
+    "specs/effect-journal-v1.md": "c86118b0aebdae6e1a7f2f7ade0dfb1935b9a6cdcc7563dd5d98142c31b7982f",
+    "specs/README.md": "6939e38507dcf5119fd6cce9395bbad6c622b9ed40b3aa434b31e2355947630a",
+    "browser_testing/effect_site.py": "2450a7cdc507ec0d6113fed298facc4b4e006051f408867f55b45b6e7fc8a3d5",
+    "browser_runtime/effects.py": "9e6c3e06b4f5b8cc66b985f4e43a2d7dd01871ab9c332fca117ea795bfe86ea9",
+    "browser_runtime/guarded_effects.py": "c16f987eea15b3a6bf45b86bdb12affc41bf888fd88ff35a3c48e47cb2d2590e",
+    "browser_runtime/control_leases.py": "fcd44462a3a4a5282466ae14f12a05b7bf8c3d8319cb72c4f5a05f99cbd3990f",
+    "tests/test_guarded_effects.py": "1d414c8304543961362af1d78b7c09b3f599d60c0338efe281c2a270b960daa9",
+    "tests/test_control_leases.py": "a13d0c0e24c7e4ba6fa4a8deb2bb715625fa98e51be7d82262aeebb44f667a15",
+    "requirements-quality.txt": "9cbe1331549216b953f2922f1e8321357ca82bb985e1ea595c87fcee8a8fdc84",
+    "hygiene.json": "8311a93317e273135611178085e4ec2f7eba3725085b924052231d45ba12d69e"
+  },
+  "verification": {
+    "focused_normal": {
+      "command": "python3 -m unittest discover -s tests -p test_http_effect_site.py -v",
+      "status": "passed",
+      "tests": 6
+    },
+    "focused_optimized": {
+      "command": "python3 -O -m unittest discover -s tests -p test_http_effect_site.py -v",
+      "status": "passed",
+      "tests": 6
+    },
+    "scaffold": "passed",
+    "whitespace": "passed",
+    "full_suite": {
+      "command": "python3 -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 463,
+      "seconds": 38.993
+    },
+    "aggregate": {
+      "command": "python3 tools/validate.py",
+      "status": "failed",
+      "exit": 1,
+      "blockers": [
+        "missing Ruff metadata; static lint/format/type qualification not run",
+        "missing Cargo; Rust fmt/test/Clippy not run"
+      ],
+      "source_stability": "passed; runtime/test fixture sources frozen throughout final runs. Documentation network-scope clarification and this receipt followed, scaffold/whitespace rechecked."
+    },
+    "required_ci": "not_run",
+    "full_optimized": {
+      "command": "python3 -O -m unittest discover -s tests -q",
+      "status": "passed",
+      "tests": 463,
+      "seconds": 84.641
+    }
+  },
+  "observations": {
+    "accepted_lost_reply_fresh_client_recovery": {
+      "submissions": 1,
+      "readbacks": 1,
+      "effects": 1,
+      "result": "confirmed"
+    },
+    "duplicate_branch_mutant": {
+      "submissions": 2,
+      "effects": 2,
+      "result": "unknown"
+    },
+    "stale_holder": {
+      "submissions": 0,
+      "effects": 0
+    },
+    "current_holder": {
+      "submissions": 1,
+      "effects": 1
+    },
+    "other_cases": [
+      "rejected readback",
+      "dropped submission unknown",
+      "wrong-account unknown",
+      "ambiguous site events unknown",
+      "normal/failure exit stopped thread and closed listener",
+      "server-observed partial request interrupted during exit"
+    ]
+  },
+  "real_boundaries": [
+    "loopback HTTP request/response and lost connection",
+    "independent SQLite site event ledger",
+    "existing runtime journal and local lease SQLite",
+    "fresh client subprocess reopen and reconcile",
+    "private source mutation subprocess"
+  ],
+  "synthetic_boundaries": [
+    "HTTPS logical-origin to loopback mapping",
+    "authenticated authority and frame observations",
+    "holders and fencing backend",
+    "submission payload and site acceptance"
+  ],
+  "unqualified": [
+    "TLS or real browser navigation",
+    "live provider or account",
+    "production browser adapter",
+    "distributed authority",
+    "OS/browser crash recovery",
+    "full issue acceptance"
+  ],
+  "no_changes": [
+    "runtime modules",
+    "schemas",
+    "origin validation",
+    "dependencies",
+    "activation gates",
+    "external services",
+    "persistent jobs",
+    "access settings"
+  ],
+  "independent_review": "Fixture lifecycle and six tests independently reviewed and repeated normally/optimized; no concrete blockers. Stalled-handler shutdown changed to interrupt owned accepted socket; test awaits handler entry.",
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "50.0.0 compatibility; preferred 50.0.2 unqualified"
+  },
+  "provenance": "Original test-only fixture and synthetic content. Existing notices retained; no third-party source lift. No runtime, schema, provider, credential, persistent service, dependency/pin, access/security or deployment changes. Only this JSON is generated evidence."
+}

@@ -95,3 +95,9 @@ viewer/backend and recovery qualification remain open.
 composes the existing Resolver with the active lease holder/epoch gate. Distinct
 credential admission and pinned trusted adapters remain required; synthetic
 component checks do not qualify real provider or browser integration.
+
+## Disposable HTTP effect fixture
+
+[Loopback submission and readback](http-synthetic-site-v1.md) adds a bounded
+synthetic HTTP lane with independent site effects, fresh-client reconciliation
+and lease gating. No production/native browser qualification is implied.

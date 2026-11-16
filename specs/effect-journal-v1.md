@@ -168,14 +168,17 @@ containment, reentrant-call rejection, and fresh-process no-resubmit evidence.
 These injected faults do not qualify a real provider, network or browser adapter.
 
 All identities/content are invented. Test time is bounded, subprocesses terminate,
-files are temporary and network connects are denied in the test process. The
-runtime imports no network client and opens no listener. Rust/Cargo checks remain
+and files are temporary. Original callback-only tests deny network connects; the
+separate HTTP fixture lane connects to its owned loopback listener. The runtime
+imports no network client and opens no listener. Rust/Cargo checks remain
 required by aggregate verification; unavailable Cargo is blocked, never passed.
 
 ## Explicit remaining gates
 
-No real browser/site-specific adapter, HTTP synthetic website, distributed core
-authority, authenticated frame observation, encrypted profile, native session,
+A separate [disposable HTTP synthetic site lane](http-synthetic-site-v1.md) now
+exercises actual loopback requests with this journal; it remains test-only.
+No real browser/site-specific adapter, distributed core authority, authenticated
+frame observation, encrypted profile, native session,
 actual website idempotency/reconciliation or live integration is qualified.
 The default Rust activation gate is unchanged. Local SQLite evidence establishes
 only this storage/callback behavior, not end-to-end exactly-once effects or any
