@@ -196,11 +196,31 @@ class Journal:
         except sqlite3.Error:
             raise Denied("journal unavailable") from None
 
-    def dispatch(self, binding: Binding, payload: bytes) -> Outcome:
-        return self._run(lambda: self._dispatch(binding, payload))
-
-    def _dispatch(self, binding: Binding, payload: bytes) -> Outcome:
+    @staticmethod
+    def _encoded(binding: Binding, target_digest: str | None) -> str:
         encoded = binding.encoded()
+        if target_digest is None:
+            return encoded  # Preserve legacy rows and callers exactly.
+        if (
+            type(target_digest) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", target_digest) is None
+        ):
+            raise Denied("invalid target commitment")
+        return json.dumps(
+            {"binding": json.loads(encoded), "target_digest": target_digest},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+
+    def dispatch(
+        self, binding: Binding, payload: bytes, *, target_digest: str | None = None
+    ) -> Outcome:
+        return self._run(lambda: self._dispatch(binding, payload, target_digest))
+
+    def _dispatch(
+        self, binding: Binding, payload: bytes, target_digest: str | None
+    ) -> Outcome:
+        encoded = self._encoded(binding, target_digest)
         if type(payload) is not bytes or not payload or len(payload) > 1048576:
             raise Denied("invalid payload")
         digest = hashlib.sha256(payload).hexdigest()
@@ -249,11 +269,17 @@ class Journal:
             return "unknown"
         raise Denied("invalid journal state")
 
-    def reconcile(self, binding: Binding, payload_digest: str) -> Outcome:
-        return self._run(lambda: self._reconcile(binding, payload_digest))
+    def reconcile(
+        self, binding: Binding, payload_digest: str, *, target_digest: str | None = None
+    ) -> Outcome:
+        return self._run(
+            lambda: self._reconcile(binding, payload_digest, target_digest)
+        )
 
-    def _reconcile(self, binding: Binding, payload_digest: str) -> Outcome:
-        encoded = binding.encoded()
+    def _reconcile(
+        self, binding: Binding, payload_digest: str, target_digest: str | None
+    ) -> Outcome:
+        encoded = self._encoded(binding, target_digest)
         if re.fullmatch(r"[0-9a-f]{64}", payload_digest) is None:
             raise Denied("invalid digest")
         self._authorized(binding, payload_digest)
@@ -275,7 +301,7 @@ class Journal:
             if (
                 type(observed) is not Readback
                 or type(observed.binding) is not Binding
-                or observed.binding.encoded() != encoded
+                or observed.binding.encoded() != binding.encoded()
                 or observed.payload_digest != payload_digest
                 or type(observed.outcome) is not str
                 or observed.outcome not in ("confirmed", "rejected")

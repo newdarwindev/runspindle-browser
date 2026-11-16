@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "scope": "Browser #15 / #8 partial trusted effect composition",
+  "base_commit": "da4b1329947e34a2338507491bf9a40a8874855b",
+  "source_sha256": {
+    "browser_runtime/effects.py": "9e6c3e06b4f5b8cc66b985f4e43a2d7dd01871ab9c332fca117ea795bfe86ea9",
+    "browser_runtime/guarded_effects.py": "c16f987eea15b3a6bf45b86bdb12affc41bf888fd88ff35a3c48e47cb2d2590e",
+    "tests/test_guarded_effects.py": "1d414c8304543961362af1d78b7c09b3f599d60c0338efe281c2a270b960daa9"
+  },
+  "evidence_class": "manual synthetic component composition; real SQLite and file-backed site ledger",
+  "runtime": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "50.0.0 compatibility only"
+  },
+  "checks": {
+    "focused_normal": {
+      "passed": 14
+    },
+    "focused_optimized": {
+      "passed": 14
+    },
+    "full_normal": {
+      "passed": 403
+    },
+    "full_optimized": {
+      "passed": 403
+    },
+    "existing_effect_suite": {
+      "passed": 55
+    },
+    "scaffold": "passed",
+    "whitespace": "passed",
+    "independent_review": "two findings fixed; focused normal/optimized independently repeated",
+    "source_mutation": "current-authority removal changes independent synthetic site effect count from zero to one",
+    "declared_aggregate": {
+      "status": "failed",
+      "exit": 1,
+      "blockers": [
+        "missing Ruff package metadata",
+        "missing Cargo: Rust format/test/Clippy not run"
+      ]
+    }
+  },
+  "source_note": "Final edits after full-suite start are type-only cast/NoReturn annotations and documentation; focused final-source 14-test run and aggregate completed afterward. Full-suite results are not relabeled as remote CI.",
+  "not_qualified": [
+    "production authenticated issuer",
+    "real browser/site adapter",
+    "atomic remote browser fence",
+    "Core/Host integration",
+    "distributed fencing",
+    "required CI or runner image",
+    "preferred dependency closure",
+    "full issue acceptance"
+  ],
+  "provenance": "new original implementation and synthetic fixtures; no legacy executable lift, private data or service changes"
+}
