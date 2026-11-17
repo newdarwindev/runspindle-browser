@@ -18,6 +18,28 @@ OpenBao supplies the selected credential and key-management foundation; PinchTab
 
 *Upcoming qualification joins production OpenBao access, actual PinchTab lifecycle, real browser checkpointing, supported KasmVNC viewing and authenticated human takeover/handback. Live account and native-browser acceptance remain open; local profile tests do not close them.*
 
+## FROM A REQUEST TO A CHECKABLE OUTCOME
+
+These are concrete product scenarios, not claims of live automation. The implemented contracts below support bounded parts of the journey; *italic text describes the remaining end-to-end behavior*.
+
+### RESTORE THE INVOICE ACCOUNT, NOT AN ARBITRARY SIGNED-IN TAB
+
+A bookkeeper returns to invoice #107 after sign-in expires. **BROWSER** binds credential use and control to the exact account, origin and session; its [passive status](specs/passive-control-status-v1.md) cannot grant input authority. *The completed journey will pause the invoice, let the operator authenticate in the same supported browser, verify the account and invoice context, and resume only after authenticated handback.* The outcome is continuity of the intended work, not a claim that a restored profile proves a valid login. [Concept slide 15](https://newdarwindev.github.io/runspindle_for_bloomberg/assets/Runspindle_Revised_Gallery.pdf#page=15).
+
+### MATCH INVOICE #107 AND PRESERVE AN UNCERTAIN RESULT
+
+An operator asks to match the invoice to its intended record rather than submit a second copy. **BROWSER'S GUARDED EFFECT JOURNAL** retains identity and unknown outcomes so a missing response does not become permission for a blind retry. *The live invoice adapter will verify the exact destination record independently and return a matched receipt or an unresolved exception, not infer success from a click.* [Effect contract](specs/guarded-effect-journal-v1.md) · [Concept slide 4](https://newdarwindev.github.io/runspindle_for_bloomberg/assets/Runspindle_Revised_Gallery.pdf#page=4).
+
+### FIND A GENUINELY INDEPENDENT SUPPLIER
+
+In the fictional Switchyard Components scenario, two backup distributors may depend on the same manufacturer. *An authorized workflow will compare the Terminal SPLC observation with ERP part identity and supplier-portal lot evidence, pause when the manufacturer is unconfirmed, and produce a quote draft for buyer approval. Delivery proof and the freight bill, not the draft, will establish the eventual business outcome.* **BROWSER** contributes scoped portal access and effect boundaries; it does not establish data rights or supplier independence by itself. [Catalog case 2](https://github.com/newdarwindev/runspindle_for_bloomberg/blob/main/assets/runspindle_bloomberg_workflows.csv).
+
+### AUDIT ROYALTY FX AGAINST THE CONTRACT'S FIXING
+
+Lantern Film Receipts is a fictional example: a €80,000 royalty statement pays $87,200 while its named historical fixing implies $88,000. *The workflow will compare the exact fixing date and contract, reconcile deductions in the workbook and prepare an $800 dispute for approval. Only an accepted adjustment and matching cash receipt will establish recovery.* A live FX quote is not a substitute for the contracted fixing. **BROWSER** supplies account/origin-bound access, not authority to send the claim. [Catalog case 5](https://github.com/newdarwindev/runspindle_for_bloomberg/blob/main/assets/runspindle_bloomberg_workflows.csv).
+
+The Bloomberg examples use synthetic amounts. Entitled Terminal access, applicable BFIX/data-use rights, approved destination access and live integration remain prerequisites, not capabilities conferred by these scenarios.
+
 ## ENGINEERING MAP
 
 | Responsibility | Contract and evidence |
