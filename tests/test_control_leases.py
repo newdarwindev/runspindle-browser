@@ -1,4 +1,5 @@
 """Actual SQLite lease/input journals; synthetic authenticated authority/backend."""
+
 import subprocess
 import sys
 import tempfile
@@ -6,7 +7,13 @@ import unittest
 from dataclasses import replace
 from pathlib import Path
 
-from browser_runtime.control_leases import FenceReceipt, Holder, Input, LeaseStore, Transfer
+from browser_runtime.control_leases import (
+    FenceReceipt,
+    Holder,
+    Input,
+    LeaseStore,
+    Transfer,
+)
 from browser_runtime.effects import Cancelled, Denied
 from browser_runtime.guarded_effects import Grant
 from test_guarded_effects import DIGEST, PAYLOAD, TARGET, Fixture
@@ -16,7 +23,9 @@ HUMAN = Holder("human", "human-one")
 
 
 def target(epoch, operation):
-    return replace(TARGET, binding=replace(TARGET.binding, epoch=epoch, operation=operation))
+    return replace(
+        TARGET, binding=replace(TARGET.binding, epoch=epoch, operation=operation)
+    )
 
 
 class ControlFixture(Fixture):
@@ -58,16 +67,28 @@ class ControlFixture(Fixture):
         return len(path.read_bytes().splitlines()) if path.exists() else 0
 
     def store(self):
-        return LeaseStore(self.root / "leases.sqlite", authority=self, backend=self,
-                          clock=lambda: self.now)
+        return LeaseStore(
+            self.root / "leases.sqlite",
+            authority=self,
+            backend=self,
+            clock=lambda: self.now,
+        )
 
     def transition(self, action, source, destination, epoch):
-        self.grant = Transfer(target(epoch + 1, "transfer-" + str(epoch + 1)),
-                              action, source, destination, epoch, 20.0)
+        self.grant = Transfer(
+            target(epoch + 1, "transfer-" + str(epoch + 1)),
+            action,
+            source,
+            destination,
+            epoch,
+            20.0,
+        )
         return self.grant
 
     def input(self, holder, epoch, operation="command"):
-        self.grant = Input(Grant(target(epoch, operation), DIGEST, "dispatch", 20.0), holder)
+        self.grant = Input(
+            Grant(target(epoch, operation), DIGEST, "dispatch", 20.0), holder
+        )
 
 
 class ControlLeaseTests(unittest.TestCase):
@@ -77,7 +98,9 @@ class ControlLeaseTests(unittest.TestCase):
         self.f = ControlFixture(self.tmp.name)
         self.store = self.f.store()
         self.addCleanup(self.store.close)
-        self.journal = self.store.journal(Path(self.tmp.name) / "effects.sqlite", self.f)
+        self.journal = self.store.journal(
+            Path(self.tmp.name) / "effects.sqlite", self.f
+        )
         self.addCleanup(self.journal.close)
 
     def initialize(self):
@@ -163,10 +186,16 @@ class ControlLeaseTests(unittest.TestCase):
             with self.assertRaises(Denied):
                 self.journal.dispatch("admitted", PAYLOAD)
         self.f.input(AGENT, 1)
-        changed = replace(self.f.grant.effect.target,
-                          binding=replace(self.f.grant.effect.target.binding, account="other"))
-        self.f.grant = replace(self.f.grant, effect=replace(self.f.grant.effect, target=changed))
-        self.f.observed = changed  # Even matching physical observations cannot rebind the row.
+        changed = replace(
+            self.f.grant.effect.target,
+            binding=replace(self.f.grant.effect.target.binding, account="other"),
+        )
+        self.f.grant = replace(
+            self.f.grant, effect=replace(self.f.grant.effect, target=changed)
+        )
+        self.f.observed = (
+            changed  # Even matching physical observations cannot rebind the row.
+        )
         with self.assertRaises(Denied):
             self.journal.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
@@ -186,11 +215,13 @@ class ControlLeaseTests(unittest.TestCase):
     def test_pending_transfer_blocks_nested_or_competing_inputs(self):
         self.initialize()
         transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
+
         def during_fence():
             self.f.input(AGENT, 1)
             with self.assertRaises(Denied):
                 self.journal.dispatch("admitted", PAYLOAD)
             self.f.grant = transfer
+
         self.f.after_fence = during_fence
         self.assertEqual(self.store.transfer("admitted"), "active")
         self.assertEqual(self.f.effects(), 0)
@@ -221,6 +252,7 @@ s.transfer('admitted')
         with self.assertRaises(Denied):
             missing.transfer("admitted")
         import sqlite3
+
         path = Path(self.tmp.name) / "foreign.sqlite"
         db = sqlite3.connect(path)
         db.execute("CREATE TABLE unrelated(value TEXT)")
@@ -231,6 +263,7 @@ s.transfer('admitted')
 
     def test_actual_other_process_input_blocks_transfer_until_helper_finishes(self):
         import time
+
         self.initialize()
         code = """import sys,time
 from pathlib import Path
@@ -251,14 +284,17 @@ j=s.journal(root/'effects.sqlite',f)
 try: print(j.dispatch('admitted',PAYLOAD),flush=True)
 finally: j.close(); s.close()
 """
-        process = subprocess.Popen([sys.executable, "-c", code, self.tmp.name],
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                   text=True)
+        process = subprocess.Popen(
+            [sys.executable, "-c", code, self.tmp.name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         try:
             marker = Path(self.tmp.name) / "entered"
             deadline = time.monotonic() + 5
             while not marker.exists() and time.monotonic() < deadline:
-                time.sleep(.01)
+                time.sleep(0.01)
             self.assertTrue(marker.exists(), "child did not enter real helper")
             self.f.transition("takeover", AGENT, HUMAN, 1)
             with self.assertRaises(Denied):
@@ -281,11 +317,15 @@ finally: j.close(); s.close()
 
     def test_source_mutation_exposes_wrong_holder_input(self):
         import shutil
+
         source = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            shutil.copytree(source / "browser_runtime", root / "browser_runtime",
-                            ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copytree(
+                source / "browser_runtime",
+                root / "browser_runtime",
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
             for name in ("test_control_leases.py", "test_guarded_effects.py"):
                 shutil.copyfile(source / "tests" / name, root / name)
             code = """from pathlib import Path
@@ -298,18 +338,25 @@ try: j.dispatch('admitted',PAYLOAD)
 except Denied: pass
 print(f.effects()); j.close(); s.close()
 """
+
             def run():
-                result = subprocess.run([sys.executable, "-c", code], cwd=root,
-                                        capture_output=True, text=True,
-                                        check=True, timeout=10)
+                result = subprocess.run(
+                    [sys.executable, "-c", code],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=10,
+                )
                 return result.stdout.strip()
+
             self.assertEqual(run(), "0")
             shutil.rmtree(root / "data")
             path = root / "browser_runtime/control_leases.py"
             original = path.read_text()
-            anchor = '_encode(asdict(grant.holder)), "active"'
+            anchor = '_encode(asdict(grant.holder)),\n            "active"'
             self.assertEqual(original.count(anchor), 1)
-            path.write_text(original.replace(anchor, 'row[2], "active"'))
+            path.write_text(original.replace(anchor, 'row[2],\n            "active"'))
             shutil.rmtree(root / "browser_runtime/__pycache__", ignore_errors=True)
             self.assertEqual(run(), "1")
 
@@ -318,9 +365,11 @@ print(f.effects()); j.close(); s.close()
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.store.transfer("admitted")
         self.f.transition("handback", HUMAN, AGENT, 2)
+
         def late_release(transfer):
             self.f.now = 20.0
             return True
+
         self.f.released = late_release
         with self.assertRaises(Denied):
             self.store.transfer("admitted")
@@ -353,9 +402,13 @@ s.transfer('admitted')
         self.initialize()
         grant = self.f.transition("takeover", AGENT, HUMAN, 1)
         original = self.f.fence
+
         def wrong_receipt(transfer, guard):
             original(transfer, guard)
-            return FenceReceipt(replace(transfer, destination=Holder("human", "other")), True)
+            return FenceReceipt(
+                replace(transfer, destination=Holder("human", "other")), True
+            )
+
         self.f.fence = wrong_receipt
         self.assertEqual(self.store.transfer("admitted"), "unknown")
         self.f.input(HUMAN, 2)

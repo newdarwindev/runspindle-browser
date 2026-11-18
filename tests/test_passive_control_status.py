@@ -10,7 +10,12 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from browser_runtime.control_leases import ControlStatus, CredentialInput, PassiveStatus, Recovery
+from browser_runtime.control_leases import (
+    ControlStatus,
+    CredentialInput,
+    PassiveStatus,
+    Recovery,
+)
 from browser_runtime.credentials import Denied as CredentialDenied
 from browser_runtime.credentials import Grant as CredentialGrant
 from browser_runtime.effects import Denied
@@ -28,12 +33,16 @@ class PassiveTests(unittest.TestCase):
         self.f = ControlFixture(self.root)
         self.store = self.f.store()
         self.addCleanup(self.store.close)
-        network = patch.object(socket.socket, "connect", side_effect=AssertionError("network forbidden"))
+        network = patch.object(
+            socket.socket, "connect", side_effect=AssertionError("network forbidden")
+        )
         network.start()
         self.addCleanup(network.stop)
 
     def passive(self, **changes):
-        self.f.grant = replace(PassiveStatus(target(1, "passive-status"), 20.0), **changes)
+        self.f.grant = replace(
+            PassiveStatus(target(1, "passive-status"), 20.0), **changes
+        )
         return self.f.grant
 
     def initialize(self):
@@ -52,7 +61,9 @@ class PassiveTests(unittest.TestCase):
         changes = self.store._db.total_changes
         fences = self.f.fences()
         result = self.store.status("admitted")
-        self.assertEqual(self.store._db.execute("SELECT * FROM leases").fetchall(), rows)
+        self.assertEqual(
+            self.store._db.execute("SELECT * FROM leases").fetchall(), rows
+        )
         self.assertEqual(self.store._db.total_changes, changes)
         self.assertEqual((self.root / "leases.sqlite").read_bytes(), before)
         self.assertEqual(self.f.fences(), fences)
@@ -64,7 +75,9 @@ class PassiveTests(unittest.TestCase):
 
     def test_absent_active_pending_are_read_only_and_pending_has_no_holder(self):
         self.passive()
-        self.assertEqual(self.snapshot(), ControlStatus("absent", None, None, 10.0, self.scope()))
+        self.assertEqual(
+            self.snapshot(), ControlStatus("absent", None, None, 10.0, self.scope())
+        )
         self.initialize()
         self.passive()
         active = self.snapshot()
@@ -73,7 +86,9 @@ class PassiveTests(unittest.TestCase):
         self.f.closed_inputs = False
         self.assertEqual(self.store.transfer("admitted"), "unknown")
         self.passive()
-        self.assertEqual(self.snapshot(), ControlStatus("pending", 2, None, 10.0, self.scope()))
+        self.assertEqual(
+            self.snapshot(), ControlStatus("pending", 2, None, 10.0, self.scope())
+        )
         # The earlier observation is retained history, not current ownership.
         self.assertEqual(active.holder, AGENT)
         self.f.input(AGENT, 1)
@@ -90,13 +105,17 @@ class PassiveTests(unittest.TestCase):
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.assertEqual(self.store.transfer("admitted"), "active")
         self.passive()
-        self.assertEqual(self.snapshot(), ControlStatus("active", 2, HUMAN, 10.0, self.scope()))
+        self.assertEqual(
+            self.snapshot(), ControlStatus("active", 2, HUMAN, 10.0, self.scope())
+        )
         self.f.grant = old
         with self.assertRaises(Denied):
             self.store.transfer("admitted")
         self.assertEqual(self.f.fences(), 2)
 
-    def test_passive_admission_never_enters_effect_credential_or_transition_routes(self):
+    def test_passive_admission_never_enters_effect_credential_or_transition_routes(
+        self,
+    ):
         self.initialize()
         admission = self.passive()
         journal = self.store.journal(self.root / "effects.sqlite", self.f)
@@ -125,8 +144,12 @@ class PassiveTests(unittest.TestCase):
         credential = CredentialInput(
             CredentialGrant(target(1, "credential"), "credential:one", 20.0), AGENT
         )
-        for other in (transfer, Recovery(transfer, 20.0), credential,
-                      ControlStatus("active", 1, AGENT, 10.0, self.scope())):
+        for other in (
+            transfer,
+            Recovery(transfer, 20.0),
+            credential,
+            ControlStatus("active", 1, AGENT, 10.0, self.scope()),
+        ):
             self.f.grant = other
             with self.assertRaises(Denied):
                 self.store.status("admitted")
@@ -136,13 +159,28 @@ class PassiveTests(unittest.TestCase):
 
     def test_wrong_scope_revoked_expired_and_stale_observations_deny(self):
         self.initialize()
-        for field in ("principal", "account", "browser", "tab", "native_session", "frame", "frame_origin", "origin"):
+        for field in (
+            "principal",
+            "account",
+            "browser",
+            "tab",
+            "native_session",
+            "frame",
+            "frame_origin",
+            "origin",
+        ):
             with self.subTest(field=field):
                 base = target(1, "passive-status")
-                value = "https://other.invalid" if field in ("origin", "frame_origin") else "other"
-                changed = (replace(base, binding=replace(base.binding, **{field: value}))
-                           if field in ("principal", "account", "browser", "tab", "origin")
-                           else replace(base, **{field: value}))
+                value = (
+                    "https://other.invalid"
+                    if field in ("origin", "frame_origin")
+                    else "other"
+                )
+                changed = (
+                    replace(base, binding=replace(base.binding, **{field: value}))
+                    if field in ("principal", "account", "browser", "tab", "origin")
+                    else replace(base, **{field: value})
+                )
                 self.passive(target=changed)
                 with self.assertRaises(Denied):
                     self.store.status("admitted")
@@ -172,6 +210,7 @@ class PassiveTests(unittest.TestCase):
         for mode in ("expired", "revoked"):
             self.f.now = 10.0
             self.f.allowed = True
+
             def delayed(target):
                 row = original(target)
                 if mode == "expired":
@@ -179,6 +218,7 @@ class PassiveTests(unittest.TestCase):
                 else:
                     self.f.allowed = False
                 return row
+
             with patch.object(self.store, "_row", side_effect=delayed):
                 with self.assertRaises(Denied):
                     self.store.status("admitted")
@@ -189,7 +229,7 @@ class PassiveTests(unittest.TestCase):
 import pathlib, sys, unittest
 import browser_runtime.control_leases as module
 source=pathlib.Path(module.__file__).read_text()
-needle='row[0] != _scope(grant.target) or '
+needle='row[0] != _scope(grant.target)\n                    or '
 assert source.count(needle)==1
 source=source.replace(needle,'')
 exec(compile(source,module.__file__,'exec'),module.__dict__)
@@ -201,7 +241,10 @@ sys.exit(0 if result.wasSuccessful() else 1)
 """
         result = subprocess.run(
             [sys.executable, *(["-O"] if sys.flags.optimize else []), "-c", script],
-            cwd=ROOT, capture_output=True, text=True, timeout=10,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertIn("Denied not raised", result.stderr)
@@ -222,7 +265,7 @@ sys.exit(0 if result.wasSuccessful() else 1)
         self.store.close()
         path = self.root / "leases.sqlite"
         before = path.read_bytes()
-        script = r'''
+        script = r"""
 import sys, json, socket
 sys.path.insert(0, 'tests')
 from dataclasses import asdict
@@ -234,9 +277,25 @@ with patch.object(socket.socket,'connect',side_effect=AssertionError('network fo
  s=LeaseStore(f.root/'leases.sqlite',authority=f,clock=lambda:10.0)
  try: print(json.dumps(asdict(s.status('admitted')),sort_keys=True))
  finally: s.close()
-'''
-        result = subprocess.run([sys.executable, *(["-O"] if sys.flags.optimize else []), "-c", script, str(self.root)], cwd=ROOT, check=True, capture_output=True, text=True, timeout=10)
-        self.assertEqual(json.loads(result.stdout), asdict(ControlStatus("active", 1, AGENT, 10.0, self.scope())))
+"""
+        result = subprocess.run(
+            [
+                sys.executable,
+                *(["-O"] if sys.flags.optimize else []),
+                "-c",
+                script,
+                str(self.root),
+            ],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertEqual(
+            json.loads(result.stdout),
+            asdict(ControlStatus("active", 1, AGENT, 10.0, self.scope())),
+        )
         self.assertEqual(path.read_bytes(), before)
         self.assertEqual(self.f.fences(), 1)
 
