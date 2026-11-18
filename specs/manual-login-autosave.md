@@ -8,7 +8,7 @@ proof that arbitrary websites can be recognized. Actual capture, success/account
 observations, standing-consent storage, Core admission and Host fencing remain
 injected trusted adapters, exercised here only with synthetic fixtures.
 
-## Existing paths, not a second product
+## External owners, not Browser-managed stores
 
 `browser_runtime.autosave.Autosave.run(ticket)` consumes an existing-shaped
 `Grant` under `Authority.acquire()` and its `Fence`. A trusted `consent` callback
@@ -18,7 +18,7 @@ store/update authority, not infer permission from a successful login. One-time
 consent is a product contract; this component does not install or persist it.
 
 A trusted `capture` callback supplies helper-private `Login` values only after
-admission and the existing Journal's durable dispatch fence. `authenticated=True`
+admission and the external operation owner's durable dispatch fence. `authenticated=True`
 means independently verified login and selected-account success. A DOM flag,
 page message or model assertion cannot supply that evidence. Unsupported/failed
 login never overwrites the known credential. Passwords only; passkeys, OTPs and
@@ -28,9 +28,11 @@ SSO-only sessions must not be converted into reusable passwords.
 parsing. Its private Vault has STORE authority; it must not share the Resolver's
 USE authority callback. Both use the same OpenBao destination. `HTTPS.request`
 adds bounded POST while the existing GET call and Resolver remain unchanged.
-No second vault, account catalog, enrollment daemon or database schema is added.
-The path passed to Autosave is the existing effect Journal file. Passwords and
-usernames never enter journal payloads, hashes, rows or public outcomes. The
+Browser receives an externally owned `EffectExecution` interface, not a database
+path. It never creates, opens, migrates or closes operation storage. The external
+Core/application owner must supply canonical replay/admission semantics; there is
+no new service or second operation ledger. Passwords and usernames never enter
+operation payloads, hashes, rows or public outcomes. The
 payload hash commits operation/target/reference/version metadata, not a password.
 
 ## Writes and uncertainty
@@ -51,11 +53,15 @@ resent. Version destruction, malformed replies and unavailable evidence remain
 unknown. A later authorized version does not invalidate evidence that this save
 committed; `saved` is not a claim that the version remains current forever.
 
-The existing SQLite Journal records unknown before capture/write. Recreating an
-Autosave service with the same operation and target cannot dispatch again.
+The external owner must record unknown before capture/write. Recreating an
+Autosave service with the same operation and target must not dispatch again.
+Browser does not implement that persistence guarantee. Transitional tests adapt
+the legacy Journal under an external fixture owner; production relocation remains
+work tracked in the storage inventory.
 `reconcile_only=True` never captures or writes. New attempts/operation IDs require
-fresh authorized intent, not a way to evade uncertainty. Journal reuse is bounded
-by its existing local concurrency/recovery guarantees, not a distributed fence.
+fresh authorized intent, not a way to evade uncertainty. External-owner qualification is separate from a distributed browser fence.
+All external execution callbacks must complete synchronously under the held fence;
+the owner cannot retain them for background use.
 
 ## User-facing outcomes and secret boundary
 
@@ -83,8 +89,10 @@ receipt for exact commands and limits. No real password or service was contacted
 
 This is additive to Browser #6/#13 (credential use), #7/#14 (profiles), #9/#16
 (control), and #1 (fixtures); it closes none of their broader acceptance gates.
-The next integration slice is a bounded real browser capture adapter and pinned
-disposable OpenBao with synthetic accounts, then independent review. Actual
+The opt-in account E2E fixture adds real Chromium and pinned disposable OpenBao
+with a controlled HTTPS account site. Its capture/authority/operation-owner
+adapters remain test fixtures, not production identity or persistence. Native
+qualification and independent source review are recorded separately. Actual
 credentials, extension permissions, workload credentials, deployment and live
 qualification require their own authorization. No new recurring services or
 backups are created.

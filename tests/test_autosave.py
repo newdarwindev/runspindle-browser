@@ -13,9 +13,43 @@ from unittest.mock import patch
 
 from browser_runtime.autosave import Autosave, Login, Writer, MARKER
 from browser_runtime.credentials import Observation
-from browser_runtime.effects import Cancelled
+from browser_runtime.effects import Cancelled, Journal
 from browser_runtime.openbao import Response, Vault
 from test_openbao import Fixture, CANARY
+
+
+class ExternalEffects:
+    """Test-only external owner adapts the legacy store during relocation.
+
+    This fixture, not Autosave, owns the path, open, close and recovery lifecycle.
+    The production external owner belongs outside Browser.
+    """
+
+    def __init__(self, path):
+        self.path = path
+
+    def execute(
+        self,
+        *,
+        binding,
+        payload,
+        target_digest,
+        approve,
+        submit,
+        observe,
+        reconcile_only,
+    ):
+        journal = Journal(self.path, approve=approve, submit=submit, observe=observe)
+        try:
+            if not reconcile_only:
+                journal.dispatch(binding, payload, target_digest=target_digest)
+            return journal.reconcile(
+                binding,
+                hashlib.sha256(payload).hexdigest(),
+                target_digest=target_digest,
+            )
+        finally:
+            journal.close()
 
 
 class Harness(Fixture):
@@ -128,7 +162,7 @@ class Harness(Fixture):
 
     def service(self):
         return Autosave(
-            self.path,
+            ExternalEffects(self.path),
             authority=self,
             writer=Writer(self.v, self.peer),
             consent=self.consent,
@@ -396,6 +430,81 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertTrue(reader.consume(handle, f.g, sink))
         self.assertEqual(received, [CANARY])
         self.assertFalse(reader.consume(handle, f.g, sink))
+
+    def test_browser_does_not_open_or_own_storage(self):
+        f = self.f
+
+        class ExternalOwner:
+            def execute(
+                self,
+                *,
+                binding,
+                payload,
+                target_digest,
+                approve,
+                submit,
+                observe,
+                reconcile_only,
+            ):
+                if not approve(binding, hashlib.sha256(payload).hexdigest()):
+                    return "unknown"
+                submit(binding, payload)
+                return observe(binding, hashlib.sha256(payload).hexdigest()).outcome
+
+        service = f.service()
+        service.effects = ExternalOwner()
+        with patch(
+            "sqlite3.connect", side_effect=AssertionError("Browser opened storage")
+        ):
+            self.assertEqual(service.run(f.ticket), "saved")
+        self.assertEqual(list(Path(self.tmp.name).iterdir()), [])
+        self.assertFalse(hasattr(service, "path"))
+
+    def test_external_owner_cannot_hide_callback_cancellation(self):
+        f = self.f
+
+        class SuppressingOwner:
+            def execute(self, **kwargs):
+                try:
+                    kwargs["submit"](kwargs["binding"], kwargs["payload"])
+                except BaseException:
+                    return "confirmed"
+
+        def cancel():
+            raise KeyboardInterrupt(CANARY)
+
+        f.callback = cancel
+        service = f.service()
+        service.effects = SuppressingOwner()
+        with self.assertRaises(Cancelled) as caught:
+            service.run(f.ticket)
+        self.assertIsNone(caught.exception.__context__)
+        self.assertNotIn(CANARY, str(caught.exception))
+        self.assertEqual(f.posts, 0)
+
+    def test_external_owner_cannot_reuse_callbacks_after_return(self):
+        f = self.f
+        retained = {}
+
+        class ExternalOwner:
+            def execute(self, **kwargs):
+                retained.update(kwargs)
+                kwargs["submit"](kwargs["binding"], kwargs["payload"])
+                return kwargs["observe"](
+                    kwargs["binding"], hashlib.sha256(kwargs["payload"]).hexdigest()
+                ).outcome
+
+        service = f.service()
+        service.effects = ExternalOwner()
+        self.assertEqual(service.run(f.ticket), "saved")
+        counts = (f.captures, f.posts, f.tokens)
+        with self.assertRaises(ValueError):
+            retained["submit"](retained["binding"], retained["payload"])
+        with self.assertRaises(ValueError):
+            retained["approve"](
+                retained["binding"], hashlib.sha256(retained["payload"]).hexdigest()
+            )
+        self.assertEqual((f.captures, f.posts, f.tokens), counts)
 
 
 if __name__ == "__main__":
