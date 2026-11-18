@@ -7,8 +7,8 @@ An opaque vault handle, not plaintext, crosses into the pinned injection helper.
 
 import math
 import re
-from time import time_ns
 from dataclasses import dataclass, field
+from time import time_ns
 from typing import Callable, ContextManager, NoReturn, Protocol, cast
 
 from browser_runtime.effects import Binding, Cancelled
