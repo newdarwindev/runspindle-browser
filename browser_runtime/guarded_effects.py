@@ -18,7 +18,12 @@ from typing import Callable, ContextManager, NoReturn, Protocol, cast
 
 from browser_runtime.credentials import Observation, Target
 from browser_runtime.effects import (
-    Binding, Cancelled, Denied, Journal, Outcome, Readback,
+    Binding,
+    Cancelled,
+    Denied,
+    Journal,
+    Outcome,
+    Readback,
 )
 
 
@@ -165,7 +170,14 @@ class GuardedJournal:
             raise ValueError
         return self._site.readback(grant, guard)
 
-    def _run(self, ticket: object, action: str, payload: bytes | None) -> Outcome:
+    def _run(
+        self,
+        ticket: object,
+        action: str,
+        payload: bytes | None,
+        expected_target: Target | None = None,
+        expected_digest: str | None = None,
+    ) -> Outcome:
         if not self._lock.acquire(blocking=False):
             _fail(False)
         result: Outcome | None = None
@@ -181,6 +193,18 @@ class GuardedJournal:
                         grant, _ = self._check()
                         if grant.action != action:
                             raise ValueError
+                        # Optional caller expectation narrows authenticated admission;
+                        # it never supplies authority or selects an adapter.
+                        if expected_target is not None or expected_digest is not None:
+                            if type(expected_target) is not Target:
+                                raise ValueError
+                            expected_target.validate()
+                            if (
+                                type(expected_digest) is not str
+                                or expected_target != grant.target
+                                or expected_digest != grant.payload_digest
+                            ):
+                                raise ValueError
                         if action == "dispatch":
                             if (
                                 type(payload) is not bytes
@@ -189,12 +213,14 @@ class GuardedJournal:
                             ):
                                 raise ValueError
                             result = self._journal.dispatch(
-                                grant.target.binding, payload,
+                                grant.target.binding,
+                                payload,
                                 target_digest=_target_digest(grant),
                             )
                         else:
                             result = self._journal.reconcile(
-                                grant.target.binding, grant.payload_digest,
+                                grant.target.binding,
+                                grant.payload_digest,
                                 target_digest=_target_digest(grant),
                             )
                     except BaseException as error:
@@ -211,11 +237,24 @@ class GuardedJournal:
             _fail(cancelled)
         return result
 
-    def dispatch(self, ticket: object, payload: bytes) -> Outcome:
-        return self._run(ticket, "dispatch", payload)
+    def dispatch(
+        self,
+        ticket: object,
+        payload: bytes,
+        *,
+        expected_target: Target | None = None,
+        expected_digest: str | None = None,
+    ) -> Outcome:
+        return self._run(ticket, "dispatch", payload, expected_target, expected_digest)
 
-    def reconcile(self, ticket: object) -> Outcome:
-        return self._run(ticket, "reconcile", None)
+    def reconcile(
+        self,
+        ticket: object,
+        *,
+        expected_target: Target | None = None,
+        expected_digest: str | None = None,
+    ) -> Outcome:
+        return self._run(ticket, "reconcile", None, expected_target, expected_digest)
 
     def close(self) -> None:
         if not self._lock.acquire(blocking=False):
