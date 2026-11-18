@@ -24,7 +24,9 @@ jobs:
         env:
           RUNSPINDLE_BAO_BINARY: ${{ vars.RUNSPINDLE_BAO_BINARY }}
           RUNSPINDLE_CHROMIUM_BINARY: ${{ vars.RUNSPINDLE_CHROMIUM_BINARY }}
+          RUNSPINDLE_CERTUTIL_BINARY: ${{ vars.RUNSPINDLE_CERTUTIL_BINARY }}
         run: >-
-          python3 tools/qualify_account_e2e.py
+          python3 tools/run_isolated_account_e2e.py
           --bao "$RUNSPINDLE_BAO_BINARY"
           --chromium "$RUNSPINDLE_CHROMIUM_BINARY"
+          --certutil "$RUNSPINDLE_CERTUTIL_BINARY"

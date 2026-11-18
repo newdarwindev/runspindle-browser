@@ -114,3 +114,28 @@ reviewed launcher hash and sanitized receipt. The final source default Python
 suite also passed 569 tests with 10 explicit opt-in skips. This is manual isolated
 synthetic evidence, not a GitHub Actions result, installed browser helper,
 production Core operation owner, durable recovery or fleet qualification.
+
+## Repository-owned isolation launcher
+
+`tools/run_isolated_account_e2e.py` adapts the reviewed manual mount plan for the
+manual Actions workflow. It requires pre-provisioned, exact-pinned OpenBao,
+Chromium, certutil and bubblewrap; it downloads/installs nothing. It creates only
+temporary tool symlinks outside the child namespace, mounts inputs read-only,
+clears inherited environment, and confines all fixture data to private tmpfs.
+The parent bounds execution at 300 seconds, kills/waits on timeout, and retains
+the staging directory if process termination cannot be confirmed.
+
+This launcher is a new source candidate with offline tests, not the exact shell
+launcher in the existing manual receipt. It still requires independent review
+and execution. The Actions admission gate remains mandatory: child-process
+isolation does not qualify arbitrary job preparation on a persistent personal
+runner. A separately admitted disposable runner and actual Actions receipt are
+still required. No runner or repository variable is created by this source.
+
+The reviewed launcher corrections use selector-driven bounded capture (16 KiB
+stdout, 4 KiB stderr) rather than unbounded communicate buffering. SIGTERM,
+SIGHUP and SIGINT enter owned-child cleanup; repeated cancellation is ignored
+only during the bounded reap, then original handlers are restored. Ten offline
+tests include harmless child overflow, timeout, termination, already-reaped PID
+and uncertain-wait retention cases. No browser/vault or namespace is launched by
+these lifecycle tests, and this source still awaits independent rereview.
