@@ -1,6 +1,6 @@
 """Closed bounded local wire receiver; no launcher, network or issuer.
 
-A trusted composition root supplies a GuardedJournal and out-of-band admission
+A trusted composition root supplies a GuardedPeer and out-of-band admission
 ticket. Wire values constrain that authenticated grant, never create one.
 """
 
@@ -14,7 +14,7 @@ from typing import Any, NoReturn
 
 from browser_runtime.credentials import Target
 from browser_runtime.effects import Binding, Cancelled, Denied
-from browser_runtime.guarded_effects import GuardedJournal
+from browser_runtime.guarded_peer import GuardedPeer
 
 VERSION = "runspindle.browser-effect.v1"
 MAX_PAYLOAD = 1048576
@@ -127,9 +127,9 @@ def decode(raw: bytes) -> Request:
 
 
 class Receiver:
-    """Caller supplies trusted journal/ticket; bytes contain neither adapters nor credentials."""
+    """Caller supplies trusted peer/ticket; bytes contain neither adapters nor credentials."""
 
-    def __init__(self, journal: GuardedJournal) -> None:
+    def __init__(self, journal: GuardedPeer) -> None:
         self._journal = journal
 
     def exchange(self, raw: bytes, ticket: object) -> bytes:

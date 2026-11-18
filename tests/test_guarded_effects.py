@@ -216,7 +216,7 @@ print(f.effects()); j.close()
                                         text=True, timeout=10)
                 return result.stdout.strip()
             self.assertEqual(run(), "0")
-            module = root / "browser_runtime/guarded_effects.py"
+            module = root / "browser_runtime/guarded_peer.py"
             original = module.read_text()
             anchor = "current is not True\n            or "
             self.assertEqual(original.count(anchor), 1)

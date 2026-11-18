@@ -27,7 +27,7 @@ is not itself a guarantee that an uncertain external action may safely be retrie
 | Current code | Existing managed state | Proposed disposition |
 | --- | --- | --- |
 | `browser_runtime/effects.py`, `effect_schema.py` | SQLite operations, binding/digest, unknown/confirmed/rejected readback | External single operation owner; retain no-blind-retry and operation uniqueness |
-| `browser_runtime/guarded_effects.py` | Constructs `Journal(path)` | Keep browser guard, inject external operation execution |
+| `browser_runtime/guarded_effects.py` | Legacy compatibility constructs `Journal(path)` | Shared guard relocated to stateless `guarded_peer.GuardedPeer`; legacy caller migration still required |
 | `browser_runtime/control_leases.py` (`LeaseStore`) | SQLite holders, epochs and transfer state | External authority owner; Browser remains an input gate |
 | `browser_runtime/profile_store.py`, `profile_schema.py` | `profiles.sqlite3`: account scope/owners, encrypted checkpoints, nonce/key fingerprints, restore records | Remove Browser checkpoint ownership; use canonical Host/native profile or explicit external profile service only if separately required |
 | `browser_runtime/profile_directory.py` | Staged/materialized profile directories | Host lifecycle ownership, not a Browser snapshot subsystem |
