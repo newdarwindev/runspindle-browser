@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "scope": "Browser #9/#16 partial bounded local control-lease storage",
+  "base_revision": "7f3ab01cced0a96a091a22d42886486bf8600d4b",
+  "evidence_class": "actual SQLite and fresh-process race with synthetic authority/backend and independent file-backed fence ledger",
+  "source_sha256": {
+    "browser_runtime/control_leases.py": "7ebe55318d758f6c9261ab3fcaeb5e7452533eb2ccef9c56421d6680c78bd495",
+    "tests/test_control_capacity.py": "2d3894b0d4c4e8bfebf423143f1cb08c970c2b6944144783fdd7cd8f2d6b0399",
+    "tests/test_control_leases.py": "e1db6facc7f4cbedbc2b70cfd36b120dd0daef35a9e7e06b6c9ea49329e5b748",
+    "tests/test_lease_credentials.py": "46b1c796ed167712c0a20c4c06af30a0d82755899de5c65ff210777a4697fb02",
+    "tests/test_passive_control_status.py": "21552f2e78e83c61d4e204bf31740aa186466fed957f3d45d4d19a0a08876e8f",
+    "tests/test_control_reconciliation.py": "4cd9a4a0d34ad6c996d314cc9e43ec150da19687d532e97faf93bbcf3e5146f1",
+    "tests/test_guarded_effects.py": "1d414c8304543961362af1d78b7c09b3f599d60c0338efe281c2a270b960daa9"
+  },
+  "runtime": {
+    "python": "3.14.8",
+    "sqlite": "3.53.4"
+  },
+  "checks": {
+    "focused_normal": {
+      "tests": 54,
+      "status": "passed"
+    },
+    "capacity_normal_and_optimized": {
+      "tests_per_mode": 5,
+      "status": "passed"
+    },
+    "full_normal": {
+      "tests": 526,
+      "skipped": 6,
+      "status": "passed"
+    },
+    "full_optimized": {
+      "tests": 526,
+      "skipped": 6,
+      "status": "passed"
+    },
+    "scaffold": "passed",
+    "diff_check": "passed",
+    "independent_review": "source and second formatting/mutation-anchor review: no blocker",
+    "static_aggregate": {
+      "checks": {
+        "javascript": {
+          "files": 0,
+          "not_applicable": true,
+          "tools": [
+            "eslint",
+            "typescript",
+            "prettier",
+            "@types/node"
+          ]
+        },
+        "python": {
+          "files": 86,
+          "format": "ruff",
+          "lint": "ruff E4/E7/E9/F/I",
+          "types": "mypy strict; imported modules separately enumerated"
+        },
+        "python_runtime": "3.14.8",
+        "runtime_pin": "runner-image qualification is separate from package pins",
+        "shell": {
+          "files": 0,
+          "not_applicable": true,
+          "tool": "shellcheck"
+        },
+        "yaml": {
+          "files": 4,
+          "not_applicable": false,
+          "tool": "yamllint"
+        }
+      },
+      "existing_debt": 78,
+      "new_diagnostics": 455,
+      "status": "failed"
+    }
+  },
+  "static_comparison": {
+    "base_diagnostics": 541,
+    "candidate_diagnostics": 533,
+    "added": {
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"896f31bd49a8c65f\", \"Call to untyped function \\\"snapshot\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"896f31bd49a8c65f\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"d6f67b6cea9298f0\", \"Call to untyped function \\\"snapshot\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"d6f67b6cea9298f0\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"91c5347afd51badb\", \"Call to untyped function \\\"snapshot\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"91c5347afd51badb\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-def\", \"672670741f86e477\", \"Function is missing a return type annotation\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"7d796914d7702b40\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"e0610c128c7d6b7a\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_lease_credentials.py\", \"no-untyped-call\", \"4c3345bb57cca475\", \"Call to untyped function \\\"resolver\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_lease_credentials.py\", \"no-untyped-call\", \"783b0e454fdf9b9c\", \"Call to untyped function \\\"resolver\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"no-untyped-call\", \"2356a177a1713e3c\", \"Call to untyped function \\\"target\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"assignment\", \"4e25a4f44c0b15c6\", \"Incompatible types in assignment (expression has type \\\"Input\\\", variable has type \\\"Transfer\\\")\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"no-untyped-call\", \"5f24067fe367afd8\", \"Call to untyped function \\\"target\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"attr-defined\", \"6bb7759d3ee31cee\", \"\\\"Transfer\\\" has no attribute \\\"effect\\\"\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"attr-defined\", \"b19d440cb5105bbc\", \"\\\"Transfer\\\" has no attribute \\\"effect\\\"\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"call-arg\", \"5f6d9f95759ff7f9\", \"Unexpected keyword argument \\\"effect\\\" for \\\"replace\\\" of \\\"Transfer\\\"\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"attr-defined\", \"d215c1622c25551c\", \"\\\"Transfer\\\" has no attribute \\\"effect\\\"\"]": 1
+    },
+    "resolved": {
+      "[\"ruff\", \"browser_runtime/control_leases.py\", \"I001\", \"a6284e6d3d43bdfb\", \"Import block is un-sorted or un-formatted\"]": 1,
+      "[\"ruff\", \"browser_runtime/control_leases.py\", \"F401\", \"d884151a23e87a1f\", \"`browser_runtime.effects.Outcome` imported but unused\"]": 1,
+      "[\"mypy\", \"browser_runtime/control_leases.py\", \"union-attr\", \"dc29820498cc4fef\", \"Item \\\"Input\\\" of \\\"Input | CredentialInput\\\" has no attribute \\\"credential\\\"\"]": 1,
+      "[\"mypy\", \"browser_runtime/control_leases.py\", \"arg-type\", \"c02f592659b475ce\", \"Argument 1 to \\\"asdict\\\" has incompatible type \\\"Holder | None\\\"; expected \\\"DataclassInstance\\\"\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"2fd1a2a3434f2b2c\", \"Call to untyped function \\\"snapshot\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"2fd1a2a3434f2b2c\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"b34552df091fa172\", \"Call to untyped function \\\"snapshot\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"b34552df091fa172\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"c0cafe2116de7b0d\", \"Call to untyped function \\\"snapshot\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"c0cafe2116de7b0d\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-def\", \"152f6a6ee3d6ba09\", \"Function is missing a return type annotation\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"6cdb2563a1131ce8\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_passive_control_status.py\", \"no-untyped-call\", \"433f3fcee452079b\", \"Call to untyped function \\\"scope\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_lease_credentials.py\", \"no-untyped-call\", \"8ee2e6a0ad4d13c8\", \"Call to untyped function \\\"resolver\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_lease_credentials.py\", \"no-untyped-call\", \"611a503bfaef0e56\", \"Call to untyped function \\\"resolver\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"no-untyped-call\", \"e06d83dce422971a\", \"Call to untyped function \\\"target\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"assignment\", \"f2126476cd6e0ec3\", \"Incompatible types in assignment (expression has type \\\"Input\\\", variable has type \\\"Transfer\\\")\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"no-untyped-call\", \"f2126476cd6e0ec3\", \"Call to untyped function \\\"target\\\" in typed context\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"attr-defined\", \"381257f959dc30c4\", \"\\\"Transfer\\\" has no attribute \\\"effect\\\"\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"attr-defined\", \"b6d4b35f56c2ad9a\", \"\\\"Transfer\\\" has no attribute \\\"effect\\\"\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"call-arg\", \"70abee31900a69e9\", \"Unexpected keyword argument \\\"effect\\\" for \\\"replace\\\" of \\\"Transfer\\\"\"]": 1,
+      "[\"mypy\", \"tests/test_control_leases.py\", \"attr-defined\", \"70abee31900a69e9\", \"\\\"Transfer\\\" has no attribute \\\"effect\\\"\"]": 1,
+      "[\"ruff-format\", \"browser_runtime/control_leases.py\", \"6aac8a60136a85dff9bc061e9ed41f57177c16736a78135445fe6b6a241de4d4\"]": 1,
+      "[\"ruff-format\", \"tests/test_control_leases.py\", \"a13d0c0e24c7e4ba6fa4a8deb2bb715625fa98e51be7d82262aeebb44f667a15\"]": 1,
+      "[\"ruff-format\", \"tests/test_lease_credentials.py\", \"03945451717fa8c06083a42e9191d802c9083ef4157c5f1fa4eb0aebafb34338\"]": 1,
+      "[\"ruff-format\", \"tests/test_passive_control_status.py\", \"387924f5525e663253ae1e97e5712d44690940dc183e769c8498fa9f739e5c66\"]": 1
+    },
+    "checks": {
+      "python_runtime": "3.14.8",
+      "runtime_pin": "runner-image qualification is separate from package pins",
+      "python": {
+        "files": 86,
+        "lint": "ruff E4/E7/E9/F/I",
+        "types": "mypy strict; imported modules separately enumerated",
+        "format": "ruff"
+      },
+      "yaml": {
+        "files": 4,
+        "tool": "yamllint",
+        "not_applicable": false
+      },
+      "shell": {
+        "files": 0,
+        "tool": "shellcheck",
+        "not_applicable": true
+      },
+      "javascript": {
+        "files": 0,
+        "tools": [
+          "eslint",
+          "typescript",
+          "prettier",
+          "@types/node"
+        ],
+        "not_applicable": true
+      }
+    }
+  },
+  "static_comparison_note": "Total diagnostics 541 to 533. Source formatting relocates existing mypy fingerprint entries. Comparing tool/path/code/message multisets yields no added diagnostics; baseline unchanged. Aggregate still failed, not green CI.",
+  "attempts": [
+    "initial formatting broke three mutation anchors; updated whitespace anchors, invariant deletions unchanged",
+    "initial full discovery exposed missing child tests import; explicit child path fixed",
+    "final full normal/optimized tests passed on unchanged runtime source"
+  ],
+  "logs_sha256": {
+    "control-bounds-full-final3.log": "cecb8f001696e0f0e79d84bb08bc4081e0c74f0101d7ce5b59a6a7bd0a0976a7",
+    "control-bounds-full-O-final3.log": "aa3a708963fb4394b08fc04e51b473044ab76572f872c4d68540ba15b04c339f",
+    "control-bounds-static-final.log": "0fdaeae01dd781e44d9c6b55242de5a7e45a065dbab79de560032d442c1736ca"
+  },
+  "not_qualified": [
+    "real browser/viewer input fencing",
+    "production authenticated authority",
+    "Browser #13 dependency integration",
+    "full Browser #9/#16 completion",
+    "power-loss storage",
+    "filesystem quota",
+    "live accounts",
+    "CI or runner image"
+  ]
+}

@@ -18,9 +18,17 @@ from pathlib import Path
 from typing import Callable, ContextManager, Iterator, NoReturn, Protocol, cast
 
 from browser_runtime.credentials import (
-    AdapterSet, Grant as CredentialGrant, Helper, Observation, Resolver, Target, Vault,
+    AdapterSet,
+    Helper,
+    Observation,
+    Resolver,
+    Target,
+    Vault,
 )
-from browser_runtime.effects import Cancelled, Denied, Outcome
+from browser_runtime.credentials import (
+    Grant as CredentialGrant,
+)
+from browser_runtime.effects import Cancelled, Denied
 from browser_runtime.guarded_effects import Grant as EffectGrant
 from browser_runtime.guarded_effects import GuardedJournal, Site
 
@@ -38,7 +46,10 @@ def _scope(target: Target) -> str:
 
 
 def _identifier(value: str) -> None:
-    if type(value) is not str or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value) is None:
+    if (
+        type(value) is not str
+        or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value) is None
+    ):
         raise ValueError
 
 
@@ -90,7 +101,11 @@ class Transfer:
         if type(self.action) is not str:
             raise ValueError
         if self.action == "initialize":
-            if self.expected_epoch != 0 or self.source is not None or self.destination.kind != "agent":
+            if (
+                self.expected_epoch != 0
+                or self.source is not None
+                or self.destination.kind != "agent"
+            ):
                 raise ValueError
         else:
             if type(self.source) is not Holder:
@@ -108,6 +123,7 @@ class Transfer:
 @dataclass(frozen=True)
 class Recovery:
     """Fresh readback authority for one immutable, already reserved transfer."""
+
     transfer: Transfer
     deadline: float
 
@@ -134,6 +150,7 @@ class Input:
 @dataclass(frozen=True)
 class CredentialInput:
     """Distinct exact credential admission; effect tickets confer no vault rights."""
+
     credential: CredentialGrant
     holder: Holder
 
@@ -141,6 +158,7 @@ class CredentialInput:
 @dataclass(frozen=True)
 class PassiveStatus:
     """Fresh observation permission only; never input or transition authority."""
+
     target: Target
     deadline: float
 
@@ -154,6 +172,7 @@ class PassiveStatus:
 @dataclass(frozen=True)
 class ControlStatus:
     """Historical durable metadata, not a lease or usable control capability."""
+
     phase: str
     epoch: int | None
     holder: Holder | None
@@ -168,8 +187,12 @@ class FenceReceipt:
 
 
 class Guard(Protocol):
-    def admit(self, ticket: object) -> Transfer | Recovery | Input | CredentialInput | PassiveStatus | None: ...
-    def current(self, grant: Transfer | Recovery | Input | CredentialInput | PassiveStatus) -> bool: ...
+    def admit(
+        self, ticket: object
+    ) -> Transfer | Recovery | Input | CredentialInput | PassiveStatus | None: ...
+    def current(
+        self, grant: Transfer | Recovery | Input | CredentialInput | PassiveStatus
+    ) -> bool: ...
     def observe(self) -> Observation | None: ...
     def released(self, transfer: Transfer | Recovery) -> bool:
         """Authenticate release by the exact source holder, target and epoch."""
@@ -199,6 +222,58 @@ DDL = """CREATE TABLE leases (
     transition TEXT NOT NULL
 )"""
 APP_ID = 0x5242434C
+MAX_LEASES = 1024
+MAX_SCOPE_BYTES = 16384
+MAX_TRANSITION_BYTES = 32768
+
+
+def _inventory(db: sqlite3.Connection) -> list[tuple[str, str, str | None]]:
+    if (
+        db.execute(
+            "SELECT count(*) FROM (SELECT 1 FROM sqlite_master LIMIT 17)"
+        ).fetchone()[0]
+        > 16
+    ):
+        raise ValueError
+    if (
+        db.execute(
+            "SELECT 1 FROM sqlite_master WHERE length(CAST(name AS BLOB))>128 OR length(CAST(sql AS BLOB))>16384 LIMIT 1"
+        ).fetchone()
+        is not None
+    ):
+        raise ValueError
+    return db.execute(
+        "SELECT type,name,sql FROM sqlite_master ORDER BY name LIMIT 17"
+    ).fetchall()
+
+
+def _retained_count(db: sqlite3.Connection) -> int:
+    return int(
+        db.execute(
+            "SELECT count(*) FROM (SELECT 1 FROM leases LIMIT ?)", (MAX_LEASES + 1,)
+        ).fetchone()[0]
+    )
+
+
+def _validate_retained(db: sqlite3.Connection) -> None:
+    # Bound SQL visits and values before any persisted JSON reaches Python.
+    if _retained_count(db) > MAX_LEASES:
+        raise ValueError
+    if (
+        db.execute(
+            """SELECT 1 FROM leases WHERE
+        typeof(browser)!='text' OR length(CAST(browser AS BLOB)) NOT BETWEEN 1 AND 128 OR
+        typeof(scope)!='text' OR length(CAST(scope AS BLOB)) NOT BETWEEN 1 AND ? OR
+        typeof(epoch)!='integer' OR epoch<=0 OR
+        typeof(holder)!='text' OR length(CAST(holder AS BLOB)) NOT BETWEEN 1 AND 256 OR
+        typeof(phase)!='text' OR phase NOT IN ('pending','active') OR
+        typeof(transition)!='text' OR length(CAST(transition AS BLOB)) NOT BETWEEN 1 AND ?
+        LIMIT 1""",
+            (MAX_SCOPE_BYTES, MAX_TRANSITION_BYTES),
+        ).fetchone()
+        is not None
+    ):
+        raise ValueError
 
 
 class LeaseStore:
@@ -210,8 +285,12 @@ class LeaseStore:
     """
 
     def __init__(
-        self, path: str | Path, *, authority: Authority | None = None,
-        backend: Backend | None = None, inspector: Inspector | None = None,
+        self,
+        path: str | Path,
+        *,
+        authority: Authority | None = None,
+        backend: Backend | None = None,
+        inspector: Inspector | None = None,
         clock: Callable[[], float] = time.monotonic,
         max_age: float = 1.0,
     ) -> None:
@@ -225,24 +304,34 @@ class LeaseStore:
         db: sqlite3.Connection | None = None
         failed = cancelled = False
         try:
-            if not 0 < self._max_age <= 60 or not str(path) or str(path) == ":memory:" or str(path).startswith("file:"):
+            if (
+                not 0 < self._max_age <= 60
+                or not str(path)
+                or str(path) == ":memory:"
+                or str(path).startswith("file:")
+            ):
                 raise ValueError
             db = sqlite3.connect(path, isolation_level=None, timeout=2)
             db.execute("PRAGMA synchronous=FULL")
             db.execute("BEGIN IMMEDIATE")
-            inventory = db.execute("SELECT type,name,sql FROM sqlite_master ORDER BY name").fetchall()
-            identity = (db.execute("PRAGMA application_id").fetchone()[0],
-                        db.execute("PRAGMA user_version").fetchone()[0])
+            inventory = _inventory(db)
+            identity = (
+                db.execute("PRAGMA application_id").fetchone()[0],
+                db.execute("PRAGMA user_version").fetchone()[0],
+            )
             if not inventory and identity == (0, 0):
                 db.execute(DDL)
                 db.execute(f"PRAGMA application_id={APP_ID}")
                 db.execute("PRAGMA user_version=1")
             else:
-                expected = [("table", "leases", DDL),
-                            ("index", "sqlite_autoindex_leases_1", None)]
+                expected = [
+                    ("table", "leases", DDL),
+                    ("index", "sqlite_autoindex_leases_1", None),
+                ]
                 if identity != (APP_ID, 1) or inventory != expected:
                     raise ValueError
-            if db.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+            _validate_retained(db)
+            if db.execute("PRAGMA quick_check(1)").fetchmany(2) != [("ok",)]:
                 raise ValueError
             db.execute("COMMIT")
             self._db = db
@@ -258,7 +347,11 @@ class LeaseStore:
         if failed:
             _fail(cancelled)
 
-    def _check(self, guard: Guard, grant: Transfer | Recovery | Input | CredentialInput | PassiveStatus) -> float:
+    def _check(
+        self,
+        guard: Guard,
+        grant: Transfer | Recovery | Input | CredentialInput | PassiveStatus,
+    ) -> float:
         if type(grant) is Transfer:
             grant.validate()
             target, deadline = grant.target, grant.deadline
@@ -295,21 +388,33 @@ class LeaseStore:
         observed_at = _time(observed.observed_at)
         current = guard.current(grant)
         now = _time(self._clock())
-        if current is not True or not 0 <= now - observed_at <= self._max_age or now >= _time(deadline):
+        if (
+            current is not True
+            or not 0 <= now - observed_at <= self._max_age
+            or now >= _time(deadline)
+        ):
             raise ValueError
         return now
 
     def _row(self, target: Target) -> tuple[object, ...] | None:
+        _validate_retained(self._db)
         return self._db.execute(
             "SELECT scope,epoch,holder,phase,transition FROM leases WHERE browser=?",
             (target.binding.browser,),
         ).fetchone()
 
     def _input(self, grant: Input | CredentialInput) -> None:
-        target = grant.effect.target if type(grant) is Input else grant.credential.target
+        target = (
+            grant.effect.target
+            if type(grant) is Input
+            else cast(CredentialInput, grant).credential.target
+        )
         row = self._row(target)
         if row is None or row[:4] != (
-            _scope(target), target.binding.epoch, _encode(asdict(grant.holder)), "active"
+            _scope(target),
+            target.binding.epoch,
+            _encode(asdict(grant.holder)),
+            "active",
         ):
             raise ValueError
 
@@ -366,10 +471,14 @@ class LeaseStore:
             epoch: int | None = None
             holder: Holder | None = None
             if row is not None:
-                if (row[0] != _scope(grant.target) or type(row[1]) is not int
-                        or row[1] <= 0 or type(row[3]) is not str
-                        or row[3] not in ("active", "pending")
-                        or type(row[2]) is not str):
+                if (
+                    row[0] != _scope(grant.target)
+                    or type(row[1]) is not int
+                    or row[1] <= 0
+                    or type(row[3]) is not str
+                    or row[3] not in ("active", "pending")
+                    or type(row[2]) is not str
+                ):
                     raise ValueError
                 data = json.loads(row[2])
                 stored_holder = Holder(**data)
@@ -383,7 +492,9 @@ class LeaseStore:
             # Sampled after the final observation/current callbacks and checked
             # against the deadline; read waits cannot retain old permission.
             observed_at = self._check(guard, grant)
-            result = ControlStatus(phase, epoch, holder, observed_at, _scope(grant.target))
+            result = ControlStatus(
+                phase, epoch, holder, observed_at, _scope(grant.target)
+            )
         return result  # _session rolls back the read transaction after guard exit.
 
     def transfer(self, ticket: object) -> str:
@@ -394,17 +505,27 @@ class LeaseStore:
                 raise ValueError
             self._check(guard, grant)
             encoded = _encode(asdict(grant))
+            if (
+                len(encoded.encode("utf-8")) > MAX_TRANSITION_BYTES
+                or len(_scope(grant.target).encode("utf-8")) > MAX_SCOPE_BYTES
+            ):
+                raise ValueError
             self._db.execute("BEGIN IMMEDIATE")
             self._check(guard, grant)
             row = self._row(grant.target)
             if row is not None and row[4] == encoded:
                 return "active" if row[3] == "active" else "unknown"
             if row is None:
-                if grant.action != "initialize":
+                if (
+                    grant.action != "initialize"
+                    or _retained_count(self._db) >= MAX_LEASES
+                ):
                     raise ValueError
             elif row[:4] != (
-                _scope(grant.target), grant.expected_epoch,
-                _encode(asdict(grant.source)), "active",
+                _scope(grant.target),
+                grant.expected_epoch,
+                _encode(asdict(cast(Holder, grant.source))),
+                "active",
             ):
                 raise ValueError
             if grant.action == "handback":
@@ -413,8 +534,14 @@ class LeaseStore:
                 self._check(guard, grant)  # Release authentication can block.
             self._db.execute(
                 "INSERT INTO leases VALUES (?,?,?,?,?,?) ON CONFLICT(browser) DO UPDATE SET scope=excluded.scope,epoch=excluded.epoch,holder=excluded.holder,phase=excluded.phase,transition=excluded.transition",
-                (grant.target.binding.browser, _scope(grant.target), grant.target.binding.epoch,
-                 _encode(asdict(grant.destination)), "pending", encoded),
+                (
+                    grant.target.binding.browser,
+                    _scope(grant.target),
+                    grant.target.binding.epoch,
+                    _encode(asdict(grant.destination)),
+                    "pending",
+                    encoded,
+                ),
             )
             self._db.execute("COMMIT")  # Burn transition before the external fence.
             self._db.execute("BEGIN IMMEDIATE")
@@ -425,10 +552,16 @@ class LeaseStore:
                 self._check(guard, grant)  # Release authentication can block.
             receipt = self._backend.fence(grant, guard)
             self._check(guard, grant)
-            if (type(receipt) is FenceReceipt and type(receipt.transfer) is Transfer
-                    and receipt.transfer == grant and receipt.previous_inputs_closed is True):
-                self._db.execute("UPDATE leases SET phase='active' WHERE browser=?",
-                                 (grant.target.binding.browser,))
+            if (
+                type(receipt) is FenceReceipt
+                and type(receipt.transfer) is Transfer
+                and receipt.transfer == grant
+                and receipt.previous_inputs_closed is True
+            ):
+                self._db.execute(
+                    "UPDATE leases SET phase='active' WHERE browser=?",
+                    (grant.target.binding.browser,),
+                )
                 self._db.execute("COMMIT")
                 outcome = "active"
         return outcome
@@ -446,11 +579,15 @@ class LeaseStore:
             self._check(guard, grant)  # A writer wait cannot preserve old authority.
             row = self._row(transfer.target)
             expected = (
-                _scope(transfer.target), transfer.target.binding.epoch,
+                _scope(transfer.target),
+                transfer.target.binding.epoch,
                 _encode(asdict(transfer.destination)),
             )
-            if (row is None or row[:3] != expected
-                    or row[4] != _encode(asdict(transfer))):
+            if (
+                row is None
+                or row[:3] != expected
+                or row[4] != _encode(asdict(transfer))
+            ):
                 raise ValueError
             if row[3] == "active":
                 return "active"  # Retained metadata, not a new input capability.
@@ -462,10 +599,12 @@ class LeaseStore:
                 self._check(guard, grant)
             observed = self._inspector.inspect(grant, guard)
             self._check(guard, grant)
-            if (type(observed) is not FenceObservation
-                    or type(observed.transfer) is not Transfer
-                    or observed.transfer != transfer
-                    or observed.previous_inputs_closed is not True):
+            if (
+                type(observed) is not FenceObservation
+                or type(observed.transfer) is not Transfer
+                or observed.transfer != transfer
+                or observed.previous_inputs_closed is not True
+            ):
                 return "unknown"
             if transfer.action == "handback":
                 if guard.released(grant) is not True:
@@ -476,19 +615,31 @@ class LeaseStore:
                 raise ValueError  # Stale closure is not activation authority.
             if now >= _time(grant.deadline):
                 raise ValueError
-            self._db.execute("UPDATE leases SET phase='active' WHERE browser=?",
-                             (transfer.target.binding.browser,))
+            self._db.execute(
+                "UPDATE leases SET phase='active' WHERE browser=?",
+                (transfer.target.binding.browser,),
+            )
             self._db.execute("COMMIT")
             outcome = "active"
         return outcome
 
     def journal(self, path: str | Path, site: Site) -> GuardedJournal:
         """Route both agent/human effects through the existing guarded Journal."""
-        return GuardedJournal(path, authority=_InputAuthority(self), site=site,
-                              clock=self._clock, max_age=self._max_age)
+        return GuardedJournal(
+            path,
+            authority=_InputAuthority(self),
+            site=site,
+            clock=self._clock,
+            max_age=self._max_age,
+        )
 
     def credential_resolver(
-        self, vault: Vault, helper: Helper, *, adapter_digest: str, expected_digest: str,
+        self,
+        vault: Vault,
+        helper: Helper,
+        *,
+        adapter_digest: str,
+        expected_digest: str,
     ) -> Resolver:
         """Trusted composition only: pin this lease-bound authority/vault/helper set.
 
@@ -498,7 +649,9 @@ class LeaseStore:
         """
         return Resolver(
             AdapterSet(adapter_digest, _CredentialAuthority(self), vault, helper),
-            expected_digest=expected_digest, clock=self._clock, max_age=self._max_age,
+            expected_digest=expected_digest,
+            clock=self._clock,
+            max_age=self._max_age,
         )
 
     def close(self) -> None:
@@ -555,9 +708,12 @@ class _InputGuard:
     def observe(self) -> Observation | None:
         observed = self.guard.observe()
         grant = self.grant
-        if (grant is None or type(observed) is not Observation
-                or type(observed.target) is not Target
-                or _scope(observed.target) != _scope(grant.effect.target)):
+        if (
+            grant is None
+            or type(observed) is not Observation
+            or type(observed.target) is not Target
+            or _scope(observed.target) != _scope(grant.effect.target)
+        ):
             return None
         # Epoch comes from the locked durable authority row, not the page.
         self.store._input(grant)
@@ -600,9 +756,12 @@ class _CredentialGuard:
     def observe(self) -> Observation | None:
         observed = self.guard.observe()
         grant = self.grant
-        if (grant is None or type(observed) is not Observation
-                or type(observed.target) is not Target
-                or _scope(observed.target) != _scope(grant.credential.target)):
+        if (
+            grant is None
+            or type(observed) is not Observation
+            or type(observed.target) is not Target
+            or _scope(observed.target) != _scope(grant.credential.target)
+        ):
             return None
         self.store._input(grant)
         return Observation(grant.credential.target, observed.observed_at)

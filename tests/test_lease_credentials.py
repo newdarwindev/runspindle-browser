@@ -46,8 +46,11 @@ class CredentialAdapters:
         return handle is self.handle
 
     def inject(self, handle, grant, fence):
-        if (not self.authority.active or handle is not self.handle
-                or fence.current(grant) is not True):
+        if (
+            not self.authority.active
+            or handle is not self.handle
+            or fence.current(grant) is not True
+        ):
             raise AssertionError("held current lease fence missing at injection")
         self.injections += 1
         self.at_inject()
@@ -60,8 +63,9 @@ class CredentialAdapters:
         self.at_release()
 
     def resolver(self, store, digest=PIN, expected=PIN):
-        return store.credential_resolver(self, self, adapter_digest=digest,
-                                         expected_digest=expected)
+        return store.credential_resolver(
+            self, self, adapter_digest=digest, expected_digest=expected
+        )
 
 
 class LeaseCredentialTests(unittest.TestCase):
@@ -76,15 +80,19 @@ class LeaseCredentialTests(unittest.TestCase):
         self.assertEqual(self.store.transfer("admitted"), "active")
 
     def assert_no_secret_effects(self):
-        self.assertEqual((self.adapters.reads, self.adapters.injections,
-                          self.adapters.releases), (0, 0, 0))
+        self.assertEqual(
+            (self.adapters.reads, self.adapters.injections, self.adapters.releases),
+            (0, 0, 0),
+        )
 
     def test_matching_lease_uses_existing_resolver_and_is_one_attempt(self):
         self.f.credential()
         resolver = self.adapters.resolver(self.store)
         self.assertEqual(resolver.resolve_and_inject("admitted"), "injected")
-        self.assertEqual((self.adapters.reads, self.adapters.injections,
-                          self.adapters.releases), (1, 1, 1))
+        self.assertEqual(
+            (self.adapters.reads, self.adapters.injections, self.adapters.releases),
+            (1, 1, 1),
+        )
         self.assertFalse(self.f.active)
         with self.assertRaises(Denied):
             resolver.resolve_and_inject("admitted")
@@ -95,7 +103,9 @@ class LeaseCredentialTests(unittest.TestCase):
         calls = self.f.current_calls
         for digest, expected in ((PIN, "b" * 64), ("", "")):
             with self.assertRaises(Denied):
-                self.adapters.resolver(self.store, digest, expected).resolve_and_inject("admitted")
+                self.adapters.resolver(self.store, digest, expected).resolve_and_inject(
+                    "admitted"
+                )
         self.assertEqual(self.f.current_calls, calls)
         self.assert_no_secret_effects()
 
@@ -108,10 +118,21 @@ class LeaseCredentialTests(unittest.TestCase):
             admission = self.f.credential()
             current = admission.credential.target
             if field == "account":
-                changed = replace(current, binding=replace(current.binding, account="other"))
+                changed = replace(
+                    current, binding=replace(current.binding, account="other")
+                )
             else:
-                changed = replace(current, **{field: "https://other.invalid" if field == "frame_origin" else "other"})
-            self.f.grant = replace(admission, credential=replace(admission.credential, target=changed))
+                changed = replace(
+                    current,
+                    **{
+                        field: "https://other.invalid"
+                        if field == "frame_origin"
+                        else "other"
+                    },
+                )
+            self.f.grant = replace(
+                admission, credential=replace(admission.credential, target=changed)
+            )
             self.f.observed = changed
             with self.assertRaises(Denied):
                 self.adapters.resolver(self.store).resolve_and_inject("admitted")
@@ -136,7 +157,10 @@ class LeaseCredentialTests(unittest.TestCase):
         with self.assertRaises(Denied):
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.f.credential(HUMAN, 2)
-        self.assertEqual(self.adapters.resolver(self.store).resolve_and_inject("admitted"), "injected")
+        self.assertEqual(
+            self.adapters.resolver(self.store).resolve_and_inject("admitted"),
+            "injected",
+        )
         self.f.transition("handback", HUMAN, AGENT, 2)
         self.f.closed_inputs = False
         self.assertEqual(self.store.transfer("admitted"), "unknown")
@@ -151,8 +175,10 @@ class LeaseCredentialTests(unittest.TestCase):
         self.adapters.after_read = lambda: setattr(self.f, "allowed", False)
         with self.assertRaises(Denied):
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
-        self.assertEqual((self.adapters.reads, self.adapters.injections,
-                          self.adapters.releases), (1, 0, 1))
+        self.assertEqual(
+            (self.adapters.reads, self.adapters.injections, self.adapters.releases),
+            (1, 0, 1),
+        )
         self.assertFalse(self.f.active)
 
     def test_current_callback_cannot_extend_deadline(self):
@@ -164,18 +190,23 @@ class LeaseCredentialTests(unittest.TestCase):
 
     def test_cancellation_stays_sanitized_and_releases_lease(self):
         self.f.credential()
+
         def cancel():
             raise KeyboardInterrupt(CANARY)
+
         def cleanup_error():
             raise RuntimeError(CANARY)
+
         self.adapters.at_inject = cancel
         self.adapters.at_release = cleanup_error
         with self.assertRaises(Cancelled) as caught:
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assertNotIn(CANARY, str(caught.exception))
         self.assertIsNone(caught.exception.__context__)
-        self.assertEqual((self.adapters.reads, self.adapters.injections,
-                          self.adapters.releases), (1, 1, 1))
+        self.assertEqual(
+            (self.adapters.reads, self.adapters.injections, self.adapters.releases),
+            (1, 1, 1),
+        )
         self.assertFalse(self.f.active)
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.assertEqual(self.store.transfer("admitted"), "active")
@@ -212,14 +243,18 @@ f.acquire=authority
 try:print(a.resolver(s).resolve_and_inject('admitted'),flush=True)
 finally:s.close()
 """
-        process = subprocess.Popen([sys.executable, "-c", code, self.tmp.name],
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            [sys.executable, "-c", code, self.tmp.name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         try:
             for phase in ("handle", "guard"):
                 marker = Path(self.tmp.name) / ("entered-" + phase)
                 deadline = time.monotonic() + 5
                 while not marker.exists() and time.monotonic() < deadline:
-                    time.sleep(.01)
+                    time.sleep(0.01)
                 self.assertTrue(marker.exists(), "child did not reach held " + phase)
                 self.f.transition("takeover", AGENT, HUMAN, 1)
                 with self.assertRaises(ControlDenied):
@@ -244,9 +279,16 @@ finally:s.close()
         source = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            shutil.copytree(source / "browser_runtime", root / "browser_runtime",
-                            ignore=shutil.ignore_patterns("__pycache__"))
-            for name in ("test_lease_credentials.py", "test_control_leases.py", "test_guarded_effects.py"):
+            shutil.copytree(
+                source / "browser_runtime",
+                root / "browser_runtime",
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+            for name in (
+                "test_lease_credentials.py",
+                "test_control_leases.py",
+                "test_guarded_effects.py",
+            ):
                 shutil.copyfile(source / "tests" / name, root / name)
             code = """from pathlib import Path
 from test_lease_credentials import CredentialFixture,CredentialAdapters,Denied
@@ -258,16 +300,24 @@ try:a.resolver(s).resolve_and_inject('admitted')
 except Denied:pass
 print(a.reads,a.injections);s.close()
 """
+
             def run():
-                result = subprocess.run([sys.executable, "-c", code], cwd=root,
-                                        capture_output=True, text=True, check=True, timeout=10)
+                result = subprocess.run(
+                    [sys.executable, "-c", code],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=10,
+                )
                 return result.stdout.strip()
+
             self.assertEqual(run(), "0 0")
             shutil.rmtree(root / "data")
             module = root / "browser_runtime/control_leases.py"
             original = module.read_text()
-            anchor = '_encode(asdict(grant.holder)), "active"'
+            anchor = '_encode(asdict(grant.holder)),\n            "active"'
             self.assertEqual(original.count(anchor), 1)
-            module.write_text(original.replace(anchor, 'row[2], "active"'))
+            module.write_text(original.replace(anchor, 'row[2],\n            "active"'))
             shutil.rmtree(root / "browser_runtime/__pycache__", ignore_errors=True)
             self.assertEqual(run(), "1 1")
