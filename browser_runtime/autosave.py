@@ -1,4 +1,4 @@
-"""Scoped manual-login save using existing KV mappings and effect journal.
+"""Scoped manual-login save using KV mappings and external effect execution.
 
 Trusted composition only. No browser extension, authority or capture adapter is
 installed by default. Page/model dictionaries must never implement these seams.
@@ -9,12 +9,12 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+import threading
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
-from typing import Callable, cast
+from typing import Callable, Protocol, cast
 
 from browser_runtime.credentials import Authority, Fence, Grant, Observation
-from browser_runtime.effects import Cancelled, Journal, Outcome, Readback
+from browser_runtime.effects import Binding, Cancelled, Outcome, Readback
 from browser_runtime.openbao import (
     MAX_BODY,
     Mapping,
@@ -165,18 +165,41 @@ class Writer:
         return object_value(result.get("data")).get(MARKER) == marker
 
 
+class EffectExecution(Protocol):
+    """Externally owned persistence/admission; Browser owns no database lifecycle.
+
+    The implementation must durably reserve the exact binding/payload commitment
+    before calling submit, never replay an uncertain submission, and reconcile
+    through observe. All callbacks run synchronously under the caller's fence;
+    they may not be retained or invoked after execute returns. Secrets never
+    enter payload. No default implementation, path, schema or storage is supplied.
+    """
+
+    def execute(
+        self,
+        *,
+        binding: Binding,
+        payload: bytes,
+        target_digest: str,
+        approve: Callable[[Binding, str], bool],
+        submit: Callable[[Binding, bytes], None],
+        observe: Callable[[Binding, str], Readback],
+        reconcile_only: bool,
+    ) -> Outcome: ...
+
+
 class Autosave:
     """Normal login with standing scoped opt-in, no per-login dialog.
 
     consent returns the authorized expected KV version or None (deny). It must
     authenticate stored opt-in, selected account and create/update authority.
-    capture runs in the trusted helper, never in agent orchestration. The journal
-    path is the existing effect store; no additional credential store is created.
+    capture runs in the trusted helper, never in agent orchestration. The owner
+    injects durable effect execution; Browser never opens or manages its storage.
     """
 
     def __init__(
         self,
-        journal_path: str | Path,
+        effects: EffectExecution,
         *,
         authority: Authority,
         writer: Writer,
@@ -185,7 +208,7 @@ class Autosave:
         clock: Callable[[], float] = time.monotonic,
         max_age: float = 1.0,
     ) -> None:
-        self.path, self.authority, self.writer = journal_path, authority, writer
+        self.effects, self.authority, self.writer = effects, authority, writer
         self.consent, self.capture = consent, capture
         self.clock, self.max_age = clock, max_age
 
@@ -268,25 +291,61 @@ class Autosave:
                             outcome = "confirmed"
                         return Readback(binding, marker, outcome, marker)
 
-                    journal = Journal(
-                        self.path, approve=approved, submit=submit, observe=observe
-                    )
-                    try:
-                        if not reconcile_only:
-                            journal.dispatch(binding, payload, target_digest=marker)
-                        # The readback is a new scoped read, never a retry of POST.
-                        result = "unknown"
-                        outcome = journal.reconcile(
-                            binding, marker, target_digest=marker
+                    callbacks_open = True
+                    callback_thread = threading.get_ident()
+
+                    def callback_scope() -> None:
+                        check(
+                            callbacks_open and threading.get_ident() == callback_thread
                         )
-                        if outcome == "confirmed":
-                            result = "saved"
-                        self._check(fence, grant, expected)
-                    except BaseException as error:
-                        cancelled = cancelled or not isinstance(error, Exception)
-                        raise
+
+                    def guarded_approve(b: Binding, digest: str) -> bool:
+                        nonlocal cancelled
+                        try:
+                            callback_scope()
+                            return approved(b, digest)
+                        except BaseException as error:
+                            cancelled = cancelled or not isinstance(error, Exception)
+                            raise
+
+                    def guarded_submit(b: Binding, data: bytes) -> None:
+                        nonlocal cancelled
+                        try:
+                            callback_scope()
+                            submit(b, data)
+                        except BaseException as error:
+                            cancelled = cancelled or not isinstance(error, Exception)
+                            raise
+
+                    def guarded_observe(b: Binding, digest: str) -> Readback:
+                        nonlocal cancelled
+                        try:
+                            callback_scope()
+                            return observe(b, digest)
+                        except BaseException as error:
+                            cancelled = cancelled or not isinstance(error, Exception)
+                            raise
+
+                    # The external owner controls persistence and its lifecycle.
+                    # Browser supplies only the guarded helper operations.
+                    result = "unknown"
+                    try:
+                        outcome = self.effects.execute(
+                            binding=binding,
+                            payload=payload,
+                            target_digest=marker,
+                            approve=guarded_approve,
+                            submit=guarded_submit,
+                            observe=guarded_observe,
+                            reconcile_only=reconcile_only,
+                        )
                     finally:
-                        journal.close()
+                        callbacks_open = False
+                    check(not cancelled)
+                    check(outcome in ("confirmed", "rejected", "unknown"))
+                    if outcome == "confirmed":
+                        result = "saved"
+                    self._check(fence, grant, expected)
                     completed = True
                 except BaseException as error:
                     cancelled = cancelled or not isinstance(error, Exception)

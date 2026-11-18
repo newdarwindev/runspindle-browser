@@ -66,7 +66,10 @@ class HTTPS:
     still check grant deadline after return; trusted composition must bound DNS.
     """
 
-    def __init__(self, origin: str) -> None:
+    def __init__(
+        self, origin: str, *, tls_context: ssl.SSLContext | None = None
+    ) -> None:
+        self._tls_context = tls_context
         parsed = urlsplit(origin)
         check(parsed.scheme == "https" and bool(parsed.hostname))
         check(
@@ -102,11 +105,21 @@ class HTTPS:
             (method == "GET" and body is None)
             or (method == "POST" and type(body) is bytes and 0 < len(body) <= MAX_BODY)
         )
+        context = (
+            self._tls_context
+            if self._tls_context is not None
+            else ssl.create_default_context()
+        )
+        check(
+            type(context) is ssl.SSLContext
+            and context.check_hostname
+            and context.verify_mode == ssl.CERT_REQUIRED
+        )
         conn = http.client.HTTPSConnection(
             self._host,
             self._port,
             timeout=timeout,
-            context=ssl.create_default_context(),
+            context=context,
         )
         reply: http.client.HTTPResponse | None = None
         failed = True

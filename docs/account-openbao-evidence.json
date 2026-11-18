@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "modes": [
+    {
+      "status": "passed",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "private_output_canary_detected": false,
+      "optimization": 0,
+      "evidence_class": "isolated_OpenBao_synthetic_capture_authority",
+      "error_locations": []
+    },
+    {
+      "status": "passed",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "private_output_canary_detected": false,
+      "optimization": 1,
+      "evidence_class": "isolated_OpenBao_synthetic_capture_authority",
+      "error_locations": []
+    }
+  ],
+  "source_hashes": {
+    "browser_testing/account_e2e.py": "ec42e4885c91f69a9dc4a6ab61156ff963b318be150a03de16cf066ceaac2f31",
+    "browser_runtime/autosave.py": "971beaa8f07504a42ceee0695be6fdc9fd60dbb00e2fecce1681b642b1749197",
+    "browser_runtime/openbao.py": "c1a1b52ce44c2f4750c16bb08483e1527855bed24a7dbcce60e5182be183af9e",
+    "tests/test_account_e2e.py": "71e1daf66a20aea594170bca7aec8b4b4319c677b7e61a485928b238b515cdfa",
+    "tests/test_account_openbao.py": "162a27aecc14bedec6ab8533d7b4c775717e1165b547d7a9353abba4a1cad0bf",
+    "tools/qualify_account_e2e.py": "b3dd307782335ec11d2b7e4c9419c5b04f8984116b69a4f447de95045c3188ec"
+  },
+  "production_authority": "not_qualified",
+  "ci_admission": "not_qualified",
+  "observed_date": "2026-11-18",
+  "full_chromium_chain": "blocked_before_DevTools_startup_sandbox_namespace_denied",
+  "cleanup": {
+    "matching_fixture_processes": 0,
+    "retained_fixture_directories": 0
+  },
+  "default_python_suite": {
+    "tests": 568,
+    "skipped": 10,
+    "status": "passed"
+  }
+}
