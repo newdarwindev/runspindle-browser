@@ -323,7 +323,7 @@ j.close()
                 )
                 self.assertEqual(baseline.returncode, 0, baseline.stderr)
                 self.assertIn("OK", baseline.stderr)
-                module = root / "browser_runtime/guarded_effects.py"
+                module = root / "browser_runtime/guarded_peer.py"
                 original = module.read_text()
                 self.assertEqual(original.count(anchor), 1)
                 module.write_text(original.replace(anchor, ""))
