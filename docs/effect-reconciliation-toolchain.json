@@ -1,0 +1,8 @@
+{
+  "python_version": "3.14.8",
+  "python_sha256": "098f865cad2de188bdbad3baac99dd91ebb74bab361d2359f0baaf1929b1dd82",
+  "sqlite_version": "3.53.4",
+  "source_base": "b3edadf12af74cd5b5d27a486ef0a4a64d5a1594",
+  "sqlite3_extension_sha256": "ceb485e85cc3d4cd1e000e360349e13e81d0541c7c2ff7b5a86ba98c8aabe3a6",
+  "sqlite3_library_sha256": "666b2574049ed1db068b4a70837171d327c1696bf0498e6538913711c1a28370"
+}
