@@ -125,9 +125,9 @@ clears inherited environment, and confines all fixture data to private tmpfs.
 The parent bounds execution at 300 seconds, kills/waits on timeout, and retains
 the staging directory if process termination cannot be confirmed.
 
-This launcher is a new source candidate with offline tests, not the exact shell
-launcher in the existing manual receipt. It still requires independent review
-and execution. The Actions admission gate remains mandatory: child-process
+This repository launcher was independently reviewed and then passed its own
+bounded manual Strix execution. It is not the shell launcher from the earlier
+receipt; its separate evidence is recorded below. The Actions admission gate remains mandatory: child-process
 isolation does not qualify arbitrary job preparation on a persistent personal
 runner. A separately admitted disposable runner and actual Actions receipt are
 still required. No runner or repository variable is created by this source.
@@ -138,4 +138,17 @@ SIGHUP and SIGINT enter owned-child cleanup; repeated cancellation is ignored
 only during the bounded reap, then original handlers are restored. Ten offline
 tests include harmless child overflow, timeout, termination, already-reaped PID
 and uncertain-wait retention cases. No browser/vault or namespace is launched by
-these lifecycle tests, and this source still awaits independent rereview.
+these lifecycle tests. Both corrected lifecycle paths passed independent review.
+
+## Repository launcher manual receipt (2026-11-18)
+
+Exact PR65 source `75d8aa46` passed one approved bounded manual Strix run through
+`run_isolated_account_e2e.py`: two full-flow tests normal and two optimized, zero
+failures/errors/skips/canary leaks, exit zero and empty stderr. Source hashes, all
+four dependency pins and launcher hash were unchanged. Post-run inspection found
+zero matching fixture processes and zero retained tool directories; source was
+clean. See `account-launcher-strix-evidence.json`.
+
+This verifies the repository launcher manually. It does not register/admit a
+runner, execute a GitHub Actions job, qualify production authority or migrate
+legacy state. Actual Actions verification remains outstanding.
