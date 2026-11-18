@@ -197,5 +197,10 @@
     "implementation": "Original Python standard-library descriptor-relative directory IO, explicit MaterializedStore wrapper and synthetic filesystem/process tests. No historical browser source or new dependency imported.",
     "scope": "Further partial #14/#7: actual browser directories, launcher/quiescence integration, physical erasure, copied-store rollback and power-loss qualification remain open.",
     "specification": "specs/profile-directory-v1.md"
+  },
+  "manual_login_autosave": {
+    "implementation": "Original helper orchestration and bounded KV-v2 write path; existing mapping, transport and Journal reused. No upstream source copied or new dependency imported.",
+    "scope": "Synthetic helper/protocol evidence only; no installed browser capture, standing-consent service, actual credentials, permissions or deployment.",
+    "specification": "specs/manual-login-autosave.md"
   }
 }

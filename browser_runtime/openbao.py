@@ -86,6 +86,22 @@ class HTTPS:
         self._port = 443 if port is None else port
 
     def __call__(self, path: str, token: str, timeout: float) -> Response:
+        return self.request("GET", path, token, timeout)
+
+    def request(
+        self,
+        method: str,
+        path: str,
+        token: str,
+        timeout: float,
+        body: bytes | None = None,
+    ) -> Response:
+        """Trusted helper transport; the existing read-only call stays unchanged."""
+        check(method in ("GET", "POST"))
+        check(
+            (method == "GET" and body is None)
+            or (method == "POST" and type(body) is bytes and 0 < len(body) <= MAX_BODY)
+        )
         conn = http.client.HTTPSConnection(
             self._host,
             self._port,
@@ -96,11 +112,12 @@ class HTTPS:
         failed = True
         try:
             conn.response_class = _BoundedHTTPResponse
-            conn.request(
-                "GET",
-                path,
-                headers={"X-Vault-Token": token, "Accept": "application/json"},
-            )
+            headers = {"X-Vault-Token": token, "Accept": "application/json"}
+            if method == "GET":
+                conn.request("GET", path, headers=headers)
+            else:
+                headers["Content-Type"] = "application/json"
+                conn.request("POST", path, body=body, headers=headers)
             reply = conn.getresponse()
             check(reply.status == 200)
             # Malformed field lines can hide later framing headers from the
