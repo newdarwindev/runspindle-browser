@@ -45,7 +45,9 @@ class TelemetryTests(unittest.TestCase):
     def test_observation_failure_isolated(self) -> None:
         probe = Probe()
         probe.resolver._telemetry = Buffer()
-        with patch.object(Buffer, "_record", side_effect=RuntimeError("PRIVATE_CANARY")):
+        with patch.object(
+            Buffer, "_record", side_effect=RuntimeError("PRIVATE_CANARY")
+        ):
             self.assertEqual(probe.run(), "injected")
 
     def test_subclass_callback_rejected(self) -> None:
