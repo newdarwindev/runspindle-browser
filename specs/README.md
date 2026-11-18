@@ -107,3 +107,8 @@ and lease gating. No production/native browser qualification is implied.
 [Read-only control status](passive-control-status-v1.md) distinguishes absent,
 active and pending durable ownership through separate authenticated passive
 admission. Historical status never grants input, credentials or takeover.
+
+## Optional observation producer
+
+[Content-free credential observations](telemetry-v1.md) add a bounded default-off
+producer. Browser SDK export and Collector qualification remain separate.
