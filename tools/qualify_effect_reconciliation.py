@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded Browser #15 acceptance in an already isolated loopback-only namespace.
+"""Bounded F07 effect acceptance in an already isolated loopback-only namespace.
 
 No namespace, account, credential, service or external connection is created by
 this command. Actual HTTP/SQLite fixtures remain synthetic-site evidence.
@@ -31,6 +31,8 @@ SUITES = (
     "test_effect_wire.py",
     "test_http_effect_site.py",
     "test_effect_qualification.py",
+    "test_effect_capacity.py",
+    "test_effect_acceptance_mutations.py",
 )
 LIMIT = 1_048_576
 

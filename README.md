@@ -18,6 +18,13 @@ OpenBao supplies the selected credential and key-management foundation; PinchTab
 
 *Upcoming qualification joins production OpenBao access, actual PinchTab lifecycle, real browser checkpointing, supported KasmVNC viewing and authenticated human takeover/handback. Live account and native-browser acceptance remain open; local profile tests do not close them.*
 
+**DURABLE WEBSITE EFFECTS** reserve an operation before submission and reconcile
+uncertain results without blind retries. The journal admits at most 1,024
+operations, bounds retained fields, and preserves duplicate/readback access at
+capacity without eviction. [F07 acceptance](docs/F07_ACCEPTANCE.md) maps the
+contract to actual SQLite, isolated HTTP/Chromium and Core/Temporal evidence.
+These lanes use synthetic accounts and authority, not live account access.
+
 ## FROM A REQUEST TO A CHECKABLE OUTCOME
 
 These are concrete product scenarios, not claims of live automation. The implemented contracts below support bounded parts of the journey; *italic text describes the remaining end-to-end behavior*.

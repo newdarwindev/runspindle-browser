@@ -14,7 +14,15 @@ from pathlib import Path
 from typing import Callable, Literal, NoReturn
 from urllib.parse import urlsplit
 
-from browser_runtime.effect_schema import SchemaRejected, open_journal
+from browser_runtime.effect_schema import (
+    MAX_BINDING_BYTES,
+    MAX_OPERATIONS,
+    MAX_ORIGIN_BYTES,
+    SchemaRejected,
+    open_journal,
+    retained_count,
+    validate_retained,
+)
 
 Outcome = Literal["unknown", "confirmed", "rejected"]
 
@@ -61,6 +69,13 @@ class Binding:
         for value in (self.revision, self.epoch):
             if type(value) is not int or not 1 <= value <= 2**63 - 1:
                 raise Denied("invalid binding")
+        if (
+            type(self.origin) is not str
+            or len(self.origin) > MAX_ORIGIN_BYTES
+            or len(self.origin.encode("utf-8")) > MAX_ORIGIN_BYTES
+            or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in self.origin)
+        ):
+            raise Denied("invalid origin")
         value = urlsplit(self.origin)
         if (
             value.scheme != "https"
@@ -193,6 +208,7 @@ class Journal:
     def _begin(self) -> None:
         try:
             self.db.execute("BEGIN IMMEDIATE")
+            validate_retained(self.db)
         except sqlite3.Error:
             raise Denied("journal unavailable") from None
 
@@ -206,11 +222,14 @@ class Journal:
             or re.fullmatch(r"[0-9a-f]{64}", target_digest) is None
         ):
             raise Denied("invalid target commitment")
-        return json.dumps(
+        wrapped = json.dumps(
             {"binding": json.loads(encoded), "target_digest": target_digest},
             sort_keys=True,
             separators=(",", ":"),
         )
+        if len(wrapped.encode("utf-8")) > MAX_BINDING_BYTES:
+            raise Denied("binding capacity")
+        return wrapped
 
     def dispatch(
         self, binding: Binding, payload: bytes, *, target_digest: str | None = None
@@ -236,6 +255,8 @@ class Journal:
             if (row[0], row[1]) != (encoded, digest):
                 raise Denied("conflicting operation")
             return self._outcome(row[2])
+        if retained_count(self.db) >= MAX_OPERATIONS:
+            raise Denied("journal capacity")
         self.db.execute(
             "INSERT INTO operations VALUES (?,?,?,'unknown',NULL)",
             (binding.operation, encoded, digest),
