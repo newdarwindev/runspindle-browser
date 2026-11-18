@@ -88,7 +88,7 @@ has no passing registration/login/relogin/page-action receipt. Cleanup inspectio
 found no matching fixture processes and no retained fixture directories.
 
 The default Python suite passed 568 tests with 10 explicit opt-in skips; focused
-autosave tests passed 27 normal and optimized, and fixture safety passed 4 in both
+autosave tests passed 25 normal and optimized, and fixture safety passed 4 in both
 modes. This is not an aggregate CI qualification: Cargo and the qualified Actions
 lane remain unavailable. The built-in SQLite extension case now fails native
 qualification closed with a bounded diagnostic instead of an AttributeError;

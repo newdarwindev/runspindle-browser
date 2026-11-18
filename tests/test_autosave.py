@@ -504,7 +504,39 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
             retained["approve"](
                 retained["binding"], hashlib.sha256(retained["payload"]).hexdigest()
             )
+        with self.assertRaises(ValueError):
+            retained["observe"](retained["binding"], retained["target_digest"])
         self.assertEqual((f.captures, f.posts, f.tokens), counts)
+
+    def test_external_owner_cannot_invoke_callbacks_from_another_thread(self):
+        from concurrent.futures import ThreadPoolExecutor
+
+        f = self.f
+        rejected = []
+
+        class ExternalOwner:
+            def execute(self, **kwargs):
+                def invoke(name, argument):
+                    try:
+                        kwargs[name](kwargs["binding"], argument)
+                    except ValueError:
+                        rejected.append(name)
+
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    for name in ("approve", "submit", "observe"):
+                        argument = (
+                            kwargs["payload"]
+                            if name == "submit"
+                            else kwargs["target_digest"]
+                        )
+                        pool.submit(invoke, name, argument).result(timeout=5)
+                return "unknown"
+
+        service = f.service()
+        service.effects = ExternalOwner()
+        self.assertEqual(service.run(f.ticket), "unknown")
+        self.assertEqual(rejected, ["approve", "submit", "observe"])
+        self.assertEqual((f.captures, f.posts, f.tokens), (0, 0, 0))
 
 
 if __name__ == "__main__":
