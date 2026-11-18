@@ -107,3 +107,9 @@ and lease gating. No production/native browser qualification is implied.
 [Read-only control status](passive-control-status-v1.md) distinguishes absent,
 active and pending durable ownership through separate authenticated passive
 admission. Historical status never grants input, credentials or takeover.
+
+## Manual-login autosave helper
+
+[Scoped manual-login autosave](manual-login-autosave.md) adds a synthetic-qualified
+helper using existing OpenBao mappings and effect-journal durability. Capture,
+consent and real browser/authority integration remain explicit acceptance gaps.
