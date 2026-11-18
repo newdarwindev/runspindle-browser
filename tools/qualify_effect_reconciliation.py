@@ -138,14 +138,14 @@ def worker_command(optimized: bool) -> list[str]:
     ]
 
 
-def run_mode(optimized: bool) -> dict[str, Any]:
+def run_mode(optimized: bool, command: list[str] | None = None) -> dict[str, Any]:
     def terminate(signum: int, frame: Any) -> None:
         raise SystemExit(128 + signum)
 
     previous = signal.signal(signal.SIGTERM, terminate)
     try:
         process = subprocess.Popen(
-            worker_command(optimized),
+            worker_command(optimized) if command is None else command,
             cwd=ROOT,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

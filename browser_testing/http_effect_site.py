@@ -13,6 +13,7 @@ import threading
 from dataclasses import asdict, replace
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import Any
 
 from browser_runtime.effects import Binding, Readback
 from browser_testing.effect_site import Site
@@ -21,7 +22,7 @@ LIMIT = 16384
 TIMEOUT = 1.0
 
 
-def encode(value):
+def encode(value: object) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode("ascii")
 
 
@@ -75,6 +76,22 @@ class LocalSite:
             def log_message(self, *args):
                 pass  # No request bodies or headers in logs.
 
+            def do_GET(self) -> None:
+                if owner._stopping.is_set() or self.path != "/browser-fixture":
+                    self.send_error(404)
+                    return
+                body = b'<!doctype html><meta charset="utf-8"><title>Owned synthetic effect fixture</title><body data-runspindle-fixture="v1">Synthetic effect fixture</body>'
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header(
+                    "Content-Security-Policy",
+                    "default-src 'none'; connect-src 'self'; frame-ancestors 'none'",
+                )
+                self.end_headers()
+                self.wfile.write(body)
+
             def do_POST(self):
                 try:
                     if owner._stopping.is_set():
@@ -116,7 +133,9 @@ class LocalSite:
                         owner.readbacks += 1
                         observed = owner.ledger.observe(binding, digest)
                         if owner.readback == "wrong-account":
-                            observed = replace(observed, binding=replace(binding, account="other"))
+                            observed = replace(
+                                observed, binding=replace(binding, account="other")
+                            )
                         result = asdict(observed)
                     body = encode(result)
                     self.send_response(200)
@@ -133,7 +152,8 @@ class LocalSite:
         self.port = self._server.server_address[1]
         self._thread = threading.Thread(
             target=lambda: self._server.serve_forever(poll_interval=0.02),
-            name="synthetic-loopback-site", daemon=True,
+            name="synthetic-loopback-site",
+            daemon=True,
         )
         try:
             self._thread.start()
@@ -173,16 +193,22 @@ class HTTPAdapter:
             raise ValueError("invalid synthetic port")
         self.port = port
 
-    def _request(self, route, grant, guard, data):
+    def _request(self, route: str, grant: Any, guard: Any, data: str) -> Any:
         observed = guard.observe()
-        if observed is None or observed.target != grant.target or guard.current(grant) is not True:
+        if (
+            observed is None
+            or observed.target != grant.target
+            or guard.current(grant) is not True
+        ):
             raise ValueError("synthetic guard unavailable")
         body = encode({"binding": asdict(grant.target.binding), "data": data})
         if len(body) > LIMIT:
             raise ValueError("synthetic request too large")
         connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=TIMEOUT)
         try:
-            connection.request("POST", route, body, {"Content-Type": "application/json"})
+            connection.request(
+                "POST", route, body, {"Content-Type": "application/json"}
+            )
             response = connection.getresponse()
             raw = response.read(LIMIT + 1)
             if response.status != 200 or not 0 < len(raw) <= LIMIT:
@@ -195,9 +221,14 @@ class HTTPAdapter:
             connection.close()
 
     def submit(self, grant, payload, guard):
-        if len(payload) > 4096 or hashlib.sha256(payload).hexdigest() != grant.payload_digest:
+        if (
+            len(payload) > 4096
+            or hashlib.sha256(payload).hexdigest() != grant.payload_digest
+        ):
             raise ValueError("synthetic payload mismatch")
-        return self._request("/submit", grant, guard, base64.b64encode(payload).decode("ascii"))
+        return self._request(
+            "/submit", grant, guard, base64.b64encode(payload).decode("ascii")
+        )
 
     def readback(self, grant, guard):
         value = self._request("/readback", grant, guard, grant.payload_digest)
