@@ -33,3 +33,8 @@ fixture ledger supplied by the test driver. `--lose-response` simulates effect
 acceptance followed by cancellation before a response. A bounded real-OS-pipe
 smoke test observed exit2/no reply, then separate-process reconcile confirmed
 with exactly one target effect. This is not yet a Rust/Core integration receipt.
+
+The real-OS-pipe cases are now repeatable in `test_effect_pipe_process.py`: four
+normal/optimized tests (including optimized children) exercise dispatch/reconcile,
+lost reply, trailing-frame rejection and missing fixture opt-in. Native Rust/Core
+registry integration remains separately qualified.
