@@ -1,7 +1,7 @@
 # Browser-only synthetic account E2E
 
-Status: real OpenBao component tests pass; the complete Chromium chain remains
-unqualified because this worker rejects sandbox startup. This is
+Status: the complete synthetic Chromium/OpenBao chain passed a bounded isolated
+manual Strix run. Actions CI and production authority remain unqualified. This is
 not the full Runspindle system or an installed browser capture extension.
 
 The opt-in worker starts real OpenBao 2.7.2 in disposable TLS development/in-memory
@@ -94,3 +94,23 @@ lane remain unavailable. The built-in SQLite extension case now fails native
 qualification closed with a bounded diagnostic instead of an AttributeError;
 this does not relax toolchain pins. See `account-openbao-evidence.json` for the
 component execution source hashes and remaining qualification boundaries.
+
+
+## Isolated Strix execution (2026-11-18)
+
+After the cloud startup failure, the exact reviewed source was exercised once on
+Strix inside a separately reviewed, unprivileged bubblewrap network/PID namespace.
+Both full-flow tests passed in normal and optimized Python: registration, ordinary
+login, actual OpenBao save with lost-ack reconciliation, fresh-profile Resolver
+relogin, protected page action and readback, plus no-opt-in/failed-login negatives.
+The run returned zero, stderr was empty, and no private-output canary was detected.
+Post-run inspection found no fixture processes, changed source hashes or changed
+input binaries. Fixture files lived only in namespace tmpfs. Extracted official
+OpenBao/NSS dependencies were staged without host installation or trust changes.
+No sandbox or certificate bypass was used.
+
+`account-strix-evidence.json` records the exact source tree, executable pins,
+reviewed launcher hash and sanitized receipt. The final source default Python
+suite also passed 569 tests with 10 explicit opt-in skips. This is manual isolated
+synthetic evidence, not a GitHub Actions result, installed browser helper,
+production Core operation owner, durable recovery or fleet qualification.
