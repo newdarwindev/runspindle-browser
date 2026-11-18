@@ -1,0 +1,56 @@
+{
+  "status": "passed",
+  "modes": [
+    {
+      "status": "passed",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "private_output_canary_detected": false,
+      "optimization": 0,
+      "evidence_class": "isolated_real_upstreams_synthetic_authority_and_site",
+      "error_locations": []
+    },
+    {
+      "status": "passed",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "private_output_canary_detected": false,
+      "optimization": 1,
+      "evidence_class": "isolated_real_upstreams_synthetic_authority_and_site",
+      "error_locations": []
+    }
+  ],
+  "source_hashes": {
+    "browser_testing/account_e2e.py": "ec42e4885c91f69a9dc4a6ab61156ff963b318be150a03de16cf066ceaac2f31",
+    "browser_runtime/autosave.py": "971beaa8f07504a42ceee0695be6fdc9fd60dbb00e2fecce1681b642b1749197",
+    "browser_runtime/openbao.py": "c1a1b52ce44c2f4750c16bb08483e1527855bed24a7dbcce60e5182be183af9e",
+    "tests/test_account_e2e.py": "71e1daf66a20aea594170bca7aec8b4b4319c677b7e61a485928b238b515cdfa",
+    "tests/test_account_openbao.py": "162a27aecc14bedec6ab8533d7b4c775717e1165b547d7a9353abba4a1cad0bf",
+    "tools/qualify_account_e2e.py": "b3dd307782335ec11d2b7e4c9419c5b04f8984116b69a4f447de95045c3188ec"
+  },
+  "production_authority": "not_qualified",
+  "ci_admission": "not_qualified",
+  "source_commit": "75d8aa46a3b2d37e6e34a32b2f7828161c81f2ce",
+  "source_tree": "0050bba1b4e436746a5033944669478484d0c228",
+  "execution": "manual_Strix_repository_launcher_not_Actions",
+  "observed_date": "2026-11-18",
+  "launcher_sha256": "15c292be20b361df04b896ac4b0274352b78bdf5c8d74bc0b5e535b7dd96cd2d",
+  "cleanup": {
+    "matching_fixture_processes": 0,
+    "retained_tool_directories": 0,
+    "source_hash_changes": [],
+    "git_clean": true
+  },
+  "exit_code": 0,
+  "stderr_bytes": 0,
+  "binary_sha256": {
+    "openbao": "9c5f36287c673f386e1533e9c044169a248e4ee50dd54810fa766e95bd41b788",
+    "chromium": "32a85cb0cf284adc64c04c4059a9416750b0143488f3d623f0efad81a4aee9e1",
+    "certutil": "d5bf6c43189c977e2be9cdf50e1ae0f298585f43ed49cff459734e8a044a41ff",
+    "bubblewrap": "263a40b4dca7b24d47c05bf2f64d05093dbefa8577c556c9a185040a173bf7b8"
+  }
+}
