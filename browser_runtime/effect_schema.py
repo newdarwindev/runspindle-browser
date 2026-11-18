@@ -6,6 +6,9 @@ from pathlib import Path
 # SQLite application_id: ASCII RBEJ (Runspindle Browser Effect Journal).
 APPLICATION_ID = 0x5242454A
 SCHEMA_VERSION = 1
+MAX_OPERATIONS = 1024
+MAX_BINDING_BYTES = 16384
+MAX_ORIGIN_BYTES = 2048
 # Preserve the original table definition, including its rowid/NULL semantics.
 OPERATIONS_DDL = """CREATE TABLE IF NOT EXISTS operations (
             operation TEXT PRIMARY KEY, binding TEXT NOT NULL,
@@ -20,9 +23,58 @@ class SchemaRejected(ValueError):
 
 
 def _inventory(db: sqlite3.Connection) -> Inventory:
-    return db.execute(
-        "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+    # Bound row visits before sorting or examining any schema text.
+    if (
+        db.execute(
+            "SELECT count(*) FROM (SELECT 1 FROM sqlite_master LIMIT 17)"
+        ).fetchone()[0]
+        > 16
+    ):
+        raise SchemaRejected("journal schema capacity")
+    # Reject oversized schema text before returning it to Python. No repair.
+    if (
+        db.execute(
+            "SELECT 1 FROM sqlite_master WHERE length(CAST(name AS BLOB))>128 OR length(CAST(tbl_name AS BLOB))>128 OR length(CAST(sql AS BLOB))>16384 LIMIT 1"
+        ).fetchone()
+        is not None
+    ):
+        raise SchemaRejected("journal schema bounds")
+    rows = db.execute(
+        "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name LIMIT 17"
     ).fetchall()
+    if len(rows) > 16:
+        raise SchemaRejected("journal schema capacity")
+    return rows
+
+
+def retained_count(db: sqlite3.Connection) -> int:
+    # LIMIT bounds returned/count-work rows even in an externally inflated file.
+    return int(
+        db.execute(
+            "SELECT count(*) FROM (SELECT 1 FROM operations LIMIT ?)",
+            (MAX_OPERATIONS + 1,),
+        ).fetchone()[0]
+    )
+
+
+def validate_retained(db: sqlite3.Connection) -> None:
+    """SQL-only bounds before any retained text/blob is materialized in Python."""
+    if retained_count(db) > MAX_OPERATIONS:
+        raise SchemaRejected("journal row capacity")
+    if (
+        db.execute(
+            """SELECT 1 FROM operations WHERE
+        (operation IS NOT NULL AND (typeof(operation)!='text' OR length(CAST(operation AS BLOB)) NOT BETWEEN 1 AND 128)) OR
+        typeof(binding)!='text' OR length(CAST(binding AS BLOB)) NOT BETWEEN 1 AND ? OR
+        typeof(digest)!='text' OR length(CAST(digest AS BLOB))!=64 OR
+        typeof(outcome)!='text' OR length(CAST(outcome AS BLOB)) NOT BETWEEN 1 AND 9 OR
+        (evidence IS NOT NULL AND (typeof(evidence)!='text' OR length(CAST(evidence AS BLOB))!=64))
+        LIMIT 1""",
+            (MAX_BINDING_BYTES,),
+        ).fetchone()
+        is not None
+    ):
+        raise SchemaRejected("journal retained bounds")
 
 
 def _inspect(db: sqlite3.Connection, expected: Inventory) -> bool:
@@ -36,7 +88,9 @@ def _inspect(db: sqlite3.Connection, expected: Inventory) -> bool:
         adopt = True
     else:
         raise SchemaRejected("journal schema rejected")
-    if db.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+    if found:
+        validate_retained(db)
+    if db.execute("PRAGMA quick_check(1)").fetchmany(2) != [("ok",)]:
         raise SchemaRejected("journal integrity rejected")
     return adopt
 
