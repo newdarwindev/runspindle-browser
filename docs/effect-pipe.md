@@ -25,3 +25,11 @@ rejection before effects, partial I/O, external ticket denial and redacted
 cancellation. The Rust OwnedChildPeer counterpart and cross-process execution
 are separate qualification work; these BytesIO tests do not claim production
 transport, actual Core-backed recovery, Actions CI or native E2E acceptance.
+
+`tests/fixtures/effect_pipe_app.py` is the explicit synthetic application for the
+Rust counterpart: opt-in environment required, fixed `.invalid` target/payload,
+separate action argument and opaque in-process ticket. It owns only its target
+fixture ledger supplied by the test driver. `--lose-response` simulates effect
+acceptance followed by cancellation before a response. A bounded real-OS-pipe
+smoke test observed exit2/no reply, then separate-process reconcile confirmed
+with exactly one target effect. This is not yet a Rust/Core integration receipt.
