@@ -1,0 +1,17 @@
+{
+  "source_commit": "4a7bb93e45f168614a5046d20f49d00eaf2aba60",
+  "runtime_tree": "88a8db028954531ee094bd6bfddde779fd1708cf",
+  "generator": "Core browser_control::scope/intent compiled library; synthetic literal Target",
+  "vectors": [
+    {
+      "origin": "https://example.invalid",
+      "canonical_scope": "{\"binding\":{\"account\":\"account\",\"browser\":\"browser\",\"origin\":\"https://example.invalid\",\"principal\":\"principal\",\"tab\":\"tab\"},\"frame\":\"frame\",\"frame_origin\":\"https://example.invalid\",\"native_session\":\"session\"}",
+      "intent": "browser-control:d87c8008574b107c96c4b08e063f8ad37517ba746682e26d5910072aa01aad12"
+    },
+    {
+      "origin": "https://bücher.example",
+      "canonical_scope": "{\"binding\":{\"account\":\"account\",\"browser\":\"browser\",\"origin\":\"https://bücher.example\",\"principal\":\"principal\",\"tab\":\"tab\"},\"frame\":\"frame\",\"frame_origin\":\"https://bücher.example\",\"native_session\":\"session\"}",
+      "intent": "browser-control:fd5a25daa112d6b276378388d15f2f6ca442c7f7f03fe3d93f6c8cfdd2f54a7b"
+    }
+  ]
+}

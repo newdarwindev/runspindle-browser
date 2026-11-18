@@ -29,7 +29,7 @@
     },
     "provenance.json": {
       "classification": "public_provenance",
-      "sha256": "82f44f8075575a832ac9df27b5f92f3f54fc808cb740e5d07d9fbf502bf80ae3"
+      "sha256": "3fe261eb0b695986173687a054d8cc347a45b7344a7bc62bdc21b8cafbd5ede4"
     },
     "specs/credentials-handoff.md": {
       "classification": "adapted_specification",
