@@ -2,17 +2,18 @@
 """Bounded opt-in Browser-only test; no provisioning, runner registration or CI bypass."""
 
 from __future__ import annotations
+
 import argparse
 import hashlib
 import io
 import json
 import os
 import re
-from pathlib import Path
 import signal
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))

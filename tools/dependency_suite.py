@@ -13,12 +13,12 @@ import importlib.metadata
 import io
 import json
 import os
-from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))

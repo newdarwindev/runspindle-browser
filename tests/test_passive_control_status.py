@@ -19,8 +19,8 @@ from browser_runtime.control_leases import (
 from browser_runtime.credentials import Denied as CredentialDenied
 from browser_runtime.credentials import Grant as CredentialGrant
 from browser_runtime.effects import Denied
-from test_control_leases import AGENT, HUMAN, ControlFixture, PAYLOAD, target
-from test_lease_credentials import CredentialAdapters
+from tests.test_control_leases import AGENT, HUMAN, PAYLOAD, ControlFixture, target
+from tests.test_lease_credentials import CredentialAdapters
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -73,7 +73,9 @@ class PassiveTests(unittest.TestCase):
         self.assertFalse(self.f.active)
         return result
 
-    def test_absent_active_pending_are_read_only_and_pending_has_no_holder(self) -> None:
+    def test_absent_active_pending_are_read_only_and_pending_has_no_holder(
+        self,
+    ) -> None:
         self.passive()
         self.assertEqual(
             self.snapshot(), ControlStatus("absent", None, None, 10.0, self.scope())
@@ -250,7 +252,9 @@ sys.exit(0 if result.wasSuccessful() else 1)
         self.assertIn("Denied not raised", result.stderr)
         self.assertNotIn("ERROR:", result.stderr)
 
-    def test_timestamp_follows_final_callbacks_and_guard_exit_cannot_fake_success(self) -> None:
+    def test_timestamp_follows_final_callbacks_and_guard_exit_cannot_fake_success(
+        self,
+    ) -> None:
         self.initialize()
         self.passive()
         self.f.at_current = lambda: setattr(self.f, "now", 10.5)

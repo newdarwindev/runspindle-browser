@@ -6,10 +6,10 @@ from dataclasses import replace
 
 from browser_runtime.autosave import Autosave, Login, Writer
 from browser_runtime.openbao import Vault
-from browser_testing.account_e2e import OpenBaoFixture, TOKEN
-from test_account_e2e import ExternalOperations
-from test_autosave import Harness
-from test_openbao import CANARY
+from browser_testing.account_e2e import TOKEN, OpenBaoFixture
+from tests.test_account_e2e import ExternalOperations
+from tests.test_autosave import Harness
+from tests.test_openbao import CANARY
 
 
 @unittest.skipUnless(

@@ -33,7 +33,9 @@ class PipeTests(unittest.TestCase):
         okay = serve_once(io.BytesIO(raw), output, self.receiver, ticket)
         return okay, output.getvalue()
 
-    def test_real_receiver_roundtrip_dispatch_then_readback_without_database(self) -> None:
+    def test_real_receiver_roundtrip_dispatch_then_readback_without_database(
+        self,
+    ) -> None:
         with patch("sqlite3.connect", side_effect=AssertionError("no Browser DB")):
             okay, output = self.exchange(frame(encoded(request())))
             self.assertTrue(okay)
@@ -45,7 +47,9 @@ class PipeTests(unittest.TestCase):
             self.assertEqual(json.loads(output[4:])["outcome"], "confirmed")
         self.assertEqual(self.f.effects(), 1)
 
-    def test_incomplete_oversize_empty_and_trailing_frames_deny_before_effect(self) -> None:
+    def test_incomplete_oversize_empty_and_trailing_frames_deny_before_effect(
+        self,
+    ) -> None:
         good = frame(encoded(request()))
         for raw in (
             b"",

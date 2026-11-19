@@ -7,11 +7,11 @@ from contextlib import contextmanager
 from dataclasses import replace
 from unittest.mock import patch
 
-from browser_runtime.effects import Cancelled, Denied, Readback
 from browser_runtime.effect_wire import Receiver
+from browser_runtime.effects import Cancelled, Denied, Readback
 from browser_runtime.guarded_peer import GuardedPeer
-from tests.test_guarded_effects import Fixture, TARGET, PAYLOAD, DIGEST
 from tests.test_effect_wire import encoded, request
+from tests.test_guarded_effects import DIGEST, PAYLOAD, TARGET, Fixture
 
 
 class StatelessPeerTests(unittest.TestCase):

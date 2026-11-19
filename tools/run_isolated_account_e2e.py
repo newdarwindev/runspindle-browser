@@ -7,14 +7,14 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
-import shutil
 import selectors
+import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import time
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))

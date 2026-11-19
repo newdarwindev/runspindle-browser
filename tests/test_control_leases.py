@@ -16,7 +16,7 @@ from browser_runtime.control_leases import (
 )
 from browser_runtime.effects import Cancelled, Denied
 from browser_runtime.guarded_effects import Grant
-from test_guarded_effects import DIGEST, PAYLOAD, TARGET, Fixture
+from tests.test_guarded_effects import DIGEST, PAYLOAD, TARGET, Fixture
 
 AGENT = Holder("agent", "agent-one")
 HUMAN = Holder("human", "human-one")
@@ -166,7 +166,7 @@ class ControlLeaseTests(unittest.TestCase):
 
     def test_fence_exception_or_cancellation_leaves_durable_pending(self) -> None:
         self.initialize()
-        transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
+        self.f.transition("takeover", AGENT, HUMAN, 1)
         self.f.fence_cancel = True
         with self.assertRaises(Cancelled) as raised:
             self.store.transfer("admitted")
@@ -261,7 +261,9 @@ s.transfer('admitted')
         with self.assertRaises(Denied):
             LeaseStore(path)
 
-    def test_actual_other_process_input_blocks_transfer_until_helper_finishes(self) -> None:
+    def test_actual_other_process_input_blocks_transfer_until_helper_finishes(
+        self,
+    ) -> None:
         import time
 
         self.initialize()
@@ -326,10 +328,15 @@ finally: j.close(); s.close()
                 root / "browser_runtime",
                 ignore=shutil.ignore_patterns("__pycache__"),
             )
-            for name in ("test_control_leases.py", "test_guarded_effects.py"):
-                shutil.copyfile(source / "tests" / name, root / name)
+            (root / "tests").mkdir()
+            for name in (
+                "__init__.py",
+                "test_control_leases.py",
+                "test_guarded_effects.py",
+            ):
+                shutil.copyfile(source / "tests" / name, root / "tests" / name)
             code = """from pathlib import Path
-from test_control_leases import ControlFixture,AGENT,HUMAN,PAYLOAD,Denied
+from tests.test_control_leases import ControlFixture,AGENT,HUMAN,PAYLOAD,Denied
 Path('data').mkdir(exist_ok=True)
 f=ControlFixture('data'); s=f.store()
 f.transition('initialize',None,AGENT,0); s.transfer('admitted')

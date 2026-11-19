@@ -1,4 +1,5 @@
 """Real Journal + synthetic authenticated fence/site; no browser or network."""
+
 import hashlib
 import shutil
 import subprocess
@@ -15,7 +16,22 @@ from browser_runtime.guarded_effects import Grant, GuardedJournal
 
 PAYLOAD = b"invented-action"
 DIGEST = hashlib.sha256(PAYLOAD).hexdigest()
-TARGET = Target(Binding("principal", "account", "browser", "tab", "intent", 1, "operation", 1, "https://example.invalid"), "session", "frame", "https://example.invalid")
+TARGET = Target(
+    Binding(
+        "principal",
+        "account",
+        "browser",
+        "tab",
+        "intent",
+        1,
+        "operation",
+        1,
+        "https://example.invalid",
+    ),
+    "session",
+    "frame",
+    "https://example.invalid",
+)
 
 
 class Fixture:
@@ -70,10 +86,17 @@ class Fixture:
         if not self.active or guard is not self:
             raise AssertionError("guard not held")
         self.reads += 1
-        return Readback(grant.target.binding, grant.payload_digest, "confirmed", "a" * 64)
+        return Readback(
+            grant.target.binding, grant.payload_digest, "confirmed", "a" * 64
+        )
 
     def journal(self):
-        return GuardedJournal(self.root / "journal.sqlite", authority=self, site=self, clock=lambda: self.now)
+        return GuardedJournal(
+            self.root / "journal.sqlite",
+            authority=self,
+            site=self,
+            clock=lambda: self.now,
+        )
 
     def effects(self):
         path = self.root / "site-ledger"
@@ -99,7 +122,13 @@ from test_guarded_effects import Fixture, PAYLOAD
 f=Fixture(sys.argv[1]); j=f.journal()
 print(j.dispatch('admitted',PAYLOAD)); j.close()
 """
-        result = subprocess.run([sys.executable, "-c", code, self.tmp.name], check=True, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(
+            [sys.executable, "-c", code, self.tmp.name],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
         self.assertEqual(result.stdout.strip(), "unknown")
         self.assertEqual(self.f.effects(), 1)
         self.j = self.f.journal()
@@ -111,11 +140,19 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
 
     def test_wrong_ticket_payload_action_and_exact_observation_deny(self) -> None:
         for mutation in [
-            lambda: setattr(self.f, "observed", replace(TARGET, native_session="other")),
+            lambda: setattr(
+                self.f, "observed", replace(TARGET, native_session="other")
+            ),
             lambda: setattr(self.f, "observed", replace(TARGET, frame="other")),
-            lambda: setattr(self.f, "observed", replace(TARGET, binding=replace(TARGET.binding, account="other"))),
+            lambda: setattr(
+                self.f,
+                "observed",
+                replace(TARGET, binding=replace(TARGET.binding, account="other")),
+            ),
             lambda: setattr(self.f, "grant", replace(self.f.grant, action="reconcile")),
-            lambda: setattr(self.f, "grant", replace(self.f.grant, payload_digest="b"*64)),
+            lambda: setattr(
+                self.f, "grant", replace(self.f.grant, payload_digest="b" * 64)
+            ),
         ]:
             self.f.observed = TARGET
             self.f.grant = Grant(TARGET, DIGEST, "dispatch", 20.0)
@@ -146,6 +183,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         def revoke():
             if self.f.current_calls == 3:
                 self.f.allowed = False
+
         self.f.at_current = revoke
         with self.assertRaises(Denied):
             self.j.dispatch("admitted", PAYLOAD)
@@ -179,6 +217,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         def nested():
             with self.assertRaises(Denied):
                 self.j.dispatch("admitted", PAYLOAD)
+
         self.f.at_current = nested
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.f.effects(), 1)
@@ -198,8 +237,11 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         source = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            shutil.copytree(source / "browser_runtime", root / "browser_runtime",
-                            ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copytree(
+                source / "browser_runtime",
+                root / "browser_runtime",
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
             shutil.copyfile(Path(__file__), root / "test_guarded_effects.py")
             code = """from test_guarded_effects import Fixture, PAYLOAD
 from browser_runtime.effects import Denied
@@ -210,11 +252,18 @@ try: j.dispatch('admitted',PAYLOAD)
 except Denied: pass
 print(f.effects()); j.close()
 """
+
             def run():
-                result = subprocess.run([sys.executable, "-c", code], cwd=root,
-                                        check=True, capture_output=True,
-                                        text=True, timeout=10)
+                result = subprocess.run(
+                    [sys.executable, "-c", code],
+                    cwd=root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
                 return result.stdout.strip()
+
             self.assertEqual(run(), "0")
             module = root / "browser_runtime/guarded_peer.py"
             original = module.read_text()
@@ -231,14 +280,18 @@ print(f.effects()); j.close()
                 self.j.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_persisted_full_target_rejects_changed_session_frame_and_origin(self) -> None:
+    def test_persisted_full_target_rejects_changed_session_frame_and_origin(
+        self,
+    ) -> None:
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
         self.j.close()
         self.j = self.f.journal()
         self.addCleanup(self.j.close)
-        for target in [replace(TARGET, native_session="different"),
-                       replace(TARGET, frame="different"),
-                       replace(TARGET, frame_origin="https://other.invalid")]:
+        for target in [
+            replace(TARGET, native_session="different"),
+            replace(TARGET, frame="different"),
+            replace(TARGET, frame_origin="https://other.invalid"),
+        ]:
             self.f.grant = Grant(target, DIGEST, "reconcile", 20.0)
             self.f.observed = target
             with self.assertRaises(Denied):
@@ -251,9 +304,13 @@ print(f.effects()); j.close()
 
     def test_legacy_journal_cannot_reconcile_contextual_row(self) -> None:
         from browser_runtime.effects import Journal
+
         self.j.dispatch("admitted", PAYLOAD)
-        legacy = Journal(Path(self.tmp.name) / "journal.sqlite", lambda *_: True,
-                         observe=lambda *_: self.fail("must reject before readback"))
+        legacy = Journal(
+            Path(self.tmp.name) / "journal.sqlite",
+            lambda *_: True,
+            observe=lambda *_: self.fail("must reject before readback"),
+        )
         self.addCleanup(legacy.close)
         with self.assertRaises(Denied):
             legacy.reconcile(TARGET.binding, DIGEST)
@@ -262,6 +319,7 @@ print(f.effects()); j.close()
         for suppress in (False, True):
             with tempfile.TemporaryDirectory() as root:
                 f = Fixture(root)
+
                 @contextmanager
                 def acquire():
                     f.active = True
@@ -272,6 +330,7 @@ print(f.effects()); j.close()
                             raise RuntimeError("SYNTHETIC-PRIVATE-CLEANUP")
                     finally:
                         f.active = False
+
                 f.acquire = acquire
                 f.cancel = True
                 j = f.journal()

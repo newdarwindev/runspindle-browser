@@ -2,10 +2,10 @@
 
 import json
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from tools import run_isolated_account_e2e as launcher
@@ -64,8 +64,8 @@ class LauncherTests(unittest.TestCase):
             )
 
     def test_main_redacts_upstream_failures(self) -> None:
-        from contextlib import redirect_stdout
         import io
+        from contextlib import redirect_stdout
 
         output = io.StringIO()
         with (
@@ -170,8 +170,8 @@ class LifecycleTests(unittest.TestCase):
             kill.assert_not_called()
 
     def test_uncertain_wait_retains_staging(self) -> None:
-        from unittest.mock import Mock
         import shutil
+        from unittest.mock import Mock
 
         child = Mock(returncode=None, pid=12345)
         child.wait.side_effect = subprocess.TimeoutExpired("synthetic", 10)

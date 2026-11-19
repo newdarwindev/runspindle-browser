@@ -12,7 +12,7 @@ from pathlib import Path
 from browser_runtime.control_leases import CredentialInput
 from browser_runtime.credentials import Cancelled, Denied, Grant
 from browser_runtime.effects import Denied as ControlDenied
-from test_control_leases import AGENT, HUMAN, ControlFixture, PAYLOAD, target
+from tests.test_control_leases import AGENT, HUMAN, PAYLOAD, ControlFixture, target
 
 PIN = "a" * 64
 CANARY = "synthetic-private-credential-cancel"
@@ -150,7 +150,9 @@ class LeaseCredentialTests(unittest.TestCase):
         self.assert_no_secret_effects()
         self.assertEqual(self.f.effects(), 0)
 
-    def test_takeover_and_pending_state_block_old_and_unissued_credential_holders(self) -> None:
+    def test_takeover_and_pending_state_block_old_and_unissued_credential_holders(
+        self,
+    ) -> None:
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.assertEqual(self.store.transfer("admitted"), "active")
         self.f.credential(AGENT, 1)
@@ -218,7 +220,9 @@ class LeaseCredentialTests(unittest.TestCase):
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assert_no_secret_effects()
 
-    def test_other_process_transfer_waits_for_release_and_physical_guard_exit(self) -> None:
+    def test_other_process_transfer_waits_for_release_and_physical_guard_exit(
+        self,
+    ) -> None:
         code = """import sys,time,contextlib
 from pathlib import Path
 sys.path.insert(0,'tests')
@@ -284,15 +288,17 @@ finally:s.close()
                 root / "browser_runtime",
                 ignore=shutil.ignore_patterns("__pycache__"),
             )
+            (root / "tests").mkdir()
             for name in (
+                "__init__.py",
                 "test_lease_credentials.py",
                 "test_control_leases.py",
                 "test_guarded_effects.py",
             ):
-                shutil.copyfile(source / "tests" / name, root / name)
+                shutil.copyfile(source / "tests" / name, root / "tests" / name)
             code = """from pathlib import Path
-from test_lease_credentials import CredentialFixture,CredentialAdapters,Denied
-from test_control_leases import AGENT,HUMAN
+from tests.test_lease_credentials import CredentialFixture,CredentialAdapters,Denied
+from tests.test_control_leases import AGENT,HUMAN
 Path('data').mkdir()
 f=CredentialFixture('data');s=f.store();a=CredentialAdapters(f)
 f.transition('initialize',None,AGENT,0);s.transfer('admitted');f.credential(HUMAN,1)

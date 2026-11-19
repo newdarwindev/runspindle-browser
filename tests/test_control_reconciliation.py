@@ -1,4 +1,5 @@
 """Recovery of actual SQLite pending rows from independent synthetic readback."""
+
 import json
 import shutil
 import subprocess
@@ -11,7 +12,7 @@ from pathlib import Path
 from browser_runtime.control_leases import FenceObservation, LeaseStore, Recovery
 from browser_runtime.credentials import Observation
 from browser_runtime.effects import Cancelled, Denied
-from test_control_leases import AGENT, HUMAN, ControlFixture, PAYLOAD
+from tests.test_control_leases import AGENT, HUMAN, PAYLOAD, ControlFixture
 
 
 class RecoveryFixture(ControlFixture):
@@ -48,11 +49,18 @@ class RecoveryFixture(ControlFixture):
         transfer = recovery.transfer
         if self.inspect_wrong:
             transfer = replace(transfer, expected_epoch=900)
-        return FenceObservation(transfer, self.closed_inputs, self.now - self.observation_age)
+        return FenceObservation(
+            transfer, self.closed_inputs, self.now - self.observation_age
+        )
 
     def store(self):
-        return LeaseStore(self.root / "leases.sqlite", authority=self, backend=self,
-                          inspector=self, clock=lambda: self.now)
+        return LeaseStore(
+            self.root / "leases.sqlite",
+            authority=self,
+            backend=self,
+            inspector=self,
+            clock=lambda: self.now,
+        )
 
     def recovery(self, transfer):
         self.grant = Recovery(transfer, self.now + 10.0)
@@ -65,7 +73,9 @@ class ControlReconciliationTests(unittest.TestCase):
         self.f = RecoveryFixture(self.tmp.name)
         self.store = self.f.store()
         self.addCleanup(self.store.close)
-        self.journal = self.store.journal(Path(self.tmp.name) / "effects.sqlite", self.f)
+        self.journal = self.store.journal(
+            Path(self.tmp.name) / "effects.sqlite", self.f
+        )
         self.addCleanup(self.journal.close)
         self.f.transition("initialize", None, AGENT, 0)
         self.assertEqual(self.store.transfer("admitted"), "active")
@@ -83,12 +93,16 @@ class ControlReconciliationTests(unittest.TestCase):
 
     def blocked(self, holder=HUMAN, epoch=2):
         self.f.input(holder, epoch)
-        self.f.grant = replace(self.f.grant, effect=replace(self.f.grant.effect, deadline=self.f.now+10))
+        self.f.grant = replace(
+            self.f.grant, effect=replace(self.f.grant.effect, deadline=self.f.now + 10)
+        )
         with self.assertRaises(Denied):
             self.journal.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_fresh_recovery_after_original_deadline_activates_without_refencing(self) -> None:
+    def test_fresh_recovery_after_original_deadline_activates_without_refencing(
+        self,
+    ) -> None:
         transfer = self.pending()
         self.f.now = 30.0
         with self.assertRaises(Denied):
@@ -100,7 +114,9 @@ class ControlReconciliationTests(unittest.TestCase):
         self.assertEqual(self.store.reconcile_transfer("admitted"), "active")
         self.assertEqual(self.f.inspections, 1)
         self.f.input(HUMAN, 2)
-        self.f.grant = replace(self.f.grant, effect=replace(self.f.grant.effect, deadline=40.0))
+        self.f.grant = replace(
+            self.f.grant, effect=replace(self.f.grant.effect, deadline=40.0)
+        )
         self.assertEqual(self.journal.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.f.effects(), 1)
         self.assertEqual(self.f.fences(), 2)
@@ -199,8 +215,13 @@ t=f.transition('takeover',AGENT,HUMAN,1); f.recovery(t)
 try: print(s.reconcile_transfer('admitted'))
 finally: s.close()
 """
-        result = subprocess.run([sys.executable, "-c", code, self.tmp.name], timeout=10,
-                                check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            [sys.executable, "-c", code, self.tmp.name],
+            timeout=10,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         self.assertEqual(result.stdout.strip(), "active")
         self.assertEqual(self.f.fences(), 2)
         self.f.recovery(transfer)
@@ -209,8 +230,12 @@ finally: s.close()
 
     def test_absent_inspector_denies_without_backend_effect(self) -> None:
         transfer = self.pending()
-        other = LeaseStore(Path(self.tmp.name) / "leases.sqlite", authority=self.f,
-                           backend=self.f, clock=lambda: self.f.now)
+        other = LeaseStore(
+            Path(self.tmp.name) / "leases.sqlite",
+            authority=self.f,
+            backend=self.f,
+            clock=lambda: self.f.now,
+        )
         self.addCleanup(other.close)
         self.f.recovery(transfer)
         with self.assertRaises(Denied):
@@ -222,13 +247,22 @@ finally: s.close()
         source = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            shutil.copytree(source / "browser_runtime", root / "browser_runtime",
-                            ignore=shutil.ignore_patterns("__pycache__"))
-            for name in ("test_control_reconciliation.py", "test_control_leases.py", "test_guarded_effects.py"):
-                shutil.copyfile(source / "tests" / name, root / name)
+            shutil.copytree(
+                source / "browser_runtime",
+                root / "browser_runtime",
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+            (root / "tests").mkdir()
+            for name in (
+                "__init__.py",
+                "test_control_reconciliation.py",
+                "test_control_leases.py",
+                "test_guarded_effects.py",
+            ):
+                shutil.copyfile(source / "tests" / name, root / "tests" / name)
             code = """from pathlib import Path
-from test_control_reconciliation import RecoveryFixture
-from test_control_leases import AGENT,HUMAN,PAYLOAD,Denied
+from tests.test_control_reconciliation import RecoveryFixture
+from tests.test_control_leases import AGENT,HUMAN,PAYLOAD,Denied
 Path('data').mkdir()
 f=RecoveryFixture('data'); s=f.store()
 f.transition('initialize',None,AGENT,0); s.transfer('admitted')
@@ -243,11 +277,18 @@ try: j.dispatch('admitted',PAYLOAD)
 except Denied: pass
 print(f.effects()); j.close(); s.close()
 """
+
             def run():
-                result = subprocess.run([sys.executable, "-c", code], cwd=root,
-                                        capture_output=True, text=True,
-                                        check=True, timeout=10)
+                result = subprocess.run(
+                    [sys.executable, "-c", code],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=10,
+                )
                 return result.stdout.strip()
+
             self.assertEqual(run(), "0")
             shutil.rmtree(root / "data")
             path = root / "browser_runtime/control_leases.py"
@@ -261,7 +302,9 @@ print(f.effects()); j.close(); s.close()
     def test_boolean_closure_time_is_not_a_timestamp(self) -> None:
         transfer = self.pending()
         inspect = self.f.inspect
-        self.f.inspect = lambda recovery, guard: replace(inspect(recovery, guard), observed_at=True)
+        self.f.inspect = lambda recovery, guard: replace(
+            inspect(recovery, guard), observed_at=True
+        )
         self.f.recovery(transfer)
         with self.assertRaises(Denied):
             self.store.reconcile_transfer("admitted")
@@ -293,9 +336,11 @@ print(f.effects()); j.close(); s.close()
     def test_reservation_without_any_fence_has_no_closure_to_infer(self) -> None:
         transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
         self.f.current_calls = 0
+
         def fail_before_fence():
             if self.f.current_calls == 3:
                 raise RuntimeError("SYNTHETIC-BEFORE-FENCE")
+
         self.f.at_current = fail_before_fence
         with self.assertRaises(Denied):
             self.store.transfer("admitted")

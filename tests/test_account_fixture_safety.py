@@ -1,11 +1,11 @@
 """Offline negative gates; no upstream process, browser or network is started."""
 
 import os
-from pathlib import Path
 import shutil
 import ssl
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from browser_runtime.openbao import HTTPS

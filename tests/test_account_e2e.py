@@ -14,10 +14,10 @@ from browser_runtime.credentials import AdapterSet, Grant, Observation, Resolver
 from browser_runtime.effects import Binding
 from browser_runtime.openbao import Mapping, Vault
 from browser_testing.account_e2e import (
+    TOKEN,
     AccountBrowser,
     AccountSite,
     OpenBaoFixture,
-    TOKEN,
     qualify,
 )
 

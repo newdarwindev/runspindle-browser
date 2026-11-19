@@ -2,16 +2,16 @@
 
 import json
 import os
-from pathlib import Path
 import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 from dataclasses import asdict
+from pathlib import Path
 
 from browser_runtime.effect_wire import VERSION
-from tests.fixtures.effect_pipe_app import TARGET, DIGEST, PAYLOAD
+from tests.fixtures.effect_pipe_app import DIGEST, PAYLOAD, TARGET
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "tests/fixtures/effect_pipe_app.py"
@@ -23,7 +23,14 @@ class PipeProcessTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.site = Path(self.tmp.name) / "site-action-state"
 
-    def exchange(self, action, *, lose=False, trailing=False, opt_in=True):
+    def exchange(
+        self,
+        action: str,
+        *,
+        lose: bool = False,
+        trailing: bool = False,
+        opt_in: bool = True,
+    ) -> tuple[int, str | None]:
         raw = json.dumps(
             dict(
                 version=VERSION,
@@ -65,7 +72,9 @@ class PipeProcessTests(unittest.TestCase):
             size = struct.unpack(">I", result.stdout[:4])[0]
             self.assertLessEqual(size, 4096)
             self.assertEqual(size, len(result.stdout) - 4)
-            outcome = json.loads(result.stdout[4:])["outcome"]
+            observed = json.loads(result.stdout[4:])["outcome"]
+            self.assertIsInstance(observed, str)
+            outcome = str(observed)
         return result.returncode, outcome
 
     def test_process_dispatch_then_fresh_process_reconcile(self) -> None:

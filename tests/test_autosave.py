@@ -3,19 +3,19 @@
 import contextlib
 import hashlib
 import json
-import tempfile
 import subprocess
 import sys
+import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
-from browser_runtime.autosave import Autosave, Login, Writer, MARKER
+from browser_runtime.autosave import MARKER, Autosave, Login, Writer
 from browser_runtime.credentials import Observation
 from browser_runtime.effects import Cancelled, Journal
 from browser_runtime.openbao import Response, Vault
-from test_openbao import Fixture, CANARY
+from tests.test_openbao import CANARY, Fixture
 
 
 class ExternalEffects:
@@ -190,7 +190,9 @@ class AutosaveTests(unittest.TestCase):
         )
         self.assertNotIn(CANARY, repr(Login("u", CANARY, True)))
 
-    def test_missing_opt_in_and_forged_ticket_have_zero_capture_token_http(self) -> None:
+    def test_missing_opt_in_and_forged_ticket_have_zero_capture_token_http(
+        self,
+    ) -> None:
         f = self.f
         f.opt_in = False
         self.assertEqual(f.service().run(f.ticket), "not_saved")
@@ -316,7 +318,9 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual((f.posts, f.gets), (0, 0))
 
-    def test_mutation_removing_observation_check_breaks_zero_write_invariant(self) -> None:
+    def test_mutation_removing_observation_check_breaks_zero_write_invariant(
+        self,
+    ) -> None:
         f = self.f
         f.observed = replace(f.g.target, frame="wrong")
         with patch.object(Autosave, "_check", return_value=None):
@@ -355,7 +359,9 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "not_saved")
         self.assertEqual((f.posts, f.captures), (0, 0))
 
-    def test_suppressed_or_replaced_cancellation_still_propagates_sanitized(self) -> None:
+    def test_suppressed_or_replaced_cancellation_still_propagates_sanitized(
+        self,
+    ) -> None:
         for replacement in (False, True):
             with self.subTest(replacement=replacement):
                 f = Harness(Path(self.tmp.name) / str(replacement))
@@ -387,7 +393,9 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "saved")
         self.assertEqual((f.posts, len(f.records)), (0, 1))
 
-    def test_fresh_process_reopens_existing_journal_without_capture_or_post(self) -> None:
+    def test_fresh_process_reopens_existing_journal_without_capture_or_post(
+        self,
+    ) -> None:
         f = self.f
         self.assertEqual(f.service().run(f.ticket), "saved")
         script = """
