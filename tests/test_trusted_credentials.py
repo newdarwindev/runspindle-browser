@@ -11,14 +11,13 @@ from unittest.mock import patch
 
 from browser_runtime.credentials import (
     AdapterSet,
-    Cancelled,
     Denied,
     Grant,
     Observation,
     Resolver,
     Target,
 )
-from browser_runtime.effects import Binding
+from browser_runtime.effects import Binding, Cancelled
 
 PIN = "a" * 64
 CANARY = "secret-canary-DO-NOT-EXPORT"

@@ -1,11 +1,15 @@
 """Offline launcher safety; does not launch namespaces or upstream binaries."""
 
+import hashlib
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import patch
 
 from tools import run_isolated_account_e2e as launcher
@@ -59,7 +63,7 @@ class LauncherTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 launcher.pinned(p, {"0" * 64})
             self.assertEqual(
-                launcher.pinned(p, {launcher.hashlib.sha256(b"synthetic").hexdigest()}),
+                launcher.pinned(p, {hashlib.sha256(b"synthetic").hexdigest()}),
                 p,
             )
 
@@ -70,7 +74,7 @@ class LauncherTests(unittest.TestCase):
         output = io.StringIO()
         with (
             patch.object(
-                launcher.sys,
+                sys,
                 "argv",
                 ["test", "--bao", "/x", "--chromium", "/y", "--certutil", "/z"],
             ),
@@ -89,19 +93,24 @@ class LauncherTests(unittest.TestCase):
 class LifecycleTests(unittest.TestCase):
     """Harmless local Python children only; no bwrap or upstream execution."""
 
-    def invoke(self, code, *, capture_override=None):
-        import sys
-
+    def invoke(
+        self,
+        code: str,
+        *,
+        capture_override: Callable[[subprocess.Popen[bytes]], tuple[bytes, bytes]]
+        | None = None,
+    ) -> type[BaseException] | None:
         real_popen = subprocess.Popen
         real_mkdtemp = tempfile.mkdtemp
-        processes, stages = [], []
+        processes: list[subprocess.Popen[bytes]] = []
+        stages: list[Path] = []
 
-        def spawn(*args, **kwargs):
-            child = real_popen(*args, **kwargs)
+        def spawn(*args: Any, **kwargs: Any) -> subprocess.Popen[bytes]:
+            child = cast(subprocess.Popen[bytes], real_popen(*args, **kwargs))
             processes.append(child)
             return child
 
-        def stage(**_kwargs):
+        def stage(**_kwargs: object) -> str:
             path = real_mkdtemp(prefix="launcher-test-")
             stages.append(Path(path))
             return path
@@ -112,8 +121,8 @@ class LifecycleTests(unittest.TestCase):
             patch.object(
                 launcher, "command", return_value=[sys.executable, "-c", code]
             ),
-            patch.object(launcher.subprocess, "Popen", side_effect=spawn),
-            patch.object(launcher.tempfile, "mkdtemp", side_effect=stage),
+            patch.object(subprocess, "Popen", side_effect=spawn),
+            patch.object(tempfile, "mkdtemp", side_effect=stage),
         ]
         if capture_override is not None:
             patches.append(
@@ -165,7 +174,7 @@ class LifecycleTests(unittest.TestCase):
             self.assertEqual(signal.getsignal(sig), previous)
 
     def test_confirmed_exit_never_signals_reaped_pid(self) -> None:
-        with patch.object(launcher.os, "killpg") as kill:
+        with patch.object(os, "killpg") as kill:
             self.assertIsNone(self.invoke('print(\'{"status":"passed"}\')'))
             kill.assert_not_called()
 
@@ -180,10 +189,10 @@ class LifecycleTests(unittest.TestCase):
         with (
             patch.object(Path, "read_bytes", return_value=b"synthetic dependency"),
             patch.object(launcher, "pinned", side_effect=lambda p, _: p),
-            patch.object(launcher.tempfile, "mkdtemp", return_value=str(directory)),
-            patch.object(launcher.subprocess, "Popen", return_value=child),
+            patch.object(tempfile, "mkdtemp", return_value=str(directory)),
+            patch.object(subprocess, "Popen", return_value=child),
             patch.object(launcher, "capture", side_effect=TimeoutError),
-            patch.object(launcher.os, "killpg") as kill,
+            patch.object(os, "killpg") as kill,
         ):
             with self.assertRaises(subprocess.TimeoutExpired):
                 launcher.run(

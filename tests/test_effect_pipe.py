@@ -5,17 +5,19 @@ import json
 import struct
 import tempfile
 import unittest
+from collections.abc import Buffer
 from dataclasses import replace
+from typing import BinaryIO, cast
 from unittest.mock import patch
 
-from browser_runtime.effect_pipe import MAX_REQUEST, MAX_RESPONSE, serve_once
-from browser_runtime.effect_wire import Receiver
+from browser_runtime.effect_pipe import MAX_RESPONSE, serve_once
+from browser_runtime.effect_wire import MAX_REQUEST, Receiver
 from browser_runtime.guarded_peer import GuardedPeer
 from tests.test_effect_wire import encoded, request
 from tests.test_guarded_effects import Fixture
 
 
-def frame(raw):
+def frame(raw: bytes) -> bytes:
     return struct.pack(">I", len(raw)) + raw
 
 
@@ -28,9 +30,14 @@ class PipeTests(unittest.TestCase):
             GuardedPeer(authority=self.f, site=self.f, clock=lambda: self.f.now)
         )
 
-    def exchange(self, raw, ticket="admitted"):
+    def exchange(self, raw: bytes, ticket: object = "admitted") -> tuple[bool, bytes]:
         output = io.BytesIO()
-        okay = serve_once(io.BytesIO(raw), output, self.receiver, ticket)
+        okay = serve_once(
+            cast(BinaryIO, io.BytesIO(raw)),
+            cast(BinaryIO, output),
+            self.receiver,
+            ticket,
+        )
         return okay, output.getvalue()
 
     def test_real_receiver_roundtrip_dispatch_then_readback_without_database(
@@ -71,18 +78,18 @@ class PipeTests(unittest.TestCase):
 
     def test_partial_pipe_reads_and_writes_supported(self) -> None:
         class ShortReader(io.BytesIO):
-            def read(self, size=-1):
-                return super().read(min(size, 2))
+            def read(self, size: int | None = -1) -> bytes:
+                return super().read(min(size, 2) if size is not None else 2)
 
         class ShortWriter(io.BytesIO):
-            def write(self, data):
-                return super().write(data[:3])
+            def write(self, data: Buffer) -> int:
+                return super().write(memoryview(data)[:3])
 
         output = ShortWriter()
         self.assertTrue(
             serve_once(
-                ShortReader(frame(encoded(request()))),
-                output,
+                cast(BinaryIO, ShortReader(frame(encoded(request())))),
+                cast(BinaryIO, output),
                 self.receiver,
                 "admitted",
             )
@@ -95,27 +102,32 @@ class PipeTests(unittest.TestCase):
         self.assertEqual(self.f.effects(), 1)  # Core must retain reserved unknown.
 
     def test_unbounded_receiver_response_never_written(self) -> None:
-        class ReceiverFixture:
-            def exchange(self, *_):
-                return b"x" * (MAX_RESPONSE + 1)
-
         output = io.BytesIO()
-        self.assertFalse(
-            serve_once(
-                io.BytesIO(frame(b"synthetic")), output, ReceiverFixture(), object()
+        with patch.object(
+            self.receiver, "exchange", return_value=b"x" * (MAX_RESPONSE + 1)
+        ):
+            self.assertFalse(
+                serve_once(
+                    cast(BinaryIO, io.BytesIO(frame(b"synthetic"))),
+                    cast(BinaryIO, output),
+                    self.receiver,
+                    object(),
+                )
             )
-        )
         self.assertEqual(output.getvalue(), b"")
 
     def test_partial_response_failure_is_not_reported_as_success(self) -> None:
         class BrokenWriter(io.BytesIO):
-            def flush(self):
+            def flush(self) -> None:
                 raise KeyboardInterrupt("SYNTHETIC_PRIVATE")
 
         output = BrokenWriter()
         self.assertFalse(
             serve_once(
-                io.BytesIO(frame(encoded(request()))), output, self.receiver, "admitted"
+                cast(BinaryIO, io.BytesIO(frame(encoded(request())))),
+                cast(BinaryIO, output),
+                self.receiver,
+                "admitted",
             )
         )
         self.assertNotIn(b"PRIVATE", output.getvalue())

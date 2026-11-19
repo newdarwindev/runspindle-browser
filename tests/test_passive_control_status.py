@@ -19,7 +19,8 @@ from browser_runtime.control_leases import (
 from browser_runtime.credentials import Denied as CredentialDenied
 from browser_runtime.credentials import Grant as CredentialGrant
 from browser_runtime.effects import Denied
-from tests.test_control_leases import AGENT, HUMAN, PAYLOAD, ControlFixture, target
+from tests.test_control_leases import AGENT, HUMAN, ControlFixture, target
+from tests.test_guarded_effects import PAYLOAD
 from tests.test_lease_credentials import CredentialAdapters
 
 ROOT = Path(__file__).resolve().parents[1]

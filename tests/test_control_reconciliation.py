@@ -12,7 +12,8 @@ from pathlib import Path
 from browser_runtime.control_leases import FenceObservation, LeaseStore, Recovery
 from browser_runtime.credentials import Observation
 from browser_runtime.effects import Cancelled, Denied
-from tests.test_control_leases import AGENT, HUMAN, PAYLOAD, ControlFixture
+from tests.test_control_leases import AGENT, HUMAN, ControlFixture
+from tests.test_guarded_effects import PAYLOAD
 
 
 class RecoveryFixture(ControlFixture):

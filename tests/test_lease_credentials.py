@@ -10,9 +10,11 @@ from dataclasses import replace
 from pathlib import Path
 
 from browser_runtime.control_leases import CredentialInput
-from browser_runtime.credentials import Cancelled, Denied, Grant
+from browser_runtime.credentials import Denied, Grant
+from browser_runtime.effects import Cancelled
 from browser_runtime.effects import Denied as ControlDenied
-from tests.test_control_leases import AGENT, HUMAN, PAYLOAD, ControlFixture, target
+from tests.test_control_leases import AGENT, HUMAN, ControlFixture, target
+from tests.test_guarded_effects import PAYLOAD
 
 PIN = "a" * 64
 CANARY = "synthetic-private-credential-cancel"

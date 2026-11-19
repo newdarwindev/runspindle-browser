@@ -3,25 +3,30 @@
 import contextlib
 import traceback
 import unittest
+from collections.abc import Iterator
+from typing import NoReturn
 from unittest.mock import patch
 
-from browser_runtime.credentials import Cancelled, Denied
+from browser_runtime.credentials import Denied
+from browser_runtime.effects import Cancelled
 from tests.test_trusted_credentials import CANARY, Adapters
 
 
 class ResolverCancellationTests(unittest.TestCase):
-    def exercise(self, stage, exit_mode="normal", cleanup_error=False):
+    def exercise(
+        self, stage: str, exit_mode: str = "normal", cleanup_error: bool = False
+    ) -> None:
         adapter = Adapters()
         resolver = adapter.resolver()
         original = getattr(adapter, stage)
 
-        def cancel(*args):
+        def cancel(*args: object) -> NoReturn:
             if stage in ("read", "inject", "release"):
                 original(*args)
             raise KeyboardInterrupt(CANARY)
 
         @contextlib.contextmanager
-        def guard():
+        def guard() -> Iterator[Adapters]:
             adapter.active = True
             try:
                 yield adapter
@@ -39,7 +44,7 @@ class ResolverCancellationTests(unittest.TestCase):
             stack.enter_context(patch.object(adapter, stage, cancel))
             if cleanup_error:
 
-                def release(handle):
+                def release(_handle: object) -> NoReturn:
                     adapter.calls.append("release")
                     raise RuntimeError(CANARY)
 
@@ -98,7 +103,7 @@ class ResolverCancellationTests(unittest.TestCase):
             resolver = adapter.resolver()
 
             @contextlib.contextmanager
-            def guard():
+            def guard() -> Iterator[Adapters]:
                 if stage == "enter":
                     raise SystemExit(CANARY)
                 adapter.active = True
@@ -171,7 +176,7 @@ class ResolverCancellationTests(unittest.TestCase):
             )
 
             @contextlib.contextmanager
-            def guard():
+            def guard() -> Iterator[Adapters]:
                 try:
                     yield adapter
                 except BaseException:
