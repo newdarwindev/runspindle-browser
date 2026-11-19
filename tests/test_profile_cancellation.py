@@ -6,12 +6,21 @@ import sys
 import tempfile
 import traceback
 import unittest
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
 from browser_runtime.profile_directory import DirectoryProfileIO
-from browser_runtime.profile_store import Adapters, Cancelled, Denied, Store
+from browser_runtime.profile_store import (
+    Adapters,
+    Cancelled,
+    Denied,
+    Grant,
+    Guard,
+    Key,
+    Store,
+)
 from browser_testing.profile_store_fixtures import CANARY, Fake, grant
 from tests.test_profile_directory import bundle
 
@@ -63,16 +72,18 @@ class CancellationTests(unittest.TestCase):
 
                     class Keys:
                         @contextmanager
-                        def acquire(self, *args):
+                        def acquire(
+                            self, store_id: str, grant: Grant, version: str | None
+                        ) -> Iterator[Key]:
                             try:
-                                with original.acquire(*args) as key:
+                                with original.acquire(store_id, grant, version) as key:
                                     yield key
                             except BaseException:
                                 if mode == "replace":
                                     raise RuntimeError(CANARY.decode())
 
                     @contextmanager
-                    def authority():
+                    def authority() -> Iterator[Fake]:
                         try:
                             yield fake
                         except BaseException:
@@ -131,8 +142,10 @@ class CancellationTests(unittest.TestCase):
 
         class Keys:
             @contextmanager
-            def acquire(self, *args):
-                with original.acquire(*args) as key:
+            def acquire(
+                self, store_id: str, grant: Grant, version: str | None
+            ) -> Iterator[Key]:
+                with original.acquire(store_id, grant, version) as key:
                     yield key
                 cancel()
 
@@ -154,7 +167,7 @@ class CancellationTests(unittest.TestCase):
         store, fake = self.store()
 
         @contextmanager
-        def authority():
+        def authority() -> Iterator[Fake]:
             yield fake
             cancel()
 
@@ -190,11 +203,11 @@ class CancellationTests(unittest.TestCase):
         original = tree._recover
         calls = [0]
 
-        def recovery(*args):
+        def recovery(grant: Grant, guard: Guard) -> None:
             calls[0] += 1
             if calls[0] == 2:
                 cancel()
-            return original(*args)
+            original(grant, guard)
 
         with patch.object(tree, "_recover", side_effect=recovery):
             with self.assertRaises(Cancelled) as caught:
@@ -239,7 +252,7 @@ sys.exit(0 if result.wasSuccessful() else 1)
         path.mkdir(mode=0o700)
         tree = DirectoryProfileIO(path, fake.grant)
         self.addCleanup(tree.close)
-        operations = [
+        operations: list[Callable[[], object]] = [
             lambda: store.run("invalid"),
             lambda: tree.capture(fake.grant, fake),
             lambda: Store(self.root / "missing", fake.adapters()),
@@ -260,9 +273,9 @@ sys.exit(0 if result.wasSuccessful() else 1)
                 try:
                     raise ValueError(CANARY.decode())
                 except ValueError:
-                    with self.assertRaises(Denied) as caught:
+                    with self.assertRaises(Denied) as denied:
                         owner.close()
-                    self.safe(caught.exception)
+                    self.safe(denied.exception)
             finally:
                 lock.release()
 

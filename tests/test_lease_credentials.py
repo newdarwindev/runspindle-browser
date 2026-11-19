@@ -6,11 +6,13 @@ import sys
 import tempfile
 import time
 import unittest
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
+from typing import NoReturn
 
-from browser_runtime.control_leases import CredentialInput
-from browser_runtime.credentials import Denied, Grant
+from browser_runtime.control_leases import CredentialInput, Holder, LeaseStore
+from browser_runtime.credentials import Denied, Fence, Grant, Resolver, Target
 from browser_runtime.effects import Cancelled
 from browser_runtime.effects import Denied as ControlDenied
 from tests.test_control_leases import AGENT, HUMAN, ControlFixture, target
@@ -21,33 +23,34 @@ CANARY = "synthetic-private-credential-cancel"
 
 
 class CredentialFixture(ControlFixture):
-    def credential(self, holder=AGENT, epoch=1):
-        self.grant = CredentialInput(
+    def credential(self, holder: Holder = AGENT, epoch: int = 1) -> CredentialInput:
+        admission = CredentialInput(
             Grant(target(epoch, "credential-input"), "credential:one", 20.0), holder
         )
-        return self.grant
+        self.grant = admission
+        return admission
 
 
 class CredentialAdapters:
-    def __init__(self, authority):
+    def __init__(self, authority: ControlFixture) -> None:
         self.authority = authority
         self.reads = self.injections = self.releases = 0
         self.handle = object()
-        self.after_read = lambda: None
-        self.at_inject = lambda: None
-        self.at_release = lambda: None
+        self.after_read: Callable[[], None] = lambda: None
+        self.at_inject: Callable[[], None] = lambda: None
+        self.at_release: Callable[[], None] = lambda: None
 
-    def read(self, grant):
+    def read(self, grant: Grant) -> object:
         if not self.authority.active:
             raise AssertionError("physical guard missing during read")
         self.reads += 1
         self.after_read()
         return self.handle
 
-    def current(self, handle, grant):
+    def current(self, handle: object, grant: Grant) -> bool:
         return handle is self.handle
 
-    def inject(self, handle, grant, fence):
+    def inject(self, handle: object, grant: Grant, fence: Fence) -> bool:
         if (
             not self.authority.active
             or handle is not self.handle
@@ -58,13 +61,15 @@ class CredentialAdapters:
         self.at_inject()
         return True
 
-    def release(self, handle):
+    def release(self, handle: object) -> None:
         if not self.authority.active or handle is not self.handle:
             raise AssertionError("physical guard missing during release")
         self.releases += 1
         self.at_release()
 
-    def resolver(self, store, digest=PIN, expected=PIN):
+    def resolver(
+        self, store: LeaseStore, digest: str = PIN, expected: str = PIN
+    ) -> Resolver:
         return store.credential_resolver(
             self, self, adapter_digest=digest, expected_digest=expected
         )
@@ -81,7 +86,7 @@ class LeaseCredentialTests(unittest.TestCase):
         self.f.transition("initialize", None, AGENT, 0)
         self.assertEqual(self.store.transfer("admitted"), "active")
 
-    def assert_no_secret_effects(self):
+    def assert_no_secret_effects(self) -> None:
         self.assertEqual(
             (self.adapters.reads, self.adapters.injections, self.adapters.releases),
             (0, 0, 0),
@@ -116,22 +121,17 @@ class LeaseCredentialTests(unittest.TestCase):
             self.f.credential(holder, epoch)
             with self.assertRaises(Denied):
                 self.adapters.resolver(self.store).resolve_and_inject("admitted")
-        for field in ("account", "native_session", "frame", "frame_origin"):
+        changes: tuple[Callable[[Target], Target], ...] = (
+            lambda target: replace(
+                target, binding=replace(target.binding, account="other")
+            ),
+            lambda target: replace(target, native_session="other"),
+            lambda target: replace(target, frame="other"),
+            lambda target: replace(target, frame_origin="https://other.invalid"),
+        )
+        for change in changes:
             admission = self.f.credential()
-            current = admission.credential.target
-            if field == "account":
-                changed = replace(
-                    current, binding=replace(current.binding, account="other")
-                )
-            else:
-                changed = replace(
-                    current,
-                    **{
-                        field: "https://other.invalid"
-                        if field == "frame_origin"
-                        else "other"
-                    },
-                )
+            changed = change(admission.credential.target)
             self.f.grant = replace(
                 admission, credential=replace(admission.credential, target=changed)
             )
@@ -195,10 +195,10 @@ class LeaseCredentialTests(unittest.TestCase):
     def test_cancellation_stays_sanitized_and_releases_lease(self) -> None:
         self.f.credential()
 
-        def cancel():
+        def cancel() -> NoReturn:
             raise KeyboardInterrupt(CANARY)
 
-        def cleanup_error():
+        def cleanup_error() -> NoReturn:
             raise RuntimeError(CANARY)
 
         self.adapters.at_inject = cancel
@@ -309,7 +309,7 @@ except Denied:pass
 print(a.reads,a.injections);s.close()
 """
 
-            def run():
+            def run() -> str:
                 result = subprocess.run(
                     [sys.executable, "-c", code],
                     cwd=root,

@@ -24,7 +24,7 @@ class HTTPTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
 
-    def journal(self, site):
+    def journal(self, site: LocalSite) -> tuple[Fixture, GuardedJournal]:
         fixture = Fixture(self.root)
         journal = GuardedJournal(
             self.root / "journal.sqlite",
@@ -35,7 +35,7 @@ class HTTPTests(unittest.TestCase):
         self.addCleanup(journal.close)
         return fixture, journal
 
-    def child(self, site, *, mutate=False):
+    def child(self, site: LocalSite, *, mutate: bool = False) -> list[str]:
         code = r"""
 import pathlib, sys
 if sys.argv[3] == "mutant":
@@ -181,7 +181,10 @@ finally:
             stalled.sendall(b"POST /submit HTTP/1.0\r\nContent-Length: 100\r\n\r\n{")
             self.assertTrue(site.request_started.wait(2))
         stalled.close()
-        self.assertFalse(site._thread.is_alive())
+        thread = site._thread
+        if thread is None:
+            self.fail("fixture worker was never started")
+        self.assertFalse(thread.is_alive())
         self.assertEqual(
             (site.submissions, site.readbacks, site.ledger.effects()), (0, 0, 0)
         )
@@ -207,7 +210,10 @@ finally:
                     connection.close()
                 self.assertEqual((site.submissions, site.ledger.effects()), (0, 0))
                 raise RuntimeError("intentional test failure")
-        self.assertFalse(site._thread.is_alive())
+        thread = site._thread
+        if thread is None:
+            self.fail("fixture worker was never started")
+        self.assertFalse(thread.is_alive())
         with socket.socket() as probe:
             probe.settimeout(1)
             self.assertNotEqual(probe.connect_ex(("127.0.0.1", site.port)), 0)

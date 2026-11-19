@@ -41,7 +41,7 @@
     },
     "tests/test_openbao.py": {
       "classification": "existing_protocol_double_tests",
-      "sha256": "e14500098413ad40f9aa9231fa10abafbb3279ea5a45aca040f13c63699fcb4d"
+      "sha256": "bd2bcd6dd6b3c36df142ea0c99fc195fb6ee600e16421384775b7a76936300c3"
     },
     "tests/test_storage_hygiene.py": {
       "classification": "integration_regression_tests",
@@ -57,7 +57,7 @@
     },
     "tests/test_trusted_credentials.py": {
       "classification": "existing_synthetic_adapter_tests",
-      "sha256": "39a53a1cf9e4ece33599b58214e9a7ebdd031c1bb6c957d98f42d7dd5c19cddf"
+      "sha256": "f5907f1780839f8e9aff6711237c7dfb2e122290476d8b5d41482c6ee6ee5ab0"
     },
     "tools/check_credential_storage.py": {
       "classification": "structural_artifact_checker",

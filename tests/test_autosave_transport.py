@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from collections.abc import Mapping
 from email.message import Message
 from unittest.mock import patch
 
@@ -9,27 +10,33 @@ from browser_runtime.openbao import HTTPS, MAX_BODY
 
 
 class Peer:
-    def __init__(self):
-        self.calls = []
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, bytes | None, Mapping[str, str] | None]] = []
         self.closed = 0
         self.status = 200
         self.body = b'{"data":{"version":1}}'
         self.headers = Message()
         self.headers["Content-Length"] = str(len(self.body))
 
-    def request(self, method, path, body=None, headers=None):
+    def request(
+        self,
+        method: str,
+        path: str,
+        body: bytes | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
         self.calls.append((method, path, body, headers))
 
-    def getresponse(self):
+    def getresponse(self) -> "Peer":
         return self
 
-    def getheader(self, key, default=None):
+    def getheader(self, key: str, default: str | None = None) -> str | None:
         return self.headers.get(key, default)
 
-    def read(self, limit):
+    def read(self, limit: int) -> bytes:
         return self.body[:limit]
 
-    def close(self):
+    def close(self) -> None:
         self.closed += 1
 
 
@@ -46,7 +53,10 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(reply.status, 200)
         self.assertEqual(len(peer.calls), 1)
         self.assertEqual(peer.calls[0][:3], ("POST", "/v1/kv/data/a", body))
-        self.assertEqual(peer.calls[0][3]["Content-Type"], "application/json")
+        headers = peer.calls[0][3]
+        if headers is None:
+            self.fail("request headers missing")
+        self.assertEqual(headers["Content-Type"], "application/json")
         self.assertEqual(peer.closed, 2)
 
     def test_invalid_method_and_oversized_body_open_no_connection(self) -> None:

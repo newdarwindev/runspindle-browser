@@ -6,10 +6,20 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable
 from dataclasses import asdict, replace
 from pathlib import Path
+from unittest.mock import patch
 
-from browser_runtime.control_leases import FenceObservation, LeaseStore, Recovery
+from browser_runtime.control_leases import (
+    FenceObservation,
+    FenceReceipt,
+    Guard,
+    Holder,
+    LeaseStore,
+    Recovery,
+    Transfer,
+)
 from browser_runtime.credentials import Observation
 from browser_runtime.effects import Cancelled, Denied
 from tests.test_control_leases import AGENT, HUMAN, ControlFixture
@@ -17,25 +27,25 @@ from tests.test_guarded_effects import PAYLOAD
 
 
 class RecoveryFixture(ControlFixture):
-    def __init__(self, root):
+    def __init__(self, root: Path | str) -> None:
         super().__init__(root)
         self.inspections = 0
         self.observation_age = 0.0
-        self.inspect_callback = lambda: None
+        self.inspect_callback: Callable[[], None] = lambda: None
         self.inspect_cancel = False
         self.inspect_unknown = False
         self.inspect_wrong = False
 
-    def observe(self):
+    def observe(self) -> Observation:
         return Observation(self.observed, self.now)
 
-    def fence(self, transfer, guard):
+    def fence(self, transfer: Transfer, guard: Guard) -> FenceReceipt:
         # Independent backend state exists before the response can be lost.
         path = self.root / "closed-transfer.json"
         path.write_text(json.dumps(asdict(transfer), sort_keys=True))
         return super().fence(transfer, guard)
 
-    def inspect(self, recovery, guard):
+    def inspect(self, recovery: Recovery, guard: Guard) -> FenceObservation | None:
         if not self.active or guard is not self:
             raise AssertionError("physical guard not held for inspection")
         self.inspections += 1
@@ -54,7 +64,7 @@ class RecoveryFixture(ControlFixture):
             transfer, self.closed_inputs, self.now - self.observation_age
         )
 
-    def store(self):
+    def store(self) -> LeaseStore:
         return LeaseStore(
             self.root / "leases.sqlite",
             authority=self,
@@ -63,7 +73,7 @@ class RecoveryFixture(ControlFixture):
             clock=lambda: self.now,
         )
 
-    def recovery(self, transfer):
+    def recovery(self, transfer: Transfer) -> None:
         self.grant = Recovery(transfer, self.now + 10.0)
 
 
@@ -81,7 +91,7 @@ class ControlReconciliationTests(unittest.TestCase):
         self.f.transition("initialize", None, AGENT, 0)
         self.assertEqual(self.store.transfer("admitted"), "active")
 
-    def pending(self, handback=False):
+    def pending(self, handback: bool = False) -> Transfer:
         transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
         if handback:
             self.assertEqual(self.store.transfer("admitted"), "active")
@@ -92,10 +102,10 @@ class ControlReconciliationTests(unittest.TestCase):
         self.f.fence_error = False
         return transfer
 
-    def blocked(self, holder=HUMAN, epoch=2):
-        self.f.input(holder, epoch)
+    def blocked(self, holder: Holder = HUMAN, epoch: int = 2) -> None:
+        admission = self.f.input(holder, epoch)
         self.f.grant = replace(
-            self.f.grant, effect=replace(self.f.grant.effect, deadline=self.f.now + 10)
+            admission, effect=replace(admission.effect, deadline=self.f.now + 10)
         )
         with self.assertRaises(Denied):
             self.journal.dispatch("admitted", PAYLOAD)
@@ -114,9 +124,9 @@ class ControlReconciliationTests(unittest.TestCase):
         self.assertEqual(self.f.inspections, 1)
         self.assertEqual(self.store.reconcile_transfer("admitted"), "active")
         self.assertEqual(self.f.inspections, 1)
-        self.f.input(HUMAN, 2)
+        admission = self.f.input(HUMAN, 2)
         self.f.grant = replace(
-            self.f.grant, effect=replace(self.f.grant.effect, deadline=40.0)
+            admission, effect=replace(admission.effect, deadline=40.0)
         )
         self.assertEqual(self.journal.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.f.effects(), 1)
@@ -279,7 +289,7 @@ except Denied: pass
 print(f.effects()); j.close(); s.close()
 """
 
-            def run():
+            def run() -> str:
                 result = subprocess.run(
                     [sys.executable, "-c", code],
                     cwd=root,
@@ -303,11 +313,15 @@ print(f.effects()); j.close(); s.close()
     def test_boolean_closure_time_is_not_a_timestamp(self) -> None:
         transfer = self.pending()
         inspect = self.f.inspect
-        self.f.inspect = lambda recovery, guard: replace(
-            inspect(recovery, guard), observed_at=True
-        )
+
+        def boolean_time(recovery: Recovery, guard: Guard) -> FenceObservation:
+            observation = inspect(recovery, guard)
+            if observation is None:
+                raise AssertionError("expected a closed transfer")
+            return replace(observation, observed_at=True)
+
         self.f.recovery(transfer)
-        with self.assertRaises(Denied):
+        with patch.object(self.f, "inspect", boolean_time), self.assertRaises(Denied):
             self.store.reconcile_transfer("admitted")
         self.blocked()
 
@@ -338,7 +352,7 @@ print(f.effects()); j.close(); s.close()
         transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
         self.f.current_calls = 0
 
-        def fail_before_fence():
+        def fail_before_fence() -> None:
             if self.f.current_calls == 3:
                 raise RuntimeError("SYNTHETIC-BEFORE-FENCE")
 

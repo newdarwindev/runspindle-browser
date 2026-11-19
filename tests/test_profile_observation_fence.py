@@ -45,7 +45,7 @@ class ObservationFenceTests(unittest.TestCase):
                 setattr(fake, field, False)
             return original()
 
-        fake.observe = observe
+        self.enterContext(patch.object(fake, "observe", observe))
         return calls
 
     def test_store_observation_cannot_cross_provider_capture_or_consume(self) -> None:
@@ -121,7 +121,6 @@ class ObservationFenceTests(unittest.TestCase):
                     triggered.append(True)
                 return original()
 
-            fake.observe = observe
             published = []
             write = tree._write_state
 
@@ -130,7 +129,10 @@ class ObservationFenceTests(unittest.TestCase):
                     published.append(True)
                 write(state)
 
-            with patch.object(tree, "_write_state", side_effect=record):
+            with (
+                patch.object(fake, "observe", observe),
+                patch.object(tree, "_write_state", side_effect=record),
+            ):
                 with self.assertRaises(Denied):
                     tree.consume(fake.grant, fake, bundle(fake.grant.scope()))
             self.assertTrue(triggered)
@@ -140,7 +142,6 @@ class ObservationFenceTests(unittest.TestCase):
             self.assertIsNone(state["current"])
             self.assertEqual(len(list(path.glob("g-*"))), 1)
             # No recovery on lost authority. A fresh admitted restore can recover.
-            fake.observe = original
             fake.allowed = fake.stopped = True
             fake.grant = grant("restore")
             self.assertTrue(tree.consume(fake.grant, fake, bundle(fake.grant.scope())))
@@ -204,7 +205,6 @@ sys.exit(0 if result.wasSuccessful() else 1)
                 fake.grant = grant("restore", deadline=11)
                 now = [10.0]
                 calls = [0]
-                fake.observe = lambda: Observation(fake.grant.target, 10.0)
 
                 def quiescent(_grant: object) -> bool:
                     calls[0] += 1
@@ -212,8 +212,15 @@ sys.exit(0 if result.wasSuccessful() else 1)
                         now[0] = 12.0
                     return True
 
-                fake.quiescent = quiescent
-                with patch.object(owner, "_clock", side_effect=lambda: now[0]):
+                with (
+                    patch.object(
+                        fake,
+                        "observe",
+                        side_effect=lambda: Observation(fake.grant.target, 10.0),
+                    ),
+                    patch.object(fake, "quiescent", quiescent),
+                    patch.object(owner, "_clock", side_effect=lambda: now[0]),
+                ):
                     with self.assertRaises(ValueError):
                         if isinstance(owner, Store):
                             owner._check(fake, fake.grant)

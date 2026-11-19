@@ -5,14 +5,16 @@ import hashlib
 import importlib.util
 import json
 import marshal
-from pathlib import Path
 import shutil
-import subprocess
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable
+from pathlib import Path
 from types import ModuleType
+from typing import Any, ClassVar, NoReturn, Protocol, cast
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,7 +57,22 @@ EXPECTED_KIND = "browser.observed"
 EXPECTED_STATE = "passive"
 
 
-def checked_kit(root=ROOT):
+class FixtureKit(Protocol):
+    ContractError: type[Exception]
+
+    def load_json(self, path: str | Path) -> Any: ...
+    def verify_bundle(self, directory: str | Path) -> Any: ...
+    def validate(self, envelope: Any, contract: Any = None) -> Any: ...
+    def assert_conforms(
+        self,
+        envelope: Any,
+        expected_identity: Any,
+        expected_state: Any,
+        observations: Any = None,
+    ) -> bool: ...
+
+
+def checked_kit(root: Path = ROOT) -> FixtureKit:
     """Check reviewed hashes before executing any vendored Python code."""
     pin = json.loads((root / "fixtures/shared-v1.pin.json").read_text())
     if pin != PIN:
@@ -73,20 +90,21 @@ def checked_kit(root=ROOT):
     kit = ModuleType("pinned_fixturekit")
     kit.__file__ = str(bundle / "fixturekit.py")
     exec(compile(verified["fixturekit.py"], kit.__file__, "exec"), kit.__dict__)
-    manifest = kit.verify_bundle(bundle)
+    verified_kit = cast(FixtureKit, kit)
+    manifest = verified_kit.verify_bundle(bundle)
     if manifest["origin_manifest_sha256"] != PIN["source_manifest_sha256"]:
         raise ValueError("origin-mismatch")
     if manifest["component"] != PIN["component"]:
         raise ValueError("component-mismatch")
-    return kit
+    return verified_kit
 
 
 class ConsumerFixtures(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.network = []
+    kit: ClassVar[FixtureKit]
 
-        def deny(*args, **kwargs):
+    @classmethod
+    def setUpClass(cls) -> None:
+        def deny(*args: object, **kwargs: object) -> NoReturn:
             raise AssertionError("unexpected network access")
 
         for target in [
@@ -94,23 +112,16 @@ class ConsumerFixtures(unittest.TestCase):
             "socket.socket.connect",
             "socket.getaddrinfo",
         ]:
-            guard = patch(target, side_effect=deny)
-            guard.start()
-            cls.network.append(guard)
+            cls.enterClassContext(patch(target, side_effect=deny))
         cls.kit = checked_kit()
 
-    @classmethod
-    def tearDownClass(cls):
-        for guard in reversed(cls.network):
-            guard.stop()
-
-    def envelope(self):
+    def envelope(self) -> dict[str, Any]:
         fixtures = self.kit.load_json(BUNDLE / "golden.json")
         self.assertEqual(len(fixtures), 1)
         self.assertEqual(fixtures[0]["kind"], EXPECTED_KIND)
-        return fixtures[0]
+        return cast(dict[str, Any], fixtures[0])
 
-    def reject(self, code, callback):
+    def reject(self, code: str, callback: Callable[[], object]) -> None:
         with self.assertRaises(self.kit.ContractError) as error:
             callback()
         self.assertEqual(str(error.exception), code)

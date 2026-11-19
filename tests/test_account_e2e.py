@@ -6,13 +6,22 @@ import json
 import os
 import time
 import unittest
+from collections.abc import Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
+from typing import cast
 
 from browser_runtime.autosave import Autosave, Login, Writer
-from browser_runtime.credentials import AdapterSet, Grant, Observation, Resolver, Target
-from browser_runtime.effects import Binding
-from browser_runtime.openbao import Mapping, Vault
+from browser_runtime.credentials import (
+    AdapterSet,
+    Fence,
+    Grant,
+    Observation,
+    Resolver,
+    Target,
+)
+from browser_runtime.effects import Binding, Outcome, Readback
+from browser_runtime.openbao import Mapping, Response, Vault
 from browser_testing.account_e2e import (
     TOKEN,
     AccountBrowser,
@@ -31,20 +40,20 @@ class ExternalOperations:
     This is in-memory only; full E2E does not qualify durable owner integration.
     """
 
-    def __init__(self):
-        self.rows = {}
+    def __init__(self) -> None:
+        self.rows: dict[str, tuple[tuple[Binding, str, str], Outcome]] = {}
 
     def execute(
         self,
         *,
-        binding,
-        payload,
-        target_digest,
-        approve,
-        submit,
-        observe,
-        reconcile_only,
-    ):
+        binding: Binding,
+        payload: bytes,
+        target_digest: str,
+        approve: Callable[[Binding, str], bool],
+        submit: Callable[[Binding, bytes], None],
+        observe: Callable[[Binding, str], Readback],
+        reconcile_only: bool,
+    ) -> Outcome:
         digest = hashlib.sha256(payload).hexdigest()
         if not approve(binding, digest):
             raise ValueError("denied")
@@ -69,7 +78,9 @@ class ExternalOperations:
 class Authority:
     """Single-thread test admission; NOT a production Host/Core authority."""
 
-    def __init__(self, browser, origin, operation, session):
+    def __init__(
+        self, browser: AccountBrowser, origin: str, operation: str, session: str
+    ) -> None:
         self.browser = browser
         frame = browser.observe_frame()
         self.target = Target(
@@ -86,17 +97,17 @@ class Authority:
         self.expected = 0
 
     @contextlib.contextmanager
-    def acquire(self):
+    def acquire(self) -> Iterator["Authority"]:
         self.active = True
         try:
             yield self
         finally:
             self.active = False
 
-    def admit(self, ticket):
+    def admit(self, ticket: object) -> Grant | None:
         return self.grant if ticket is self.ticket and self.active else None
 
-    def observe(self):
+    def observe(self) -> Observation:
         frame = self.browser.observe_frame()
         origin = frame["securityOrigin"]
         return Observation(
@@ -109,10 +120,10 @@ class Authority:
             time.monotonic(),
         )
 
-    def current(self, grant):
+    def current(self, grant: Grant) -> bool:
         return self.active and self.allowed and grant == self.grant
 
-    def consent(self, grant):
+    def consent(self, grant: Grant) -> int | None:
         return self.expected if self.opted_in and self.current(grant) else None
 
 
@@ -151,7 +162,14 @@ class AccountE2E(unittest.TestCase):
         self.transport = self.bao.transport()
         self.operations = ExternalOperations()
 
-    def write_transport(self, method, path, token, timeout, body=None):
+    def write_transport(
+        self,
+        method: str,
+        path: str,
+        token: str,
+        timeout: float,
+        body: bytes | None = None,
+    ) -> Response:
         if method == "POST":
             self.posts += 1
         else:
@@ -161,8 +179,8 @@ class AccountE2E(unittest.TestCase):
             raise TimeoutError("synthetic lost acknowledgment")
         return result
 
-    def vault(self, authority):
-        def read(path, token, timeout):
+    def vault(self, authority: Authority) -> Vault:
+        def read(path: str, token: str, timeout: float) -> Response:
             self.reads += 1
             return self.transport(path, token, timeout)
 
@@ -173,10 +191,12 @@ class AccountE2E(unittest.TestCase):
             authorize=authority.current,
         )
 
-    def browser(self):
+    def browser(self) -> AccountBrowser:
         return AccountBrowser(self.chromium, self.bao.ca)
 
-    def register_and_login(self, browser, password=PASSWORD):
+    def register_and_login(
+        self, browser: AccountBrowser, password: str = PASSWORD
+    ) -> str:
         browser.navigate(self.site.origin + "/register", "register")
         browser.fill(USER, password)
         browser.submit("login")
@@ -186,11 +206,17 @@ class AccountE2E(unittest.TestCase):
         browser.submit("private")
         response = browser.request("/whoami")
         self.assertEqual(json.loads(response[1])["user"], USER)
-        return captured
+        return cast(str, captured)
 
     def save(
-        self, browser, captured, *, operation="save", opted_in=True, successful=True
-    ):
+        self,
+        browser: AccountBrowser,
+        captured: str,
+        *,
+        operation: str = "save",
+        opted_in: bool = True,
+        successful: bool = True,
+    ) -> str:
         authority = Authority(browser, self.site.origin, operation, "first")
         authority.opted_in = opted_in
         helper = Autosave(
@@ -222,12 +248,12 @@ class AccountE2E(unittest.TestCase):
             vault = self.vault(authority)
 
             class Helper:
-                def inject(inner, handle, grant, fence):
-                    def sink(secret):
-                        if (
-                            not fence.current(grant)
-                            or fence.observe().target != grant.target
-                        ):
+                def inject(inner, handle: object, grant: Grant, fence: Fence) -> bool:
+                    def sink(secret: str) -> bool:
+                        if not fence.current(grant):
+                            return False
+                        observed = fence.observe()
+                        if observed is None or observed.target != grant.target:
                             return False
                         second.fill(USER, secret)
                         return True

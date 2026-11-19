@@ -4,53 +4,64 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from browser_runtime.control_leases import (
+    CredentialInput,
     FenceReceipt,
+    Guard,
     Holder,
     Input,
     LeaseStore,
+    PassiveStatus,
+    Recovery,
     Transfer,
 )
-from browser_runtime.effects import Cancelled, Denied
+from browser_runtime.credentials import Target
+from browser_runtime.effects import Cancelled, Denied, Readback
 from browser_runtime.guarded_effects import Grant
-from tests.test_guarded_effects import DIGEST, PAYLOAD, TARGET, Fixture
+from browser_runtime.guarded_peer import Guard as EffectGuard
+from tests.test_guarded_effects import DIGEST, PAYLOAD, TARGET, SiteFixture
 
 AGENT = Holder("agent", "agent-one")
 HUMAN = Holder("human", "human-one")
 
 
-def target(epoch, operation):
+def target(epoch: int, operation: str) -> Target:
     return replace(
         TARGET, binding=replace(TARGET.binding, epoch=epoch, operation=operation)
     )
 
 
-class ControlFixture(Fixture):
-    def __init__(self, root):
-        super().__init__(root)
+ControlAdmission = Transfer | Recovery | Input | CredentialInput | PassiveStatus
+
+
+class ControlFixture(SiteFixture[ControlAdmission | None]):
+    def __init__(self, root: Path | str) -> None:
+        super().__init__(root, None)
         self.release = True
         self.closed_inputs = True
         self.fence_error = False
         self.fence_cancel = False
-        self.after_fence = lambda: None
+        self.after_fence: Callable[[], None] = lambda: None
 
-    def submit(self, grant, payload, guard):
+    def submit(self, grant: Grant, payload: bytes, guard: EffectGuard) -> str:
         if not self.active or guard.current(grant) is not True:
             raise AssertionError("no current input fence")
-        return super().submit(grant, payload, self)
+        return self._submit()
 
-    def readback(self, grant, guard):
+    def readback(self, grant: Grant, guard: EffectGuard) -> Readback:
         if not self.active or guard.current(grant) is not True:
             raise AssertionError("no current readback fence")
-        return super().readback(grant, self)
+        return self._readback(grant)
 
-    def released(self, transfer):
+    def released(self, transfer: Transfer | Recovery) -> bool:
         return self.release
 
-    def fence(self, transfer, guard):
+    def fence(self, transfer: Transfer, guard: Guard) -> FenceReceipt:
         if not self.active or guard is not self:
             raise AssertionError("missing authority fence")
         with (self.root / "fence-ledger").open("ab") as stream:
@@ -62,11 +73,11 @@ class ControlFixture(Fixture):
             raise RuntimeError("SYNTHETIC-PRIVATE-ERROR")
         return FenceReceipt(transfer, self.closed_inputs)
 
-    def fences(self):
+    def fences(self) -> int:
         path = self.root / "fence-ledger"
         return len(path.read_bytes().splitlines()) if path.exists() else 0
 
-    def store(self):
+    def store(self) -> LeaseStore:
         return LeaseStore(
             self.root / "leases.sqlite",
             authority=self,
@@ -74,8 +85,10 @@ class ControlFixture(Fixture):
             clock=lambda: self.now,
         )
 
-    def transition(self, action, source, destination, epoch):
-        self.grant = Transfer(
+    def transition(
+        self, action: str, source: Holder | None, destination: Holder, epoch: int
+    ) -> Transfer:
+        admission = Transfer(
             target(epoch + 1, "transfer-" + str(epoch + 1)),
             action,
             source,
@@ -83,12 +96,15 @@ class ControlFixture(Fixture):
             epoch,
             20.0,
         )
-        return self.grant
+        self.grant = admission
+        return admission
 
-    def input(self, holder, epoch, operation="command"):
-        self.grant = Input(
+    def input(self, holder: Holder, epoch: int, operation: str = "command") -> Input:
+        admission = Input(
             Grant(target(epoch, operation), DIGEST, "dispatch", 20.0), holder
         )
+        self.grant = admission
+        return admission
 
 
 class ControlLeaseTests(unittest.TestCase):
@@ -103,7 +119,7 @@ class ControlLeaseTests(unittest.TestCase):
         )
         self.addCleanup(self.journal.close)
 
-    def initialize(self):
+    def initialize(self) -> None:
         self.f.transition("initialize", None, AGENT, 0)
         self.assertEqual(self.store.transfer("admitted"), "active")
 
@@ -185,13 +201,13 @@ class ControlLeaseTests(unittest.TestCase):
             self.f.input(holder, epoch)
             with self.assertRaises(Denied):
                 self.journal.dispatch("admitted", PAYLOAD)
-        self.f.input(AGENT, 1)
+        admission = self.f.input(AGENT, 1)
         changed = replace(
-            self.f.grant.effect.target,
-            binding=replace(self.f.grant.effect.target.binding, account="other"),
+            admission.effect.target,
+            binding=replace(admission.effect.target.binding, account="other"),
         )
         self.f.grant = replace(
-            self.f.grant, effect=replace(self.f.grant.effect, target=changed)
+            admission, effect=replace(admission.effect, target=changed)
         )
         self.f.observed = (
             changed  # Even matching physical observations cannot rebind the row.
@@ -216,7 +232,7 @@ class ControlLeaseTests(unittest.TestCase):
         self.initialize()
         transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
 
-        def during_fence():
+        def during_fence() -> None:
             self.f.input(AGENT, 1)
             with self.assertRaises(Denied):
                 self.journal.dispatch("admitted", PAYLOAD)
@@ -346,7 +362,7 @@ except Denied: pass
 print(f.effects()); j.close(); s.close()
 """
 
-            def run():
+            def run() -> str:
                 result = subprocess.run(
                     [sys.executable, "-c", code],
                     cwd=root,
@@ -373,12 +389,11 @@ print(f.effects()); j.close(); s.close()
         self.store.transfer("admitted")
         self.f.transition("handback", HUMAN, AGENT, 2)
 
-        def late_release(transfer):
+        def late_release(_transfer: Transfer | Recovery) -> bool:
             self.f.now = 20.0
             return True
 
-        self.f.released = late_release
-        with self.assertRaises(Denied):
+        with patch.object(self.f, "released", late_release), self.assertRaises(Denied):
             self.store.transfer("admitted")
         self.assertEqual(self.f.fences(), 2)
         self.assertEqual(self.f.effects(), 0)
@@ -410,19 +425,18 @@ s.transfer('admitted')
         grant = self.f.transition("takeover", AGENT, HUMAN, 1)
         original = self.f.fence
 
-        def wrong_receipt(transfer, guard):
+        def wrong_receipt(transfer: Transfer, guard: Guard) -> FenceReceipt:
             original(transfer, guard)
             return FenceReceipt(
                 replace(transfer, destination=Holder("human", "other")), True
             )
 
-        self.f.fence = wrong_receipt
-        self.assertEqual(self.store.transfer("admitted"), "unknown")
-        self.f.input(HUMAN, 2)
-        with self.assertRaises(Denied):
-            self.journal.dispatch("admitted", PAYLOAD)
-        self.assertEqual(self.f.effects(), 0)
-        self.f.grant = grant
-        self.f.fence = original
+        with patch.object(self.f, "fence", wrong_receipt):
+            self.assertEqual(self.store.transfer("admitted"), "unknown")
+            self.f.input(HUMAN, 2)
+            with self.assertRaises(Denied):
+                self.journal.dispatch("admitted", PAYLOAD)
+            self.assertEqual(self.f.effects(), 0)
+            self.f.grant = grant
         self.assertEqual(self.store.transfer("admitted"), "unknown")
         self.assertEqual(self.f.fences(), 2)

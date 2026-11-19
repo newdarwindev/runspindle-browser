@@ -6,13 +6,17 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
+from typing import Generic, Self, TypeVar
+from unittest.mock import patch
 
 from browser_runtime.credentials import Observation, Target
 from browser_runtime.effects import Binding, Cancelled, Denied, Readback
 from browser_runtime.guarded_effects import Grant, GuardedJournal
+from browser_runtime.guarded_peer import Guard
 
 PAYLOAD = b"invented-action"
 DIGEST = hashlib.sha256(PAYLOAD).hexdigest()
@@ -34,14 +38,17 @@ TARGET = Target(
 )
 
 
-class Fixture:
-    def __init__(self, root):
+Admission = TypeVar("Admission")
+
+
+class SiteFixture(Generic[Admission]):
+    def __init__(self, root: Path | str, grant: Admission) -> None:
         self.root = Path(root)
         self.now = 10.0
-        self.grant = Grant(TARGET, DIGEST, "dispatch", 20.0)
+        self.grant = grant
         self.observed = TARGET
         self.current_calls = 0
-        self.at_current = lambda: None
+        self.at_current: Callable[[], None] = lambda: None
         self.allowed = True
         self.active = False
         self.reads = 0
@@ -50,7 +57,7 @@ class Fixture:
         self.exit_error = False
 
     @contextmanager
-    def acquire(self):
+    def acquire(self) -> Iterator[Self]:
         self.active = True
         try:
             yield self
@@ -59,20 +66,18 @@ class Fixture:
         if self.exit_error:
             raise RuntimeError("SYNTHETIC-PRIVATE-ERROR")
 
-    def admit(self, ticket):
+    def admit(self, ticket: object) -> Admission | None:
         return self.grant if ticket == "admitted" else None
 
-    def observe(self):
+    def observe(self) -> Observation:
         return Observation(self.observed, 10.0)
 
-    def current(self, grant):
+    def current(self, _grant: object) -> bool:
         self.current_calls += 1
         self.at_current()
         return self.allowed
 
-    def submit(self, grant, payload, guard):
-        if not self.active or guard is not self:
-            raise AssertionError("guard not held")
+    def _submit(self) -> str:
         with (self.root / "site-ledger").open("ab") as stream:
             stream.write(b"accepted\n")
             stream.flush()
@@ -82,25 +87,38 @@ class Fixture:
             raise RuntimeError("SYNTHETIC-PRIVATE-ERROR")
         return "not-an-authoritative-result"
 
-    def readback(self, grant, guard):
-        if not self.active or guard is not self:
-            raise AssertionError("guard not held")
+    def _readback(self, grant: Grant) -> Readback:
         self.reads += 1
         return Readback(
             grant.target.binding, grant.payload_digest, "confirmed", "a" * 64
         )
 
-    def journal(self):
+    def effects(self) -> int:
+        path = self.root / "site-ledger"
+        return len(path.read_bytes().splitlines()) if path.exists() else 0
+
+
+class Fixture(SiteFixture[Grant]):
+    def __init__(self, root: Path | str) -> None:
+        super().__init__(root, Grant(TARGET, DIGEST, "dispatch", 20.0))
+
+    def submit(self, grant: Grant, payload: bytes, guard: Guard) -> str:
+        if not self.active or guard is not self:
+            raise AssertionError("guard not held")
+        return self._submit()
+
+    def readback(self, grant: Grant, guard: Guard) -> Readback:
+        if not self.active or guard is not self:
+            raise AssertionError("guard not held")
+        return self._readback(grant)
+
+    def journal(self) -> GuardedJournal:
         return GuardedJournal(
             self.root / "journal.sqlite",
             authority=self,
             site=self,
             clock=lambda: self.now,
         )
-
-    def effects(self):
-        path = self.root / "site-ledger"
-        return len(path.read_bytes().splitlines()) if path.exists() else 0
 
 
 class GuardedEffectsTests(unittest.TestCase):
@@ -139,7 +157,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         self.assertEqual(self.f.effects(), 1)
 
     def test_wrong_ticket_payload_action_and_exact_observation_deny(self) -> None:
-        for mutation in [
+        mutations: list[Callable[[], None]] = [
             lambda: setattr(
                 self.f, "observed", replace(TARGET, native_session="other")
             ),
@@ -153,7 +171,8 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
             lambda: setattr(
                 self.f, "grant", replace(self.f.grant, payload_digest="b" * 64)
             ),
-        ]:
+        ]
+        for mutation in mutations:
             self.f.observed = TARGET
             self.f.grant = Grant(TARGET, DIGEST, "dispatch", 20.0)
             mutation()
@@ -180,7 +199,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
     def test_revocation_at_durable_dispatch_boundary_prevents_site_call(self) -> None:
         # First check is outer admission, second Journal preflight, third follows
         # reservation and the actual second writer transaction.
-        def revoke():
+        def revoke() -> None:
             if self.f.current_calls == 3:
                 self.f.allowed = False
 
@@ -214,7 +233,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         self.assertEqual(self.f.effects(), 1)
 
     def test_nested_calls_fail_before_another_site_effect(self) -> None:
-        def nested():
+        def nested() -> None:
             with self.assertRaises(Denied):
                 self.j.dispatch("admitted", PAYLOAD)
 
@@ -253,7 +272,7 @@ except Denied: pass
 print(f.effects()); j.close()
 """
 
-            def run():
+            def run() -> str:
                 result = subprocess.run(
                     [sys.executable, "-c", code],
                     cwd=root,
@@ -321,7 +340,7 @@ print(f.effects()); j.close()
                 f = Fixture(root)
 
                 @contextmanager
-                def acquire():
+                def acquire() -> Iterator[Fixture]:
                     f.active = True
                     try:
                         yield f
@@ -331,7 +350,7 @@ print(f.effects()); j.close()
                     finally:
                         f.active = False
 
-                f.acquire = acquire
+                self.enterContext(patch.object(f, "acquire", acquire))
                 f.cancel = True
                 j = f.journal()
                 try:

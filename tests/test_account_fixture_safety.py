@@ -44,10 +44,12 @@ class FixtureSafetyTests(unittest.TestCase):
             self.addCleanup(shutil.rmtree, directory)
             (directory / "synthetic-state").write_text("fixture only")
             fixture.directory = directory
-            fixture.process = object()
-            with patch(
-                "browser_testing.account_e2e.stop",
-                side_effect=RuntimeError("stop uncertain"),
+            with (
+                patch.object(fixture, "process", object()),
+                patch(
+                    "browser_testing.account_e2e.stop",
+                    side_effect=RuntimeError("stop uncertain"),
+                ),
             ):
                 with self.assertRaises(RuntimeError):
                     fixture.__exit__(None, None, None)
