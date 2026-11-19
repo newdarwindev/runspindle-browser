@@ -1,0 +1,32 @@
+# Source-only CI integration. Admission is OFF until the owner qualifies the
+# isolated lane and sets the repository variable; this workflow provisions none.
+name: browser-account-e2e
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: browser-account-e2e
+  cancel-in-progress: false
+jobs:
+  isolated-account-flow:
+    if: >-
+      github.repository == 'newdarwindev/runspindle-browser' &&
+      github.ref == 'refs/heads/main' &&
+      vars.RUNSPINDLE_BROWSER_E2E_ADMITTED == 'true'
+    runs-on: [self-hosted, linux, x64, runspindle-isolated, strix]
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Bounded isolated synthetic account flow
+        env:
+          RUNSPINDLE_BAO_BINARY: ${{ vars.RUNSPINDLE_BAO_BINARY }}
+          RUNSPINDLE_CHROMIUM_BINARY: ${{ vars.RUNSPINDLE_CHROMIUM_BINARY }}
+          RUNSPINDLE_CERTUTIL_BINARY: ${{ vars.RUNSPINDLE_CERTUTIL_BINARY }}
+        run: >-
+          python3 tools/run_isolated_account_e2e.py
+          --bao "$RUNSPINDLE_BAO_BINARY"
+          --chromium "$RUNSPINDLE_CHROMIUM_BINARY"
+          --certutil "$RUNSPINDLE_CERTUTIL_BINARY"

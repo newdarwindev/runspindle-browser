@@ -20,7 +20,7 @@ import sys
 import threading
 import time
 import unittest
-from typing import Any
+from typing import Any, cast
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SUITES = (
@@ -53,6 +53,11 @@ def qualify_environment() -> dict[str, Any]:
     expected = json.loads(
         (ROOT / "docs/effect-reconciliation-toolchain.json").read_text()
     )
+    sqlite_extension = getattr(_sqlite3, "__file__", None)
+    check(
+        isinstance(sqlite_extension, str),
+        "toolchain pin unavailable: SQLite extension is built-in",
+    )
     observed = {
         "python_version": sys.version.split()[0],
         "python_sha256": hashlib.sha256(
@@ -60,7 +65,7 @@ def qualify_environment() -> dict[str, Any]:
         ).hexdigest(),
         "sqlite_version": sqlite3.sqlite_version,
         "sqlite3_extension_sha256": hashlib.sha256(
-            pathlib.Path(_sqlite3.__file__).read_bytes()
+            pathlib.Path(cast(str, sqlite_extension)).read_bytes()
         ).hexdigest(),
         "sqlite3_library_sha256": hashlib.sha256(
             pathlib.Path("/usr/lib/x86_64-linux-gnu/libsqlite3.so.0").read_bytes()

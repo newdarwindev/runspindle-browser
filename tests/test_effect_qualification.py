@@ -60,6 +60,17 @@ class QualificationPrerequisites(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "toolchain pin"):
                 MODULE.qualify_environment()
 
+    def test_builtin_sqlite_fails_closed_with_qualification_category(self) -> None:
+        with (
+            patch.object(MODULE.os, "geteuid", return_value=1000),
+            patch.object(MODULE._sqlite3, "__file__", None, create=True),
+            patch.object(
+                MODULE.pathlib.Path, "read_text", side_effect=["lo: data\n", "{}"]
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "toolchain pin unavailable"):
+                MODULE.qualify_environment()
+
 
 class QualificationProcessCleanup(unittest.TestCase):
     @staticmethod

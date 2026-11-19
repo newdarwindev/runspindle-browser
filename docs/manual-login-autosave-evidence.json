@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "issue": "https://github.com/newdarwindev/runspindle-browser/issues/59",
+  "evidence_class": "synthetic_helper_protocol_and_local_journal",
+  "base_commit": "62662e3",
+  "runtime_commit": "37ac5722c7f68d61a423676866f6871d4c110ed6",
+  "python": "3.12.14",
+  "files": {
+    "browser_runtime/autosave.py": "f4b48d816878977161542ca17627ae8d6046d14b2d6b74eb492debc38359a93f",
+    "browser_runtime/openbao.py": "6262e9c4b48a0b2136358619fb67e372aac4262df7ac1faaf1be6f1066a16cd3",
+    "tests/test_autosave.py": "049482a79a41e2b1d7585fa0dd5e1176dbced5def0430b06e0270fa7350eb18a",
+    "tests/test_autosave_transport.py": "9725a625e3f1cb803856a76f5ed331a9125e5a49682e65f9fcc022c4600b59c0",
+    "specs/manual-login-autosave.md": "727700c2216cdde7fc759a17e343c507d7a635c5792ae8f6791dab41eaca34f4"
+  },
+  "checks": [
+    {
+      "command": "python3 -m unittest discover -s tests -p 'test_autosave*.py' -q",
+      "status": "passed",
+      "tests": 24
+    },
+    {
+      "command": "python3 -O -m unittest discover -s tests -p 'test_autosave*.py' -q",
+      "status": "passed",
+      "tests": 24
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p 'test_openbao*.py' -q",
+      "status": "passed",
+      "tests": 46
+    },
+    {
+      "command": "python3 tools/check_scaffold.py",
+      "status": "passed"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p test_browser_product.py -q",
+      "status": "passed",
+      "tests": 26
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p test_credential_storage.py -q",
+      "status": "passed",
+      "tests": 14
+    },
+    {
+      "command": "ruff check browser_runtime/autosave.py browser_runtime/openbao.py tests/test_autosave*.py",
+      "status": "passed"
+    },
+    {
+      "command": "mypy --follow-imports=silent browser_runtime/autosave.py tests/test_autosave*.py",
+      "status": "passed"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -q",
+      "status": "failed",
+      "tests": 556,
+      "errors": 1,
+      "skipped": 6,
+      "reason": "Unchanged test_effect_qualification.test_mismatched_toolchain_is_rejected raises AttributeError because this Python has built-in _sqlite3 without __file__; source and test match base."
+    },
+    {
+      "command": "cargo tests and pinned full static-quality/aggregate validation",
+      "status": "not_run",
+      "reason": "Cargo unavailable in selected executor; focused lint/type checks do not replace pinned aggregate validation."
+    }
+  ],
+  "limits": [
+    "Consent, capture, verified login success, authority and atomic browser fencing are synthetic adapters.",
+    "HTTP write transport exercised with scripted connections, not sockets or real OpenBao.",
+    "Actual SQLite Journal exercised, including fresh OS-process reopen; no distributed durability claim.",
+    "No extension installation, real account, credentials, permissions, deployment, standing job or backup.",
+    "Marker confirms the exact saved version, not ongoing latest-version status or website session revocation.",
+    "No full CI E2E acceptance; #59 and credential-use/profile/control parent gates remain open."
+  ]
+}

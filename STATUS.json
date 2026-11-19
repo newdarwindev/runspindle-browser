@@ -13,5 +13,16 @@
     "source_commit": "e8cd5779968fede213443db13a591c992cd0e183",
     "status": "locally_tested"
   },
-  "stage": "scaffold"
+  "stage": "scaffold",
+  "stateless_control_peer": {
+    "status": "bounded_synthetic_component",
+    "canonical_owner": "external Core BrowserRegistry; no Browser operation/control store",
+    "evidence": "docs/stateless-control-peer.md",
+    "not_qualified": [
+      "actual Core-to-native fence composition",
+      "legacy one-way owner cutover",
+      "Host profile relocation",
+      "Actions CI"
+    ]
+  }
 }

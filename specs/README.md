@@ -108,6 +108,13 @@ and lease gating. No production/native browser qualification is implied.
 active and pending durable ownership through separate authenticated passive
 admission. Historical status never grants input, credentials or takeover.
 
+## Manual-login autosave helper
+
+[Scoped manual-login autosave](manual-login-autosave.md) adds a synthetic-qualified
+helper using existing OpenBao mappings and an externally owned effect-execution
+interface. Browser does not own its persistence. Capture,
+consent and real browser/authority integration remain explicit acceptance gaps.
+
 ## Optional observation producer
 
 [Content-free credential observations](telemetry-v1.md) add a bounded default-off
