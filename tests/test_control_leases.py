@@ -92,7 +92,7 @@ class ControlFixture(Fixture):
 
 
 class ControlLeaseTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.f = ControlFixture(self.tmp.name)
@@ -107,7 +107,7 @@ class ControlLeaseTests(unittest.TestCase):
         self.f.transition("initialize", None, AGENT, 0)
         self.assertEqual(self.store.transfer("admitted"), "active")
 
-    def test_full_agent_human_handback_fences_previous_inputs(self):
+    def test_full_agent_human_handback_fences_previous_inputs(self) -> None:
         self.initialize()
         self.f.input(AGENT, 1, "agent-command")
         self.assertEqual(self.journal.dispatch("admitted", PAYLOAD), "unknown")
@@ -128,7 +128,7 @@ class ControlLeaseTests(unittest.TestCase):
         self.assertEqual(self.f.effects(), 3)
         self.assertEqual(self.f.fences(), 3)
 
-    def test_forged_release_does_not_call_backend_or_grant_agent(self):
+    def test_forged_release_does_not_call_backend_or_grant_agent(self) -> None:
         self.initialize()
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.store.transfer("admitted")
@@ -142,7 +142,7 @@ class ControlLeaseTests(unittest.TestCase):
         self.assertEqual(self.f.effects(), 0)
         self.assertEqual(self.f.fences(), 2)
 
-    def test_incomplete_viewer_closure_blocks_both_after_restart(self):
+    def test_incomplete_viewer_closure_blocks_both_after_restart(self) -> None:
         self.initialize()
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.store.transfer("admitted")
@@ -164,7 +164,7 @@ class ControlLeaseTests(unittest.TestCase):
         self.assertEqual(self.f.fences(), 3)  # No retry of uncertain closure.
         self.assertEqual(self.f.effects(), 0)
 
-    def test_fence_exception_or_cancellation_leaves_durable_pending(self):
+    def test_fence_exception_or_cancellation_leaves_durable_pending(self) -> None:
         self.initialize()
         transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
         self.f.fence_cancel = True
@@ -179,7 +179,7 @@ class ControlLeaseTests(unittest.TestCase):
         self.assertEqual(self.f.fences(), 2)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_wrong_holder_account_and_epoch_deny_before_input(self):
+    def test_wrong_holder_account_and_epoch_deny_before_input(self) -> None:
         self.initialize()
         for holder, epoch in ((HUMAN, 1), (AGENT, 2)):
             self.f.input(holder, epoch)
@@ -200,7 +200,7 @@ class ControlLeaseTests(unittest.TestCase):
             self.journal.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_restart_never_creates_authority_and_expired_grants_deny(self):
+    def test_restart_never_creates_authority_and_expired_grants_deny(self) -> None:
         self.initialize()
         self.f.input(AGENT, 1)
         self.f.allowed = False
@@ -212,7 +212,7 @@ class ControlLeaseTests(unittest.TestCase):
             self.journal.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_pending_transfer_blocks_nested_or_competing_inputs(self):
+    def test_pending_transfer_blocks_nested_or_competing_inputs(self) -> None:
         self.initialize()
         transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
 
@@ -226,7 +226,7 @@ class ControlLeaseTests(unittest.TestCase):
         self.assertEqual(self.store.transfer("admitted"), "active")
         self.assertEqual(self.f.effects(), 0)
 
-    def test_fresh_process_lost_fence_reply_never_retries_or_inputs(self):
+    def test_fresh_process_lost_fence_reply_never_retries_or_inputs(self) -> None:
         self.initialize()
         code = """import os,sys
 sys.path.insert(0,'tests')
@@ -246,7 +246,7 @@ s.transfer('admitted')
         self.assertEqual(self.f.fences(), 2)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_missing_adapters_and_foreign_schema_fail_closed(self):
+    def test_missing_adapters_and_foreign_schema_fail_closed(self) -> None:
         missing = LeaseStore(Path(self.tmp.name) / "missing.sqlite")
         self.addCleanup(missing.close)
         with self.assertRaises(Denied):
@@ -261,7 +261,7 @@ s.transfer('admitted')
         with self.assertRaises(Denied):
             LeaseStore(path)
 
-    def test_actual_other_process_input_blocks_transfer_until_helper_finishes(self):
+    def test_actual_other_process_input_blocks_transfer_until_helper_finishes(self) -> None:
         import time
 
         self.initialize()
@@ -315,7 +315,7 @@ finally: j.close(); s.close()
         self.assertEqual(self.store.transfer("admitted"), "active")
         self.assertEqual(self.f.fences(), 2)
 
-    def test_source_mutation_exposes_wrong_holder_input(self):
+    def test_source_mutation_exposes_wrong_holder_input(self) -> None:
         import shutil
 
         source = Path(__file__).resolve().parents[1]
@@ -360,7 +360,7 @@ print(f.effects()); j.close(); s.close()
             shutil.rmtree(root / "browser_runtime/__pycache__", ignore_errors=True)
             self.assertEqual(run(), "1")
 
-    def test_release_callback_expiry_prevents_fence_and_new_authority(self):
+    def test_release_callback_expiry_prevents_fence_and_new_authority(self) -> None:
         self.initialize()
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.store.transfer("admitted")
@@ -376,7 +376,7 @@ print(f.effects()); j.close(); s.close()
         self.assertEqual(self.f.fences(), 2)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_process_death_after_reservation_before_fence_remains_blocked(self):
+    def test_process_death_after_reservation_before_fence_remains_blocked(self) -> None:
         self.initialize()
         code = """import os,sys
 sys.path.insert(0,'tests')
@@ -398,7 +398,7 @@ s.transfer('admitted')
         self.assertEqual(self.f.fences(), 1)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_wrong_fence_receipt_never_activates_or_retries(self):
+    def test_wrong_fence_receipt_never_activates_or_retries(self) -> None:
         self.initialize()
         grant = self.f.transition("takeover", AGENT, HUMAN, 1)
         original = self.f.fence

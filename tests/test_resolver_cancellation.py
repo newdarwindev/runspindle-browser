@@ -60,27 +60,27 @@ class ResolverCancellationTests(unittest.TestCase):
             resolver.resolve_and_inject(adapter.ticket)
         self.assertEqual(adapter.calls, before)
 
-    def test_each_callback_cancellation_is_sanitized(self):
+    def test_each_callback_cancellation_is_sanitized(self) -> None:
         for stage in ("admit", "observe", "current", "read", "inject", "release"):
             with self.subTest(stage=stage):
                 self.exercise(stage)
 
-    def test_guard_suppression_preserves_cancellation(self):
+    def test_guard_suppression_preserves_cancellation(self) -> None:
         for stage in ("admit", "read", "inject", "release"):
             with self.subTest(stage=stage):
                 self.exercise(stage, "suppress")
 
-    def test_guard_replacement_preserves_cancellation(self):
+    def test_guard_replacement_preserves_cancellation(self) -> None:
         for stage in ("admit", "read", "inject", "release"):
             with self.subTest(stage=stage):
                 self.exercise(stage, "replace")
 
-    def test_release_failure_cannot_replace_injection_cancellation(self):
+    def test_release_failure_cannot_replace_injection_cancellation(self) -> None:
         for mode in ("normal", "suppress", "replace"):
             with self.subTest(mode=mode):
                 self.exercise("inject", mode, cleanup_error=True)
 
-    def test_acquisition_and_exit_cancellation(self):
+    def test_acquisition_and_exit_cancellation(self) -> None:
         for stage in ("enter", "exit"):
             adapter = Adapters()
             resolver = adapter.resolver()
@@ -104,7 +104,7 @@ class ResolverCancellationTests(unittest.TestCase):
             self.assertFalse(adapter.active)
             self.assertEqual(adapter.spies["injections"], int(stage == "exit"))
 
-    def test_active_caller_exception_never_enters_public_error(self):
+    def test_active_caller_exception_never_enters_public_error(self) -> None:
         for mode in ("cancel", "deny", "repeat"):
             adapter = Adapters()
             resolver = adapter.resolver()
@@ -123,7 +123,7 @@ class ResolverCancellationTests(unittest.TestCase):
                     else:
                         self.fail("expected public error")
 
-    def test_deliberate_latch_mutation_loses_cancellation(self):
+    def test_deliberate_latch_mutation_loses_cancellation(self) -> None:
         # Run a private source copy, not an installed/runtime monkeypatch. Removing
         # both inner latches lets a suppressing guard turn cancellation into denial.
         import types

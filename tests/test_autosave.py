@@ -172,12 +172,12 @@ class Harness(Fixture):
 
 
 class AutosaveTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.f = Harness(Path(self.tmp.name) / "existing-effects.sqlite")
 
-    def test_normal_login_saves_and_replay_does_not_recapture_or_write(self):
+    def test_normal_login_saves_and_replay_does_not_recapture_or_write(self) -> None:
         f = self.f
         self.assertEqual(f.service().run(f.ticket), "saved")
         self.assertEqual(f.records[1]["password"], CANARY)
@@ -190,7 +190,7 @@ class AutosaveTests(unittest.TestCase):
         )
         self.assertNotIn(CANARY, repr(Login("u", CANARY, True)))
 
-    def test_missing_opt_in_and_forged_ticket_have_zero_capture_token_http(self):
+    def test_missing_opt_in_and_forged_ticket_have_zero_capture_token_http(self) -> None:
         f = self.f
         f.opt_in = False
         self.assertEqual(f.service().run(f.ticket), "not_saved")
@@ -198,7 +198,7 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(object()), "not_saved")
         self.assertEqual((f.captures, f.tokens, f.posts, f.gets), (0, 0, 0, 0))
 
-    def test_every_target_mismatch_denies_before_capture(self):
+    def test_every_target_mismatch_denies_before_capture(self) -> None:
         f = self.f
         for field, value in [
             ("account", "other"),
@@ -221,7 +221,7 @@ class AutosaveTests(unittest.TestCase):
             self.assertEqual(f.service().run(f.ticket), "not_saved")
         self.assertEqual((f.posts, f.captures, f.tokens), (0, 0, 0))
 
-    def test_expired_and_boolean_consent_deny(self):
+    def test_expired_and_boolean_consent_deny(self) -> None:
         f = self.f
         f.now = f.g.deadline
         self.assertEqual(f.service().run(f.ticket), "not_saved")
@@ -230,7 +230,7 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "not_saved")
         self.assertEqual(f.posts, 0)
 
-    def test_capture_redirect_revocation_and_failed_login_do_not_write(self):
+    def test_capture_redirect_revocation_and_failed_login_do_not_write(self) -> None:
         for change in (
             lambda f: setattr(f, "allowed", False),
             lambda f: setattr(f, "opt_in", False),
@@ -243,14 +243,14 @@ class AutosaveTests(unittest.TestCase):
                 self.assertIn(f.service().run(f.ticket), ("unknown", "not_saved"))
                 self.assertEqual(f.posts, 0)
 
-    def test_lost_response_reconciles_without_second_post(self):
+    def test_lost_response_reconciles_without_second_post(self) -> None:
         f = self.f
         f.lost = True
         self.assertEqual(f.service().run(f.ticket), "saved")
         self.assertEqual(f.service().run(f.ticket, reconcile_only=True), "saved")
         self.assertEqual((f.posts, f.captures), (1, 1))
 
-    def test_outage_does_not_store_plaintext_or_retry(self):
+    def test_outage_does_not_store_plaintext_or_retry(self) -> None:
         f = self.f
         f.offline = True
         self.assertEqual(f.service().run(f.ticket), "unknown")
@@ -261,13 +261,13 @@ class AutosaveTests(unittest.TestCase):
         for p in Path(self.tmp.name).iterdir():
             self.assertNotIn(CANARY.encode(), p.read_bytes())
 
-    def test_wrong_operation_marker_is_not_success(self):
+    def test_wrong_operation_marker_is_not_success(self) -> None:
         f = self.f
         f.wrong_marker = True
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual(f.posts, 1)
 
-    def test_update_preserves_other_fields_and_checks_username(self):
+    def test_update_preserves_other_fields_and_checks_username(self) -> None:
         f = self.f
         f.records[1] = {"username": f.username, "password": "old", "other": "keep"}
         f.expected = 1
@@ -275,7 +275,7 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.records[2]["other"], "keep")
         self.assertEqual(f.records[2]["password"], CANARY)
 
-    def test_account_change_does_not_overwrite(self):
+    def test_account_change_does_not_overwrite(self) -> None:
         f = self.f
         f.records[1] = {"username": "other-account", "password": "old"}
         f.expected = 1
@@ -283,14 +283,14 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.posts, 0)
         self.assertEqual(f.records[1]["password"], "old")
 
-    def test_concurrent_version_conflict_does_not_post(self):
+    def test_concurrent_version_conflict_does_not_post(self) -> None:
         f = self.f
         f.records = {1: {"username": f.username}, 2: {"username": f.username}}
         f.expected = 1
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual(f.posts, 0)
 
-    def test_cancellation_has_no_secret_context_and_no_replay(self):
+    def test_cancellation_has_no_secret_context_and_no_replay(self) -> None:
         f = self.f
 
         def cancel():
@@ -305,7 +305,7 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual((f.posts, f.captures), (0, 1))
 
-    def test_revocation_in_token_callback_blocks_network(self):
+    def test_revocation_in_token_callback_blocks_network(self) -> None:
         f = self.f
 
         def revoke():
@@ -316,21 +316,21 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual((f.posts, f.gets), (0, 0))
 
-    def test_mutation_removing_observation_check_breaks_zero_write_invariant(self):
+    def test_mutation_removing_observation_check_breaks_zero_write_invariant(self) -> None:
         f = self.f
         f.observed = replace(f.g.target, frame="wrong")
         with patch.object(Autosave, "_check", return_value=None):
             self.assertEqual(f.service().run(f.ticket), "saved")
         self.assertEqual(f.posts, 1)  # Independent spy catches the deliberate bug.
 
-    def test_suppressing_guard_cannot_turn_failed_admission_into_success(self):
+    def test_suppressing_guard_cannot_turn_failed_admission_into_success(self) -> None:
         f = self.f
         f.suppress = True
         f.opt_in = False
         self.assertEqual(f.service().run(f.ticket), "not_saved")
         self.assertEqual(f.posts, 0)
 
-    def test_final_vault_authorization_cannot_retarget_post(self):
+    def test_final_vault_authorization_cannot_retarget_post(self) -> None:
         f = self.f
         calls = []
 
@@ -344,7 +344,7 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual(f.posts, 0)
 
-    def test_consent_callback_cannot_hide_target_change(self):
+    def test_consent_callback_cannot_hide_target_change(self) -> None:
         f = self.f
 
         def consent(grant):
@@ -355,7 +355,7 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "not_saved")
         self.assertEqual((f.posts, f.captures), (0, 0))
 
-    def test_suppressed_or_replaced_cancellation_still_propagates_sanitized(self):
+    def test_suppressed_or_replaced_cancellation_still_propagates_sanitized(self) -> None:
         for replacement in (False, True):
             with self.subTest(replacement=replacement):
                 f = Harness(Path(self.tmp.name) / str(replacement))
@@ -380,14 +380,14 @@ class AutosaveTests(unittest.TestCase):
                 self.assertNotIn(CANARY, str(caught.exception))
                 self.assertEqual(f.posts, 0)
 
-    def test_unchanged_password_does_not_add_vault_version(self):
+    def test_unchanged_password_does_not_add_vault_version(self) -> None:
         f = self.f
         f.records[1] = {"username": f.username, "password": CANARY}
         f.expected = 1
         self.assertEqual(f.service().run(f.ticket), "saved")
         self.assertEqual((f.posts, len(f.records)), (0, 1))
 
-    def test_fresh_process_reopens_existing_journal_without_capture_or_post(self):
+    def test_fresh_process_reopens_existing_journal_without_capture_or_post(self) -> None:
         f = self.f
         self.assertEqual(f.service().run(f.ticket), "saved")
         script = """
@@ -410,7 +410,7 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertEqual(json.loads(completed.stdout), ["saved", 0, 0])
         self.assertNotIn(CANARY, completed.stdout + completed.stderr)
 
-    def test_saved_record_can_use_existing_vault_handle_path(self):
+    def test_saved_record_can_use_existing_vault_handle_path(self) -> None:
         f = self.f
         self.assertEqual(f.service().run(f.ticket), "saved")
         reader = Vault(
@@ -431,7 +431,7 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertEqual(received, [CANARY])
         self.assertFalse(reader.consume(handle, f.g, sink))
 
-    def test_browser_does_not_open_or_own_storage(self):
+    def test_browser_does_not_open_or_own_storage(self) -> None:
         f = self.f
 
         class ExternalOwner:
@@ -460,7 +460,7 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertEqual(list(Path(self.tmp.name).iterdir()), [])
         self.assertFalse(hasattr(service, "path"))
 
-    def test_external_owner_cannot_hide_callback_cancellation(self):
+    def test_external_owner_cannot_hide_callback_cancellation(self) -> None:
         f = self.f
 
         class SuppressingOwner:
@@ -482,7 +482,7 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertNotIn(CANARY, str(caught.exception))
         self.assertEqual(f.posts, 0)
 
-    def test_external_owner_cannot_reuse_callbacks_after_return(self):
+    def test_external_owner_cannot_reuse_callbacks_after_return(self) -> None:
         f = self.f
         retained = {}
 
@@ -508,7 +508,7 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
             retained["observe"](retained["binding"], retained["target_digest"])
         self.assertEqual((f.captures, f.posts, f.tokens), counts)
 
-    def test_external_owner_cannot_invoke_callbacks_from_another_thread(self):
+    def test_external_owner_cannot_invoke_callbacks_from_another_thread(self) -> None:
         from concurrent.futures import ThreadPoolExecutor
 
         f = self.f

@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class HTTPTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
@@ -64,7 +64,7 @@ finally:
             cwd=ROOT, text=True, capture_output=True, check=True, timeout=10,
         ).stdout.splitlines()
 
-    def test_accepted_lost_reply_restart_then_reconcile_no_second_submission(self):
+    def test_accepted_lost_reply_restart_then_reconcile_no_second_submission(self) -> None:
         with LocalSite(self.root / "site.sqlite", submission="lost") as site:
             fixture, journal = self.journal(site)
             self.assertEqual(journal.dispatch("admitted", PAYLOAD), "unknown")
@@ -73,7 +73,7 @@ finally:
             self.assertEqual(self.child(site), ["unknown", "confirmed"])
             self.assertEqual((site.submissions, site.readbacks, site.ledger.effects()), (1, 1, 1))
 
-    def test_rejected_unknown_wrong_account_and_ambiguous_readback(self):
+    def test_rejected_unknown_wrong_account_and_ambiguous_readback(self) -> None:
         for mode in ("reject", "drop", "wrong-account", "ambiguous"):
             with self.subTest(mode=mode):
                 # Each scenario has an independent journal and ledger.
@@ -102,7 +102,7 @@ finally:
                     finally:
                         journal.close()
 
-    def test_lease_stale_holder_denies_before_http(self):
+    def test_lease_stale_holder_denies_before_http(self) -> None:
         fixture = ControlFixture(self.root)
         store = fixture.store()
         self.addCleanup(store.close)
@@ -123,7 +123,7 @@ finally:
             finally:
                 journal.close()
 
-    def test_duplicate_reservation_bypass_exposes_second_http_effect(self):
+    def test_duplicate_reservation_bypass_exposes_second_http_effect(self) -> None:
         with LocalSite(self.root / "site.sqlite") as site:
             _, journal = self.journal(site)
             self.assertEqual(journal.dispatch("admitted", PAYLOAD), "unknown")
@@ -131,7 +131,7 @@ finally:
             self.assertEqual(self.child(site, mutate=True), ["unknown", "unknown"])
             self.assertEqual((site.submissions, site.ledger.effects()), (2, 2))
 
-    def test_fixed_routes_and_normal_shutdown_with_partial_request(self):
+    def test_fixed_routes_and_normal_shutdown_with_partial_request(self) -> None:
         site = LocalSite(self.root / "site.sqlite")
         with site:
             connection = http.client.HTTPConnection("127.0.0.1", site.port, timeout=2)
@@ -153,7 +153,7 @@ finally:
             probe.settimeout(1)
             self.assertNotEqual(probe.connect_ex(("127.0.0.1", site.port)), 0)
 
-    def test_bounded_request_and_failure_context_close_listener(self):
+    def test_bounded_request_and_failure_context_close_listener(self) -> None:
         site = LocalSite(self.root / "site.sqlite")
         with self.assertRaisesRegex(RuntimeError, "intentional"):
             with site:

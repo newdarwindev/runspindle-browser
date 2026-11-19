@@ -81,14 +81,14 @@ class Fixture:
 
 
 class GuardedEffectsTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.f = Fixture(self.tmp.name)
         self.j = self.f.journal()
         self.addCleanup(self.j.close)
 
-    def test_lost_reply_fresh_process_and_authenticated_reconciliation(self):
+    def test_lost_reply_fresh_process_and_authenticated_reconciliation(self) -> None:
         self.f.lost = True
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.f.effects(), 1)
@@ -109,7 +109,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         self.assertEqual(self.f.reads, 1)
         self.assertEqual(self.f.effects(), 1)
 
-    def test_wrong_ticket_payload_action_and_exact_observation_deny(self):
+    def test_wrong_ticket_payload_action_and_exact_observation_deny(self) -> None:
         for mutation in [
             lambda: setattr(self.f, "observed", replace(TARGET, native_session="other")),
             lambda: setattr(self.f, "observed", replace(TARGET, frame="other")),
@@ -126,13 +126,13 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
             self.j.dispatch("forged", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_authority_delay_and_deadline_are_sampled_after_callback(self):
+    def test_authority_delay_and_deadline_are_sampled_after_callback(self) -> None:
         self.f.at_current = lambda: setattr(self.f, "now", 20.0)
         with self.assertRaises(Denied):
             self.j.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_freshness_exact_age_is_inclusive_and_deadline_exclusive(self):
+    def test_freshness_exact_age_is_inclusive_and_deadline_exclusive(self) -> None:
         self.f.now = 11.0
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
         self.f.grant = replace(self.f.grant, deadline=11.0)
@@ -140,7 +140,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
             self.j.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 1)
 
-    def test_revocation_at_durable_dispatch_boundary_prevents_site_call(self):
+    def test_revocation_at_durable_dispatch_boundary_prevents_site_call(self) -> None:
         # First check is outer admission, second Journal preflight, third follows
         # reservation and the actual second writer transaction.
         def revoke():
@@ -155,7 +155,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.f.effects(), 0)  # Reservation never grants retry.
 
-    def test_cancellation_after_effect_stays_cancelled_and_never_replays(self):
+    def test_cancellation_after_effect_stays_cancelled_and_never_replays(self) -> None:
         self.f.cancel = True
         with self.assertRaises(Cancelled) as raised:
             self.j.dispatch("admitted", PAYLOAD)
@@ -165,7 +165,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.f.effects(), 1)
 
-    def test_guard_exit_failure_cannot_return_success(self):
+    def test_guard_exit_failure_cannot_return_success(self) -> None:
         self.f.exit_error = True
         with self.assertRaises(Denied) as raised:
             self.j.dispatch("admitted", PAYLOAD)
@@ -175,7 +175,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.f.effects(), 1)
 
-    def test_nested_calls_fail_before_another_site_effect(self):
+    def test_nested_calls_fail_before_another_site_effect(self) -> None:
         def nested():
             with self.assertRaises(Denied):
                 self.j.dispatch("admitted", PAYLOAD)
@@ -183,7 +183,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.f.effects(), 1)
 
-    def test_missing_adapters_deny_and_passive_read_does_not_submit(self):
+    def test_missing_adapters_deny_and_passive_read_does_not_submit(self) -> None:
         other = GuardedJournal(Path(self.tmp.name) / "empty.sqlite")
         self.addCleanup(other.close)
         with self.assertRaises(Denied):
@@ -194,7 +194,7 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
         self.assertEqual(self.f.effects(), 0)
         self.assertEqual(self.f.reads, 0)
 
-    def test_source_mutation_exposes_forbidden_site_effect(self):
+    def test_source_mutation_exposes_forbidden_site_effect(self) -> None:
         source = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -224,14 +224,14 @@ print(f.effects()); j.close()
             shutil.rmtree(root / "browser_runtime/__pycache__", ignore_errors=True)
             self.assertEqual(run(), "1")
 
-    def test_nonfinite_and_boolean_clock_fail_closed(self):
+    def test_nonfinite_and_boolean_clock_fail_closed(self) -> None:
         for value in [float("nan"), float("inf"), True]:
             self.f.now = value
             with self.assertRaises(Denied):
                 self.j.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_persisted_full_target_rejects_changed_session_frame_and_origin(self):
+    def test_persisted_full_target_rejects_changed_session_frame_and_origin(self) -> None:
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
         self.j.close()
         self.j = self.f.journal()
@@ -249,7 +249,7 @@ print(f.effects()); j.close()
         self.f.observed = TARGET
         self.assertEqual(self.j.reconcile("admitted"), "confirmed")
 
-    def test_legacy_journal_cannot_reconcile_contextual_row(self):
+    def test_legacy_journal_cannot_reconcile_contextual_row(self) -> None:
         from browser_runtime.effects import Journal
         self.j.dispatch("admitted", PAYLOAD)
         legacy = Journal(Path(self.tmp.name) / "journal.sqlite", lambda *_: True,
@@ -258,7 +258,7 @@ print(f.effects()); j.close()
         with self.assertRaises(Denied):
             legacy.reconcile(TARGET.binding, DIGEST)
 
-    def test_cancellation_survives_guard_suppression_and_exit_error(self):
+    def test_cancellation_survives_guard_suppression_and_exit_error(self) -> None:
         for suppress in (False, True):
             with tempfile.TemporaryDirectory() as root:
                 f = Fixture(root)

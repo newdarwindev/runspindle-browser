@@ -121,7 +121,7 @@ class Authority:
     "isolated account E2E opt-in required",
 )
 class AccountE2E(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.bao_binary = Path(os.environ.get("RUNSPINDLE_BAO_BINARY", "/missing/bao"))
         self.chromium = Path(
             os.environ.get("RUNSPINDLE_CHROMIUM_BINARY", "/usr/lib/chromium/chromium")
@@ -203,7 +203,7 @@ class AccountE2E(unittest.TestCase):
         )
         return helper.run(authority.ticket)
 
-    def test_register_login_save_clean_context_relogin_and_action(self):
+    def test_register_login_save_clean_context_relogin_and_action(self) -> None:
         with self.browser() as first:
             captured = self.register_and_login(first)
             self.lose_response = True
@@ -249,7 +249,7 @@ class AccountE2E(unittest.TestCase):
             self.assertEqual(self.site.login_attempts, 2)
             self.assertEqual(self.posts, 1)
 
-    def test_no_opt_in_and_failed_login_leave_vault_unwritten(self):
+    def test_no_opt_in_and_failed_login_leave_vault_unwritten(self) -> None:
         with self.browser() as browser:
             captured = self.register_and_login(browser)
             self.assertEqual(self.save(browser, captured, opted_in=False), "not_saved")

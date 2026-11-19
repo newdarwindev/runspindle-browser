@@ -59,7 +59,7 @@ class RecoveryFixture(ControlFixture):
 
 
 class ControlReconciliationTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.f = RecoveryFixture(self.tmp.name)
@@ -88,7 +88,7 @@ class ControlReconciliationTests(unittest.TestCase):
             self.journal.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_fresh_recovery_after_original_deadline_activates_without_refencing(self):
+    def test_fresh_recovery_after_original_deadline_activates_without_refencing(self) -> None:
         transfer = self.pending()
         self.f.now = 30.0
         with self.assertRaises(Denied):
@@ -105,7 +105,7 @@ class ControlReconciliationTests(unittest.TestCase):
         self.assertEqual(self.f.effects(), 1)
         self.assertEqual(self.f.fences(), 2)
 
-    def test_missing_incomplete_or_wrong_closure_evidence_stays_pending(self):
+    def test_missing_incomplete_or_wrong_closure_evidence_stays_pending(self) -> None:
         transfer = self.pending()
         for kind in ("missing", "incomplete", "wrong"):
             self.f.inspect_unknown = kind == "missing"
@@ -116,7 +116,7 @@ class ControlReconciliationTests(unittest.TestCase):
             self.blocked()
         self.assertEqual(self.f.fences(), 2)
 
-    def test_conflicting_transfer_rejects_before_inspector(self):
+    def test_conflicting_transfer_rejects_before_inspector(self) -> None:
         transfer = self.pending()
         for altered in (
             replace(transfer, deadline=99.0),
@@ -129,14 +129,14 @@ class ControlReconciliationTests(unittest.TestCase):
         self.assertEqual(self.f.inspections, 0)
         self.blocked()
 
-    def test_original_transfer_ticket_is_not_recovery_authority(self):
+    def test_original_transfer_ticket_is_not_recovery_authority(self) -> None:
         self.pending()
         with self.assertRaises(Denied):
             self.store.reconcile_transfer("admitted")
         self.assertEqual(self.f.inspections, 0)
         self.blocked()
 
-    def test_handback_requires_renewed_exact_holder_release(self):
+    def test_handback_requires_renewed_exact_holder_release(self) -> None:
         transfer = self.pending(handback=True)
         self.f.release = False
         self.f.recovery(transfer)
@@ -149,7 +149,7 @@ class ControlReconciliationTests(unittest.TestCase):
         self.assertEqual(self.store.reconcile_transfer("admitted"), "active")
         self.assertEqual(self.f.fences(), 3)
 
-    def test_release_revoked_during_inspection_prevents_activation(self):
+    def test_release_revoked_during_inspection_prevents_activation(self) -> None:
         transfer = self.pending(handback=True)
         self.f.inspect_callback = lambda: setattr(self.f, "release", False)
         self.f.recovery(transfer)
@@ -158,7 +158,7 @@ class ControlReconciliationTests(unittest.TestCase):
         self.blocked(AGENT, 3)
         self.assertEqual(self.f.fences(), 3)
 
-    def test_stale_future_nonfinite_and_boolean_receipt_times_deny(self):
+    def test_stale_future_nonfinite_and_boolean_receipt_times_deny(self) -> None:
         transfer = self.pending()
         for age in (2.0, -1.0, float("nan"), float("inf")):
             self.f.observation_age = age
@@ -168,7 +168,7 @@ class ControlReconciliationTests(unittest.TestCase):
             self.blocked()
         self.assertEqual(self.f.fences(), 2)
 
-    def test_inspector_delay_cannot_outlive_recovery_deadline(self):
+    def test_inspector_delay_cannot_outlive_recovery_deadline(self) -> None:
         transfer = self.pending()
         self.f.recovery(transfer)
         self.f.inspect_callback = lambda: setattr(self.f, "now", 20.0)
@@ -177,7 +177,7 @@ class ControlReconciliationTests(unittest.TestCase):
         self.blocked()
         self.assertEqual(self.f.fences(), 2)
 
-    def test_cancelled_inspection_preserves_pending_and_sanitizes(self):
+    def test_cancelled_inspection_preserves_pending_and_sanitizes(self) -> None:
         transfer = self.pending()
         self.f.inspect_cancel = True
         self.f.recovery(transfer)
@@ -188,7 +188,7 @@ class ControlReconciliationTests(unittest.TestCase):
         self.blocked()
         self.assertEqual(self.f.fences(), 2)
 
-    def test_fresh_process_recovery_uses_existing_exact_backend_record(self):
+    def test_fresh_process_recovery_uses_existing_exact_backend_record(self) -> None:
         transfer = self.pending()
         code = """import sys
 sys.path.insert(0,'tests')
@@ -207,7 +207,7 @@ finally: s.close()
         self.assertEqual(self.store.reconcile_transfer("admitted"), "active")
         self.assertEqual(self.f.inspections, 0)
 
-    def test_absent_inspector_denies_without_backend_effect(self):
+    def test_absent_inspector_denies_without_backend_effect(self) -> None:
         transfer = self.pending()
         other = LeaseStore(Path(self.tmp.name) / "leases.sqlite", authority=self.f,
                            backend=self.f, clock=lambda: self.f.now)
@@ -218,7 +218,7 @@ finally: s.close()
         self.assertEqual(self.f.fences(), 2)
         self.blocked()
 
-    def test_source_mutation_exposes_stale_closure_activation(self):
+    def test_source_mutation_exposes_stale_closure_activation(self) -> None:
         source = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -258,7 +258,7 @@ print(f.effects()); j.close(); s.close()
             shutil.rmtree(root / "browser_runtime/__pycache__", ignore_errors=True)
             self.assertEqual(run(), "1")
 
-    def test_boolean_closure_time_is_not_a_timestamp(self):
+    def test_boolean_closure_time_is_not_a_timestamp(self) -> None:
         transfer = self.pending()
         inspect = self.f.inspect
         self.f.inspect = lambda recovery, guard: replace(inspect(recovery, guard), observed_at=True)
@@ -267,7 +267,7 @@ print(f.effects()); j.close(); s.close()
             self.store.reconcile_transfer("admitted")
         self.blocked()
 
-    def test_committed_activation_with_lost_return_is_not_repeated(self):
+    def test_committed_activation_with_lost_return_is_not_repeated(self) -> None:
         transfer = self.pending()
         self.f.recovery(transfer)
         self.f.exit_error = True
@@ -278,7 +278,7 @@ print(f.effects()); j.close(); s.close()
         self.assertEqual(self.f.inspections, 1)
         self.assertEqual(self.f.fences(), 2)
 
-    def test_old_recovery_cannot_replace_a_newer_active_epoch(self):
+    def test_old_recovery_cannot_replace_a_newer_active_epoch(self) -> None:
         transfer = self.pending()
         self.f.recovery(transfer)
         self.assertEqual(self.store.reconcile_transfer("admitted"), "active")
@@ -290,7 +290,7 @@ print(f.effects()); j.close(); s.close()
         self.assertEqual(self.f.inspections, 1)
         self.blocked(HUMAN, 2)
 
-    def test_reservation_without_any_fence_has_no_closure_to_infer(self):
+    def test_reservation_without_any_fence_has_no_closure_to_infer(self) -> None:
         transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
         self.f.current_calls = 0
         def fail_before_fence():

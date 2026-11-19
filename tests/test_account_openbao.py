@@ -16,7 +16,7 @@ from test_openbao import CANARY
     os.environ.get("RUNSPINDLE_ACCOUNT_E2E") == "1", "isolated OpenBao opt-in required"
 )
 class OpenBaoAccountComponent(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.bao = OpenBaoFixture(
             os.environ.get("RUNSPINDLE_BAO_BINARY", "/missing/bao")
         )
@@ -55,7 +55,7 @@ class OpenBaoAccountComponent(unittest.TestCase):
             clock=lambda: f.now,
         )
 
-    def test_real_tls_cas_lost_reply_update_and_reconcile_without_replay(self):
+    def test_real_tls_cas_lost_reply_update_and_reconcile_without_replay(self) -> None:
         f = self.fixture
         self.assertEqual(self.service().run(f.ticket), "saved")
         self.assertEqual(self.posts, 1)
@@ -84,7 +84,7 @@ class OpenBaoAccountComponent(unittest.TestCase):
         self.assertNotIn(CANARY, repr(self.operations.rows))
         self.assertNotIn("SYNTHETIC_UPDATED_6189", repr(self.operations.rows))
 
-    def test_no_consent_and_failed_login_have_zero_actual_write_attempts(self):
+    def test_no_consent_and_failed_login_have_zero_actual_write_attempts(self) -> None:
         f = self.fixture
         f.opt_in = False
         self.assertEqual(self.service().run(f.ticket), "not_saved")

@@ -69,7 +69,7 @@ class CredentialAdapters:
 
 
 class LeaseCredentialTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.f = CredentialFixture(self.tmp.name)
@@ -85,7 +85,7 @@ class LeaseCredentialTests(unittest.TestCase):
             (0, 0, 0),
         )
 
-    def test_matching_lease_uses_existing_resolver_and_is_one_attempt(self):
+    def test_matching_lease_uses_existing_resolver_and_is_one_attempt(self) -> None:
         self.f.credential()
         resolver = self.adapters.resolver(self.store)
         self.assertEqual(resolver.resolve_and_inject("admitted"), "injected")
@@ -98,7 +98,7 @@ class LeaseCredentialTests(unittest.TestCase):
             resolver.resolve_and_inject("admitted")
         self.assertEqual(self.adapters.reads, 1)
 
-    def test_pins_fail_before_authority_or_vault(self):
+    def test_pins_fail_before_authority_or_vault(self) -> None:
         self.f.credential()
         calls = self.f.current_calls
         for digest, expected in ((PIN, "b" * 64), ("", "")):
@@ -109,7 +109,7 @@ class LeaseCredentialTests(unittest.TestCase):
         self.assertEqual(self.f.current_calls, calls)
         self.assert_no_secret_effects()
 
-    def test_wrong_holder_epoch_and_physical_scope_deny_before_vault(self):
+    def test_wrong_holder_epoch_and_physical_scope_deny_before_vault(self) -> None:
         for holder, epoch in ((HUMAN, 1), (AGENT, 2)):
             self.f.credential(holder, epoch)
             with self.assertRaises(Denied):
@@ -138,7 +138,7 @@ class LeaseCredentialTests(unittest.TestCase):
                 self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assert_no_secret_effects()
 
-    def test_effect_and_credential_admission_are_not_interchangeable(self):
+    def test_effect_and_credential_admission_are_not_interchangeable(self) -> None:
         self.f.input(AGENT, 1)
         with self.assertRaises(Denied):
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
@@ -150,7 +150,7 @@ class LeaseCredentialTests(unittest.TestCase):
         self.assert_no_secret_effects()
         self.assertEqual(self.f.effects(), 0)
 
-    def test_takeover_and_pending_state_block_old_and_unissued_credential_holders(self):
+    def test_takeover_and_pending_state_block_old_and_unissued_credential_holders(self) -> None:
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.assertEqual(self.store.transfer("admitted"), "active")
         self.f.credential(AGENT, 1)
@@ -170,7 +170,7 @@ class LeaseCredentialTests(unittest.TestCase):
                 self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assertEqual((self.adapters.reads, self.adapters.injections), (1, 1))
 
-    def test_revocation_after_read_releases_without_injecting(self):
+    def test_revocation_after_read_releases_without_injecting(self) -> None:
         self.f.credential()
         self.adapters.after_read = lambda: setattr(self.f, "allowed", False)
         with self.assertRaises(Denied):
@@ -181,14 +181,14 @@ class LeaseCredentialTests(unittest.TestCase):
         )
         self.assertFalse(self.f.active)
 
-    def test_current_callback_cannot_extend_deadline(self):
+    def test_current_callback_cannot_extend_deadline(self) -> None:
         self.f.credential()
         self.f.at_current = lambda: setattr(self.f, "now", 20.0)
         with self.assertRaises(Denied):
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assert_no_secret_effects()
 
-    def test_cancellation_stays_sanitized_and_releases_lease(self):
+    def test_cancellation_stays_sanitized_and_releases_lease(self) -> None:
         self.f.credential()
 
         def cancel():
@@ -211,14 +211,14 @@ class LeaseCredentialTests(unittest.TestCase):
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.assertEqual(self.store.transfer("admitted"), "active")
 
-    def test_closed_store_denies_before_vault(self):
+    def test_closed_store_denies_before_vault(self) -> None:
         self.store.close()
         self.f.credential()
         with self.assertRaises(Denied):
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assert_no_secret_effects()
 
-    def test_other_process_transfer_waits_for_release_and_physical_guard_exit(self):
+    def test_other_process_transfer_waits_for_release_and_physical_guard_exit(self) -> None:
         code = """import sys,time,contextlib
 from pathlib import Path
 sys.path.insert(0,'tests')
@@ -275,7 +275,7 @@ finally:s.close()
         self.assertEqual(self.store.transfer("admitted"), "active")
         self.assertEqual(self.f.fences(), 2)
 
-    def test_source_mutation_exposes_wrong_holder_vault_and_injection(self):
+    def test_source_mutation_exposes_wrong_holder_vault_and_injection(self) -> None:
         source = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

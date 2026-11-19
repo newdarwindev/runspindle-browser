@@ -98,12 +98,12 @@ class ConsumerFixtures(unittest.TestCase):
             callback()
         self.assertEqual(str(error.exception),code)
 
-    def test_fixed_pin_and_golden_identity(self):
+    def test_fixed_pin_and_golden_identity(self) -> None:
         self.assertEqual(PIN['source_commit'],'e283957d80aebc48fb0bd3b6e2a600850ff6dc97')
         self.assertEqual(PIN['fixture_schema'],'runspindle.fixture.v1')
         self.assertTrue(self.kit.assert_conforms(self.envelope(),EXPECTED_IDENTITY,EXPECTED_STATE))
 
-    def test_published_positive_and_negative_vectors(self):
+    def test_published_positive_and_negative_vectors(self) -> None:
         original = self.envelope()
         vectors = self.kit.load_json(BUNDLE/'vectors.json')
         self.assertGreaterEqual(len(vectors),2)
@@ -115,7 +115,7 @@ class ConsumerFixtures(unittest.TestCase):
             with self.subTest(vector=vector['id']):
                 self.reject(vector['expected_error'],lambda:self.kit.assert_conforms(broken,EXPECTED_IDENTITY,EXPECTED_STATE))
 
-    def test_changed_identity_and_unknown_outcome_cannot_pass(self):
+    def test_changed_identity_and_unknown_outcome_cannot_pass(self) -> None:
         for key,value in EXPECTED_IDENTITY.items():
             broken=copy.deepcopy(self.envelope())
             broken['identity'][key]=value+1 if type(value) is int else 'synthetic-other'
@@ -128,13 +128,13 @@ class ConsumerFixtures(unittest.TestCase):
         self.kit.validate(broken)
         self.reject('outcome-mismatch',lambda:self.kit.assert_conforms(broken,EXPECTED_IDENTITY,EXPECTED_STATE))
 
-    def test_unknown_fields_and_boolean_revisions_reject(self):
+    def test_unknown_fields_and_boolean_revisions_reject(self) -> None:
         broken=copy.deepcopy(self.envelope());broken['identity']['intent_revision']=True
         self.reject('field-type-or-bound',lambda:self.kit.validate(broken))
         broken=copy.deepcopy(self.envelope());broken['secret']='synthetic-canary'
         self.reject('unknown-key',lambda:self.kit.validate(broken))
 
-    def test_corruption_and_pin_rewrite_fail_before_loading_code(self):
+    def test_corruption_and_pin_rewrite_fail_before_loading_code(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);shutil.copytree(ROOT/'fixtures',root/'fixtures',ignore=shutil.ignore_patterns('__pycache__'))
             path=root/'fixtures/shared-v1/fixturekit.py'
@@ -144,7 +144,7 @@ class ConsumerFixtures(unittest.TestCase):
             (root/'fixtures/shared-v1.pin.json').write_text(json.dumps(pin))
             with self.assertRaisesRegex(ValueError,'pin-mismatch'): checked_kit(root)
 
-    def test_unreviewed_bytecode_cannot_replace_verified_source(self):
+    def test_unreviewed_bytecode_cannot_replace_verified_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);shutil.copytree(ROOT/'fixtures',root/'fixtures',ignore=shutil.ignore_patterns('__pycache__'))
             source=root/'fixtures/shared-v1/fixturekit.py'
@@ -155,7 +155,7 @@ class ConsumerFixtures(unittest.TestCase):
                 cache.write_bytes(header+marshal.dumps(unreviewed))
                 checked_kit(root)
 
-    def test_standalone_with_no_sibling_and_denied_network(self):
+    def test_standalone_with_no_sibling_and_denied_network(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);shutil.copytree(ROOT/'fixtures',root/'fixtures',ignore=shutil.ignore_patterns('__pycache__'))
             source=ROOT/'tests/test_shared_fixtures.py'

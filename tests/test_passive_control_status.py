@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PassiveTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
@@ -73,7 +73,7 @@ class PassiveTests(unittest.TestCase):
         self.assertFalse(self.f.active)
         return result
 
-    def test_absent_active_pending_are_read_only_and_pending_has_no_holder(self):
+    def test_absent_active_pending_are_read_only_and_pending_has_no_holder(self) -> None:
         self.passive()
         self.assertEqual(
             self.snapshot(), ControlStatus("absent", None, None, 10.0, self.scope())
@@ -98,7 +98,7 @@ class PassiveTests(unittest.TestCase):
             journal.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_observation_does_not_prevent_later_transfer_or_grant_input(self):
+    def test_observation_does_not_prevent_later_transfer_or_grant_input(self) -> None:
         self.initialize()
         self.passive()
         old = self.snapshot()
@@ -157,7 +157,7 @@ class PassiveTests(unittest.TestCase):
         with self.assertRaises(Denied):
             self.store.status("forged")
 
-    def test_wrong_scope_revoked_expired_and_stale_observations_deny(self):
+    def test_wrong_scope_revoked_expired_and_stale_observations_deny(self) -> None:
         self.initialize()
         for field in (
             "principal",
@@ -203,7 +203,7 @@ class PassiveTests(unittest.TestCase):
             self.store.status("admitted")
         self.assertEqual(self.f.fences(), 1)
 
-    def test_read_delay_or_revocation_cannot_preserve_admission(self):
+    def test_read_delay_or_revocation_cannot_preserve_admission(self) -> None:
         self.initialize()
         self.passive()
         original = self.store._row
@@ -224,7 +224,7 @@ class PassiveTests(unittest.TestCase):
                     self.store.status("admitted")
             self.assertFalse(self.store._db.in_transaction)
 
-    def test_scope_check_mutation_exposes_other_account_ownership(self):
+    def test_scope_check_mutation_exposes_other_account_ownership(self) -> None:
         script = r"""
 import pathlib, sys, unittest
 import browser_runtime.control_leases as module
@@ -250,7 +250,7 @@ sys.exit(0 if result.wasSuccessful() else 1)
         self.assertIn("Denied not raised", result.stderr)
         self.assertNotIn("ERROR:", result.stderr)
 
-    def test_timestamp_follows_final_callbacks_and_guard_exit_cannot_fake_success(self):
+    def test_timestamp_follows_final_callbacks_and_guard_exit_cannot_fake_success(self) -> None:
         self.initialize()
         self.passive()
         self.f.at_current = lambda: setattr(self.f, "now", 10.5)
@@ -260,7 +260,7 @@ sys.exit(0 if result.wasSuccessful() else 1)
             self.store.status("admitted")
         self.assertFalse(self.store._db.in_transaction)
 
-    def test_fresh_process_observes_same_row_without_backend_or_writes(self):
+    def test_fresh_process_observes_same_row_without_backend_or_writes(self) -> None:
         self.initialize()
         self.store.close()
         path = self.root / "leases.sqlite"

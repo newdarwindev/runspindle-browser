@@ -20,7 +20,7 @@ def frame(raw):
 
 
 class PipeTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.f = Fixture(self.tmp.name)
@@ -33,7 +33,7 @@ class PipeTests(unittest.TestCase):
         okay = serve_once(io.BytesIO(raw), output, self.receiver, ticket)
         return okay, output.getvalue()
 
-    def test_real_receiver_roundtrip_dispatch_then_readback_without_database(self):
+    def test_real_receiver_roundtrip_dispatch_then_readback_without_database(self) -> None:
         with patch("sqlite3.connect", side_effect=AssertionError("no Browser DB")):
             okay, output = self.exchange(frame(encoded(request())))
             self.assertTrue(okay)
@@ -45,7 +45,7 @@ class PipeTests(unittest.TestCase):
             self.assertEqual(json.loads(output[4:])["outcome"], "confirmed")
         self.assertEqual(self.f.effects(), 1)
 
-    def test_incomplete_oversize_empty_and_trailing_frames_deny_before_effect(self):
+    def test_incomplete_oversize_empty_and_trailing_frames_deny_before_effect(self) -> None:
         good = frame(encoded(request()))
         for raw in (
             b"",
@@ -59,13 +59,13 @@ class PipeTests(unittest.TestCase):
             self.assertEqual(self.exchange(raw), (False, b""))
         self.assertEqual(self.f.effects(), 0)
 
-    def test_ticket_not_minted_from_valid_wire(self):
+    def test_ticket_not_minted_from_valid_wire(self) -> None:
         self.assertEqual(
             self.exchange(frame(encoded(request())), object()), (False, b"")
         )
         self.assertEqual(self.f.effects(), 0)
 
-    def test_partial_pipe_reads_and_writes_supported(self):
+    def test_partial_pipe_reads_and_writes_supported(self) -> None:
         class ShortReader(io.BytesIO):
             def read(self, size=-1):
                 return super().read(min(size, 2))
@@ -85,12 +85,12 @@ class PipeTests(unittest.TestCase):
         )
         self.assertEqual(json.loads(output.getvalue()[4:])["outcome"], "unknown")
 
-    def test_cancellation_does_not_escape_or_publish_raw_error(self):
+    def test_cancellation_does_not_escape_or_publish_raw_error(self) -> None:
         self.f.cancel = True
         self.assertEqual(self.exchange(frame(encoded(request()))), (False, b""))
         self.assertEqual(self.f.effects(), 1)  # Core must retain reserved unknown.
 
-    def test_unbounded_receiver_response_never_written(self):
+    def test_unbounded_receiver_response_never_written(self) -> None:
         class ReceiverFixture:
             def exchange(self, *_):
                 return b"x" * (MAX_RESPONSE + 1)
@@ -103,7 +103,7 @@ class PipeTests(unittest.TestCase):
         )
         self.assertEqual(output.getvalue(), b"")
 
-    def test_partial_response_failure_is_not_reported_as_success(self):
+    def test_partial_response_failure_is_not_reported_as_success(self) -> None:
         class BrokenWriter(io.BytesIO):
             def flush(self):
                 raise KeyboardInterrupt("SYNTHETIC_PRIVATE")

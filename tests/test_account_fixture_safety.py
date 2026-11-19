@@ -13,7 +13,7 @@ from browser_testing.account_e2e import AccountBrowser, OpenBaoFixture, isolated
 
 
 class FixtureSafetyTests(unittest.TestCase):
-    def test_missing_opt_in_denies_before_fixture_directory_or_process(self):
+    def test_missing_opt_in_denies_before_fixture_directory_or_process(self) -> None:
         with (
             patch.dict(os.environ, {}, clear=True),
             patch("tempfile.mkdtemp") as directory,
@@ -26,7 +26,7 @@ class FixtureSafetyTests(unittest.TestCase):
                     fixture.__enter__()
             directory.assert_not_called()
 
-    def test_non_loopback_namespace_denies(self):
+    def test_non_loopback_namespace_denies(self) -> None:
         with (
             patch.dict(os.environ, {"RUNSPINDLE_ACCOUNT_E2E": "1"}),
             patch("os.geteuid", return_value=1000),
@@ -35,7 +35,7 @@ class FixtureSafetyTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 isolated()
 
-    def test_uncertain_stop_retains_fixture_directory(self):
+    def test_uncertain_stop_retains_fixture_directory(self) -> None:
         for fixture in (
             OpenBaoFixture("/unused/bao"),
             AccountBrowser("/unused/chromium", "/unused/ca"),
@@ -54,7 +54,7 @@ class FixtureSafetyTests(unittest.TestCase):
             self.assertTrue((directory / "synthetic-state").exists())
             self.assertIs(fixture.directory, directory)
 
-    def test_insecure_or_mutated_tls_context_opens_no_connection(self):
+    def test_insecure_or_mutated_tls_context_opens_no_connection(self) -> None:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         transport = HTTPS("https://vault.invalid", tls_context=context)
         context.check_hostname = False

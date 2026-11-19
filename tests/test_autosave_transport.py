@@ -34,7 +34,7 @@ class Peer:
 
 
 class TransportTests(unittest.TestCase):
-    def test_post_is_bounded_json_and_does_not_retry(self):
+    def test_post_is_bounded_json_and_does_not_retry(self) -> None:
         peer = Peer()
         body = json.dumps(
             {"options": {"cas": 0}, "data": {"password": "synthetic"}}
@@ -49,7 +49,7 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(peer.calls[0][3]["Content-Type"], "application/json")
         self.assertEqual(peer.closed, 2)
 
-    def test_invalid_method_and_oversized_body_open_no_connection(self):
+    def test_invalid_method_and_oversized_body_open_no_connection(self) -> None:
         with patch("http.client.HTTPSConnection") as connection:
             for method, body in [
                 ("DELETE", None),
@@ -63,7 +63,7 @@ class TransportTests(unittest.TestCase):
                     )
             connection.assert_not_called()
 
-    def test_redirect_denied_and_closed_without_retry(self):
+    def test_redirect_denied_and_closed_without_retry(self) -> None:
         peer = Peer()
         peer.status = 302
         with patch("http.client.HTTPSConnection", return_value=peer):

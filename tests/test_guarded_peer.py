@@ -15,13 +15,13 @@ from tests.test_effect_wire import encoded, request
 
 
 class StatelessPeerTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.f = Fixture(self.tmp.name)
         self.peer = GuardedPeer(authority=self.f, site=self.f, clock=lambda: self.f.now)
 
-    def test_wire_dispatch_unknown_reconcile_only_without_database(self):
+    def test_wire_dispatch_unknown_reconcile_only_without_database(self) -> None:
         with patch(
             "sqlite3.connect", side_effect=AssertionError("no Browser database")
         ):
@@ -40,7 +40,7 @@ class StatelessPeerTests(unittest.TestCase):
         self.assertEqual((self.f.effects(), self.f.reads), (1, 1))
         self.assertFalse(hasattr(self.peer, "_journal"))
 
-    def test_no_authority_or_wire_supplied_target_can_authorize(self):
+    def test_no_authority_or_wire_supplied_target_can_authorize(self) -> None:
         with self.assertRaises(Denied):
             GuardedPeer().dispatch("admitted", PAYLOAD)
         with self.assertRaises(Denied):
@@ -54,7 +54,7 @@ class StatelessPeerTests(unittest.TestCase):
             )
         self.assertEqual(self.f.effects(), 0)
 
-    def test_lost_ack_does_not_claim_success_and_reconcile_never_submits(self):
+    def test_lost_ack_does_not_claim_success_and_reconcile_never_submits(self) -> None:
         self.f.lost = True
         self.assertEqual(self.peer.dispatch("admitted", PAYLOAD), "unknown")
         self.f.grant = replace(self.f.grant, action="reconcile")
@@ -62,14 +62,14 @@ class StatelessPeerTests(unittest.TestCase):
         self.assertEqual(recreated.reconcile("admitted"), "confirmed")
         self.assertEqual(self.f.effects(), 1)
 
-    def test_replay_policy_is_external_not_hidden_peer_state(self):
+    def test_replay_policy_is_external_not_hidden_peer_state(self) -> None:
         # This intentionally demonstrates why only the canonical owner may call
         # dispatch. The peer must not pretend to have a second replay ledger.
         self.assertEqual(self.peer.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.peer.dispatch("admitted", PAYLOAD), "unknown")
         self.assertEqual(self.f.effects(), 2)
 
-    def test_wrong_readback_or_expired_authority_never_confirms(self):
+    def test_wrong_readback_or_expired_authority_never_confirms(self) -> None:
         self.f.grant = replace(self.f.grant, action="reconcile")
         self.f.readback = lambda *_: Readback(
             replace(TARGET.binding, operation="other"), DIGEST, "confirmed", "a" * 64
@@ -84,7 +84,7 @@ class StatelessPeerTests(unittest.TestCase):
             self.peer.reconcile("admitted")
         self.assertEqual(self.f.effects(), 0)
 
-    def test_post_submit_revocation_cannot_claim_authorized_result(self):
+    def test_post_submit_revocation_cannot_claim_authorized_result(self) -> None:
         original = self.f.submit
 
         def revoke(*args):
@@ -96,7 +96,7 @@ class StatelessPeerTests(unittest.TestCase):
             self.peer.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 1)  # external owner must retain unknown
 
-    def test_suppressed_cancellation_stays_redacted(self):
+    def test_suppressed_cancellation_stays_redacted(self) -> None:
         f = self.f
 
         @contextmanager
