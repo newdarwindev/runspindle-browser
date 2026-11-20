@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Callable, cast
 from unittest.mock import patch
 
 from browser_runtime.profile_directory import DirectoryProfileIO, MaterializedStore
@@ -415,6 +415,59 @@ class DiscardTests(unittest.TestCase):
         self.assertEqual(self.rows(), self.before)
         self.fake.allowed = True
         self.assertEqual(self.discard(), "discarded")
+
+    def revoke_after_first_plaintext_unlink(self, operation: Callable[[], str]) -> None:
+        real_unlink = os.unlink
+        names = self.tree._names
+        tree = self.tree_path / ("g-" + self.identifier)
+        contents = {p.name for p in tree.rglob("*") if p.is_file()}
+        removed: list[str] = []
+
+        def unlink(name: str, **kwargs: Any) -> None:
+            real_unlink(name, **kwargs)
+            if name in contents:
+                removed.append(name)
+                self.fake.allowed = False
+
+        with (
+            patch.object(
+                self.tree, "_names", side_effect=lambda *args: sorted(names(*args))
+            ),
+            patch("os.unlink", side_effect=unlink),
+            self.assertRaises(Denied),
+        ):
+            operation()
+        self.assertEqual(removed, ["Cookies"], "revoked cleanup removed another file")
+        self.assertTrue(
+            (tree / "nested").is_dir(), "revoked cleanup removed a directory"
+        )
+        remaining = {p.name for p in tree.rglob("*") if p.is_file()}
+        self.assertEqual(remaining, contents - set(removed))
+
+    def test_discard_rechecks_authority_between_plaintext_removals(self) -> None:
+        sibling = self.tree_path / ("g-" + self.identifier) / "nested" / "Session"
+        sibling.write_bytes(b"synthetic session")
+        sibling.chmod(0o600)
+        self.revoke_after_first_plaintext_unlink(self.discard)
+        self.assertEqual(self.state()["phase"], "discarding")
+        self.assertEqual(self.rows(), self.before)
+        recovered = self.child("recover")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr)
+        self.assertIn("discarded", recovered.stdout)
+        self.assert_empty()
+
+    def test_forget_stops_plaintext_cleanup_after_authority_loss(self) -> None:
+        self.fake.grant = grant("forget")
+        self.revoke_after_first_plaintext_unlink(
+            lambda: self.store.run("trusted-ticket")
+        )
+        self.assertEqual(self.state()["phase"], "forgotten")
+        self.assertEqual(self.rows()["checkpoints"], [])
+        self.fake.allowed = True
+        self.fake.grant = grant("forget")
+        self.assertEqual(self.store.run("trusted-ticket"), "forgotten")
+        self.assertIsNone(self.state()["current"])
+        self.assertEqual(set(self.tree_bytes()), {"profile.lock", "state.json"})
 
     def child(self, fault: str) -> subprocess.CompletedProcess[str]:
         script = r"""
