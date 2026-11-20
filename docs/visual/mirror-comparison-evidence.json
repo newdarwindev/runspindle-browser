@@ -1,0 +1,257 @@
+{
+  "evidence_class": "local_static_source_render_comparison",
+  "composition_commit": "1880adfa713a6eeacbc4887722a5f11d9bea263b",
+  "composition_receipt_sha256": "6af04ef2ce9f80c77a8a81ea3526ecaefbafd92ccaa556c401451f3deaf5e3fe",
+  "composition_page_sha256": "e6e37c380d3ba0dfd24c5f3f5d7b61c454e20b05b5a7682cf750c3ecae08a053",
+  "canonical": {
+    "repository": "newdarwindev/runspindle-browser",
+    "commit": "dfc9ac3e51abba8e84ab217a5eec5358b2088a3f",
+    "tree": "81ae9a5ea4dd310c89e537f551ca2465730d7eac",
+    "path": "docs/product/browser.html",
+    "sha256": "cb3850490c4cd430ef58490ad997c0d205205d170869c937d757eaed12a13da7"
+  },
+  "reference_evidence_sha256": "1aff1c6f7a57920353fdf6565ba0a996b3f543c4c9ffecd0d5f7dc0ce474ac9c",
+  "comparison_sha256": "344f2d5f48517aeca80ce44f4c651f77bb8a0fe7ffccfeaf5d19d155452fabe3",
+  "driver_sha256": "0679ee7ee488fd0ce3d20e070fd21bce0aee87e9d004e12833a2e34fc9ac5a88",
+  "chrome": "Google Chrome 158.0.8127.36",
+  "chrome_executable_sha256": "ba610ca993caeb4327b2a397b8ddeeb781671744190332f3cc2e4b640db903a6",
+  "os": "macOS-27.2-arm64-arm-64bit-Mach-O",
+  "python": "3.14.10",
+  "dpr": 1,
+  "locale": "en-US",
+  "timezone": "UTC",
+  "exact_architecture_png_match": "passed",
+  "keyboard_probe": "passed_programmatic_skip_and_system_map",
+  "color_mutation": "detected",
+  "reference_baseline_approval": "pending",
+  "scenarios": [
+    {
+      "scenario": "mobile-320",
+      "viewport": [
+        320,
+        900
+      ],
+      "canonical_png_sha256": "7082ff20c4b522c643cdf64fdfecc93d99d9294be38d631c13f8a3f870bbe218",
+      "mirror_png_sha256": "7082ff20c4b522c643cdf64fdfecc93d99d9294be38d631c13f8a3f870bbe218",
+      "architecture_dom_and_keyboard": {
+        "width": 320,
+        "docWidth": 320,
+        "mapCount": 5,
+        "labels": [
+          "Console and Browser broker",
+          "Core and Temporal",
+          "Browser actions and human surface",
+          "Trusted helper and OpenBao",
+          "Identity provider and route proxy"
+        ],
+        "outside": [],
+        "overflowNodes": [],
+        "missingAnchors": [],
+        "headingCount": 1,
+        "focusTarget": true,
+        "focusOutline": true,
+        "cards": 6,
+        "fontReady": true,
+        "visibleMap": true,
+        "keyboard": {
+          "skip": {
+            "href": "#main",
+            "name": "Skip to content",
+            "focusVisible": true,
+            "fullyOnscreen": true,
+            "unobscured": true
+          },
+          "skipTarget": "main",
+          "sectionLinks": [
+            {
+              "href": "#architecture",
+              "name": "Architecture",
+              "focusVisible": true,
+              "fullyOnscreen": true,
+              "unobscured": true
+            },
+            {
+              "href": "#architecture-island",
+              "name": "System map",
+              "focusVisible": true,
+              "fullyOnscreen": true,
+              "unobscured": true
+            }
+          ],
+          "selectedFragment": "#architecture-island"
+        }
+      }
+    },
+    {
+      "scenario": "mobile-390",
+      "viewport": [
+        390,
+        900
+      ],
+      "canonical_png_sha256": "c4f6484ea6dbc6c7979b3ca477bf7c652fe7eb94bc47e1de10587aac6e6c0270",
+      "mirror_png_sha256": "c4f6484ea6dbc6c7979b3ca477bf7c652fe7eb94bc47e1de10587aac6e6c0270",
+      "architecture_dom_and_keyboard": {
+        "width": 390,
+        "docWidth": 390,
+        "mapCount": 5,
+        "labels": [
+          "Console and Browser broker",
+          "Core and Temporal",
+          "Browser actions and human surface",
+          "Trusted helper and OpenBao",
+          "Identity provider and route proxy"
+        ],
+        "outside": [],
+        "overflowNodes": [],
+        "missingAnchors": [],
+        "headingCount": 1,
+        "focusTarget": true,
+        "focusOutline": true,
+        "cards": 6,
+        "fontReady": true,
+        "visibleMap": true,
+        "keyboard": {
+          "skip": {
+            "href": "#main",
+            "name": "Skip to content",
+            "focusVisible": true,
+            "fullyOnscreen": true,
+            "unobscured": true
+          },
+          "skipTarget": "main",
+          "sectionLinks": [
+            {
+              "href": "#architecture",
+              "name": "Architecture",
+              "focusVisible": true,
+              "fullyOnscreen": true,
+              "unobscured": true
+            },
+            {
+              "href": "#architecture-island",
+              "name": "System map",
+              "focusVisible": true,
+              "fullyOnscreen": true,
+              "unobscured": true
+            }
+          ],
+          "selectedFragment": "#architecture-island"
+        }
+      }
+    },
+    {
+      "scenario": "tablet-768",
+      "viewport": [
+        768,
+        900
+      ],
+      "canonical_png_sha256": "af3425bab8951525b57cf0cb1b51830f06794ad5d3533f9b2b57fc9e31e1285e",
+      "mirror_png_sha256": "af3425bab8951525b57cf0cb1b51830f06794ad5d3533f9b2b57fc9e31e1285e",
+      "architecture_dom_and_keyboard": {
+        "width": 768,
+        "docWidth": 768,
+        "mapCount": 5,
+        "labels": [
+          "Console and Browser broker",
+          "Core and Temporal",
+          "Browser actions and human surface",
+          "Trusted helper and OpenBao",
+          "Identity provider and route proxy"
+        ],
+        "outside": [],
+        "overflowNodes": [],
+        "missingAnchors": [],
+        "headingCount": 1,
+        "focusTarget": true,
+        "focusOutline": true,
+        "cards": 6,
+        "fontReady": true,
+        "visibleMap": true,
+        "keyboard": {
+          "skip": {
+            "href": "#main",
+            "name": "Skip to content",
+            "focusVisible": true,
+            "fullyOnscreen": true,
+            "unobscured": true
+          },
+          "skipTarget": "main",
+          "sectionLinks": [
+            {
+              "href": "#architecture",
+              "name": "Architecture",
+              "focusVisible": true,
+              "fullyOnscreen": true,
+              "unobscured": true
+            },
+            {
+              "href": "#architecture-island",
+              "name": "System map",
+              "focusVisible": true,
+              "fullyOnscreen": true,
+              "unobscured": true
+            }
+          ],
+          "selectedFragment": "#architecture-island"
+        }
+      }
+    },
+    {
+      "scenario": "desktop-1440",
+      "viewport": [
+        1440,
+        900
+      ],
+      "canonical_png_sha256": "1c2f168c03fb8dcbedcd6a944c6ee1cccdd98ba2962364bd44a5c3b05cd577d8",
+      "mirror_png_sha256": "1c2f168c03fb8dcbedcd6a944c6ee1cccdd98ba2962364bd44a5c3b05cd577d8",
+      "architecture_dom_and_keyboard": {
+        "width": 1440,
+        "docWidth": 1440,
+        "mapCount": 5,
+        "labels": [
+          "Console and Browser broker",
+          "Core and Temporal",
+          "Browser actions and human surface",
+          "Trusted helper and OpenBao",
+          "Identity provider and route proxy"
+        ],
+        "outside": [],
+        "overflowNodes": [],
+        "missingAnchors": [],
+        "headingCount": 1,
+        "focusTarget": true,
+        "focusOutline": true,
+        "cards": 6,
+        "fontReady": true,
+        "visibleMap": true,
+        "keyboard": {
+          "skip": {
+            "href": "#main",
+            "name": "Skip to content",
+            "focusVisible": true,
+            "fullyOnscreen": true,
+            "unobscured": true
+          },
+          "skipTarget": "main",
+          "sectionLinks": [
+            {
+              "href": "#architecture",
+              "name": "Architecture",
+              "focusVisible": true,
+              "fullyOnscreen": true,
+              "unobscured": true
+            },
+            {
+              "href": "#architecture-island",
+              "name": "System map",
+              "focusVisible": true,
+              "fullyOnscreen": true,
+              "unobscured": true
+            }
+          ],
+          "selectedFragment": "#architecture-island"
+        }
+      }
+    }
+  ]
+}
