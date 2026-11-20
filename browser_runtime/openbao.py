@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Protocol, cast
 from urllib.parse import urlsplit
 
-from browser_runtime.credentials import Grant, Target
+from browser_runtime.credentials import Grant, _grant_binding, _GrantBinding
 
 MAX_BODY = 65536
 
@@ -198,7 +198,7 @@ class Handle:
 
 @dataclass(repr=False)
 class _Entry:
-    grant: Grant
+    binding: _GrantBinding
     mapping: Mapping
     version: int
     secret: str
@@ -264,11 +264,11 @@ class Vault:
         self._entries: dict[Handle, _Entry] = {}
         self._lock = threading.Lock()
 
-    def _scope(self, grant: Grant) -> Mapping:
-        check(type(grant) is Grant and type(grant.target) is Target)
-        grant.target.validate()
-        check(type(grant.reference) is str)
-        check(number(self._clock()) < number(grant.deadline))
+    def _scope(self, grant: Grant, binding: _GrantBinding | None = None) -> Mapping:
+        if binding is None:
+            binding = _grant_binding(grant)
+        check(number(self._clock()) < binding.deadline)
+        check(_grant_binding(grant) == binding)
         b = grant.target.binding
         key = (
             b.principal,
@@ -284,11 +284,14 @@ class Vault:
         ]
         check(len(selected) == 1)
         check(self._authorize is not None and self._authorize(grant) is True)
-        check(number(self._clock()) < number(grant.deadline))
+        check(number(self._clock()) < binding.deadline)
+        check(_grant_binding(grant) == binding)
         return selected[0]
 
-    def _request(self, grant: Grant, m: Mapping, kind: str) -> dict[str, object]:
-        check(self._scope(grant) == m)
+    def _request(
+        self, grant: Grant, binding: _GrantBinding, m: Mapping, kind: str
+    ) -> dict[str, object]:
+        check(self._scope(grant, binding) == m)
         token = self._token()
         check(
             type(token) is str
@@ -296,9 +299,9 @@ class Vault:
             and all(33 <= ord(c) <= 126 for c in token)
         )
         # Recheck after trusted token callback, before any HTTP effect.
-        check(self._scope(grant) == m)
-        remaining = number(grant.deadline) - number(self._clock())
-        check(remaining > 0)
+        check(self._scope(grant, binding) == m)
+        remaining = binding.deadline - number(self._clock())
+        check(remaining > 0 and _grant_binding(grant) == binding)
         reply = self._transport(
             f"/v1/{m.mount}/{kind}/{'/'.join(m.path)}",
             token,
@@ -317,23 +320,24 @@ class Vault:
                 parse_constant=reject_constant,
             )
         )
-        check(self._scope(grant) == m)
+        check(self._scope(grant, binding) == m)
         return object_value(data.get("data"))
 
     def read(self, grant: Grant) -> object:
         result: Handle | None = None
         try:
             with self._lock:
-                m = self._scope(grant)
+                binding = _grant_binding(grant)
+                m = self._scope(grant, binding)
                 check(len(self._entries) < 128)
-                data = self._request(grant, m, "data")
+                data = self._request(grant, binding, m, "data")
                 metadata = object_value(data.get("metadata"))
                 alive(metadata)
                 v = version(metadata.get("version"))
                 secret = object_value(data.get("data")).get(m.field_name)
                 check(type(secret) is str and 0 < len(secret.encode()) <= 16384)
                 result = Handle()
-                self._entries[result] = _Entry(grant, m, v, cast(str, secret))
+                self._entries[result] = _Entry(binding, m, v, cast(str, secret))
         except Exception:
             pass
         if result is None:
@@ -343,8 +347,8 @@ class Vault:
     def _current(self, handle: object, grant: Grant) -> _Entry:
         check(type(handle) is Handle)
         entry = self._entries[cast(Handle, handle)]
-        check(self._scope(grant) == entry.mapping and grant == entry.grant)
-        metadata = self._request(grant, entry.mapping, "metadata")
+        check(self._scope(grant, entry.binding) == entry.mapping)
+        metadata = self._request(grant, entry.binding, entry.mapping, "metadata")
         check(version(metadata.get("current_version")) == entry.version)
         alive(
             object_value(object_value(metadata.get("versions")).get(str(entry.version)))
@@ -379,7 +383,7 @@ class Vault:
                     del self._entries[
                         cast(Handle, handle)
                     ]  # consume before possible effect
-                    check(self._scope(grant) == entry.mapping)
+                    check(self._scope(grant, entry.binding) == entry.mapping)
                     success = sink(entry.secret) is True
                 finally:
                     # Failed metadata validation must also consume the handle

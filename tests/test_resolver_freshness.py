@@ -17,7 +17,10 @@ from browser_runtime.credentials import (
     Grant,
     Observation,
     Resolver,
-    Target,
+    _grant_binding,
+    _GrantBinding,
+    _target_binding,
+    _time,
 )
 from tests.test_openbao import CANARY, Fixture
 
@@ -313,23 +316,25 @@ class ResolverFreshnessTests(unittest.TestCase):
     def test_mutated_pre_callback_clock_is_observed_by_forbidden_effect_spies(
         self,
     ) -> None:
-        def stale_sample(resolver: Resolver, fence: Fence, grant: Grant) -> None:
+        def stale_sample(
+            resolver: Resolver, fence: Fence, grant: Grant, binding: _GrantBinding
+        ) -> None:
+            if _grant_binding(grant) != binding:
+                raise ValueError
             observation = fence.observe()
             if (
                 type(observation) is not Observation
-                or type(observation.target) is not Target
-                or observation.target != grant.target
+                or _target_binding(observation.target) != binding.target
             ):
                 raise ValueError
-            observation.target.validate()
-            observed_at = resolver._time(observation.observed_at)
-            deadline = resolver._time(grant.deadline)
-            now = resolver._time(resolver._clock())  # Deliberately broken ordering.
+            observed_at = _time(observation.observed_at)
+            now = _time(resolver._clock())  # Deliberately broken ordering.
             current = fence.current(grant)
             if (
                 not 0 <= now - observed_at <= resolver._max_age
-                or now >= deadline
+                or now >= binding.deadline
                 or current is not True
+                or _grant_binding(grant) != binding
             ):
                 raise ValueError
 
