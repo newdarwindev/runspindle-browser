@@ -13,7 +13,7 @@ from types import TracebackType
 from typing import cast
 from unittest.mock import patch
 
-from browser_runtime.credentials import Grant
+from browser_runtime.credentials import Grant, _GrantBinding
 from browser_runtime.openbao import Denied as VaultDenied
 from browser_runtime.openbao import Handle, Mapping, Response, Vault, check
 from tests.test_openbao_cancellation import CANCELLATIONS, STAGES, Fixture
@@ -187,7 +187,7 @@ class ConsumeTests(unittest.TestCase):
                 with vault._lock:
                     entry = vault._current(handle, grant)
                     del vault._entries[cast(Handle, handle)]
-                    check(vault._scope(grant) == entry.mapping)
+                    check(vault._scope(grant, entry.binding) == entry.mapping)
                     success = sink(entry.secret) is True
             except Exception:
                 pass
@@ -251,14 +251,17 @@ class ConsumeTests(unittest.TestCase):
 
                     def final_scope(
                         grant: Grant,
+                        binding: _GrantBinding | None = None,
                         handle: object = handle,
                         f: Fixture = f,
                         error: BaseException = error,
-                        original: Callable[[Grant], Mapping] = original,
+                        original: Callable[
+                            [Grant, _GrantBinding | None], Mapping
+                        ] = original,
                     ) -> Mapping:
                         if handle not in f.vault._entries:
                             raise error
-                        return original(grant)
+                        return original(grant, binding)
 
                     with patch.object(f.vault, "_scope", final_scope):
                         self.assert_failure(f, handle, error)
@@ -276,7 +279,7 @@ class ConsumeTests(unittest.TestCase):
                 with vault._lock:
                     entry = vault._current(handle, grant)
                     del vault._entries[cast(Handle, handle)]
-                    check(vault._scope(grant) == entry.mapping)
+                    check(vault._scope(grant, entry.binding) == entry.mapping)
                     return sink(entry.secret) is True
             except Exception:
                 pass
