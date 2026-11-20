@@ -348,7 +348,8 @@ class ProfileStoreTests(unittest.TestCase):
             with self.assertRaises(Denied):
                 Store(place, self.fake.adapters())
         public = self.root / "public"
-        public.mkdir(mode=0o755)
+        public.mkdir(mode=0o700)
+        public.chmod(0o755)
         with self.assertRaises(Denied):
             Store(public, self.fake.adapters())
         self.assertEqual(self.fake.reads, 0)
