@@ -590,6 +590,8 @@ class DirectoryProfileIO:
     def _remove(
         self,
         name: str,
+        grant: Grant,
+        guard: Guard,
         parent: int | None = None,
         *,
         depth: int = 0,
@@ -609,14 +611,16 @@ class DirectoryProfileIO:
                 segment(child)
                 info = os.stat(child, dir_fd=fd, follow_symlinks=False)
                 if stat.S_ISDIR(info.st_mode):
-                    self._remove(child, fd, depth=depth + 1, count=count)
+                    self._remove(child, grant, guard, fd, depth=depth + 1, count=count)
                 else:
                     stream = self._open_file(child, os.O_RDONLY, fd)
                     os.close(stream)
+                    self._check(grant, guard)
                     os.unlink(child, dir_fd=fd)
             os.fsync(fd)
         finally:
             os.close(fd)
+        self._check(grant, guard)
         os.rmdir(name, dir_fd=directory)
         os.fsync(directory)
 
@@ -634,8 +638,8 @@ class DirectoryProfileIO:
         if phase in ("building", "forgotten"):
             if state["candidate"] is not None:
                 candidate = generation(state["candidate"])
-                self._remove("stage-" + candidate)
-                self._remove("g-" + candidate)
+                self._remove("stage-" + candidate, grant, guard)
+                self._remove("g-" + candidate, grant, guard)
             state.update(candidate=None, candidate_digest=None)
         if phase == "cleanup":
             require(
@@ -643,10 +647,10 @@ class DirectoryProfileIO:
                 == state["digest"]
             )
         if phase in ("cleanup", "forgotten") and state["retired"] is not None:
-            self._remove("g-" + generation(state["retired"]))
+            self._remove("g-" + generation(state["retired"]), grant, guard)
             state["retired"] = None
         if phase in ("forgotten", "discarding") and state["current"] is not None:
-            self._remove("g-" + generation(state["current"]))
+            self._remove("g-" + generation(state["current"]), grant, guard)
             state.update(current=None, digest=None)
         if phase in ("building", "cleanup", "discarding"):
             state["phase"] = "ready"
