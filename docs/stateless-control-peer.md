@@ -31,6 +31,15 @@ only a distinct authorized reconciliation with fresh exact closure observation
 returns confirmed. Recovery never invokes fencing. Exceptions and cancellation
 are redacted, including context managers suppressing the original exception.
 
+The peer captures the validated transfer and recovery bindings at admission.
+Guard callbacks must preserve those fields before a native fence or confirmation.
+Readback captures a typed closure observation before rechecking current authority.
+Only the same exact observation, with closure already true and a timestamp fresh
+at that final check, can confirm. A foreign equality object or a closure flag
+changed by a later callback cannot supply release evidence. These checks add no
+Browser-owned state and do not replace the backend's obligation to enforce the
+physical input fence.
+
 ## Mandatory application/native integration gates
 
 - Core is the sole reservation authority. This peer deliberately repeats a fence
@@ -53,7 +62,7 @@ or Actions CI execution is claimed. The prior account E2E receipt is not inherit
 by this new control component.
 
 
-## Local evidence
+## Initial peer evidence
 
 - 13 focused tests pass normal and optimized; independent reviewer repeated both.
 - 56 control/recovery/wire tests pass normal and optimized.
@@ -62,3 +71,16 @@ by this new control component.
 - New runtime/tests pass strict mypy with both actual imported protocols and the
   repository skip-imports mode; ruff and scaffold checks pass.
 - This is local component evidence only, not an Actions run or qualified fleet.
+
+## Admission and closure regression evidence
+
+The source and test changes were checked against Browser main at
+`fe5647c18e1b48962a51e0e993f61e37d4dbfae2`. All 17 peer tests passed on macOS
+arm64 with CPython 3.13.18 in normal and optimized modes. Strict mypy, Ruff,
+and the scaffold check passed.
+
+Three regression tests reproduced the behavior on the earlier peer revision
+`d2309a367df30d0bde2171b0eae5dabeee7d19c0`. The mutation test removes the
+final admitted-grant comparison and observes an unexpected call to the
+synthetic native fence. Actual Chromium drain and the authenticated Core
+composition still require separate integration evidence.
