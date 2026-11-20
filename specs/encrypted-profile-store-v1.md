@@ -141,6 +141,12 @@ indefinitely; tests observe zero nested capture. A trusted callback that catches
 that denial can still finish its outer operation. The component cannot impose a
 total timeout on arbitrary trusted Python callback code.
 
+Each Store instance uses its SQLite connection on the thread that constructed
+it. Calls to run from another thread deny before admission or database access.
+Closing an open instance from another thread also denies and leaves the owning
+thread able to use and close it. Cooperating threads can construct and close
+their own instances under the same SQLite writer serialization.
+
 Restore records the exact operation/binding as `unknown` and commits **before**
 key access/decryption/consumption. A repeated admitted identical operation returns
 its stored status without re-running the consumer. It remains unknown after key

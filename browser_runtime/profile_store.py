@@ -201,6 +201,7 @@ class Store:
         if not available:
             raise DependencyUnavailable("profile cryptography dependency unavailable")
         self._cipher = AESGCM
+        self._owner_thread = threading.current_thread()
         self._lock = threading.Lock()
         self._adapters = adapters
         self._clock = clock
@@ -231,6 +232,8 @@ class Store:
         cancelled = False
         try:
             if not self._closed:
+                if threading.current_thread() is not self._owner_thread:
+                    _fail("profile store thread mismatch")
                 self._closed = True  # Never retry an uncertain connection close.
                 try:
                     self._db.close()
@@ -461,6 +464,8 @@ class Store:
         _fail("profile discard unsupported")
 
     def run(self, ticket: object) -> Result:
+        if threading.current_thread() is not self._owner_thread:
+            _fail("profile store thread mismatch")
         if not self._lock.acquire(blocking=False):
             _fail("profile store busy")
         result: Result | None = None
