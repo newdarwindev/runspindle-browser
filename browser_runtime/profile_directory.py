@@ -357,9 +357,12 @@ class DirectoryProfileIO:
             require(written > 0)
             offset += written
 
+    def _require_scope(self, grant: Grant) -> None:
+        require(grant.scope() == self._scope)
+
     def _check(self, grant: Grant, guard: Guard) -> None:
         grant.validate()
-        require(grant.scope() == self._scope)
+        self._require_scope(grant)
         require(guard.current(grant) is True and guard.quiescent(grant) is True)
         observed = guard.observe()
         # Observation may discover revocation or a resumed writer. Revalidate
@@ -813,6 +816,7 @@ class MaterializedStore(Store):
         return super()._restore(adapters, guard, grant)
 
     def _forget(self, guard: Guard, grant: Grant) -> Result:
+        self._tree._require_scope(grant)
         super()._forget(guard, grant)  # Durable permanent tombstone precedes all IO.
         self._tree.forget(grant, guard)
         self._check(guard, grant)
