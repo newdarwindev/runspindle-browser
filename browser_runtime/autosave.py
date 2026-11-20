@@ -226,6 +226,8 @@ class Autosave:
         check(now < number(grant.deadline))
 
     def run(self, ticket: object, *, reconcile_only: bool = False) -> str:
+        if type(reconcile_only) is not bool:
+            return "not_saved"
         result = "not_saved"
         cancelled = False
         completed = False
@@ -293,6 +295,9 @@ class Autosave:
 
                     callbacks_open = True
                     callback_thread = threading.get_ident()
+                    submitted = False
+                    submit_violation = False
+                    confirmed_after_submit = False
 
                     def callback_scope() -> None:
                         check(
@@ -309,19 +314,27 @@ class Autosave:
                             raise
 
                     def guarded_submit(b: Binding, data: bytes) -> None:
-                        nonlocal cancelled
+                        nonlocal cancelled, submitted, submit_violation
                         try:
                             callback_scope()
+                            if reconcile_only or submitted:
+                                submit_violation = True
+                                check(False)
+                            # Spend the callback before any capture or provider call.
+                            submitted = True
                             submit(b, data)
                         except BaseException as error:
                             cancelled = cancelled or not isinstance(error, Exception)
                             raise
 
                     def guarded_observe(b: Binding, digest: str) -> Readback:
-                        nonlocal cancelled
+                        nonlocal cancelled, confirmed_after_submit
                         try:
                             callback_scope()
-                            return observe(b, digest)
+                            receipt = observe(b, digest)
+                            if submitted and receipt.outcome == "confirmed":
+                                confirmed_after_submit = True
+                            return receipt
                         except BaseException as error:
                             cancelled = cancelled or not isinstance(error, Exception)
                             raise
@@ -341,9 +354,10 @@ class Autosave:
                         )
                     finally:
                         callbacks_open = False
-                    check(not cancelled)
+                    check(not cancelled and not submit_violation)
                     check(outcome in ("confirmed", "rejected", "unknown"))
                     if outcome == "confirmed":
+                        check(not submitted or confirmed_after_submit)
                         result = "saved"
                     self._check(fence, grant, expected)
                     completed = True
