@@ -114,3 +114,8 @@ admission. Historical status never grants input, credentials or takeover.
 helper using existing OpenBao mappings and an externally owned effect-execution
 interface. Browser does not own its persistence. Capture,
 consent and real browser/authority integration remain explicit acceptance gaps.
+
+## Optional observation producer
+
+[Content-free credential observations](telemetry-v1.md) add a bounded default-off
+producer. Browser SDK export and Collector qualification remain separate.
