@@ -20,8 +20,15 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+      - name: Install the locked profile dependencies offline
+        run: >-
+          python3 -m pip --isolated install --no-index --require-hashes
+          --only-binary=:all: --find-links=/home/runner/preparation/browser-profile/wheels
+          --target="$RUNNER_TEMP/browser-profile" -r requirements-profile.txt
       - id: partition
         name: Run quality partition
+        env:
+          PYTHONPATH: ${{ runner.temp }}/browser-profile
         run: python3 tools/partition_validation.py quality --output "$GITHUB_OUTPUT"
   component:
     name: validation / component
