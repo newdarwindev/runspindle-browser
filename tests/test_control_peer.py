@@ -5,8 +5,8 @@ import json
 import unittest
 from contextlib import contextmanager
 from dataclasses import asdict, replace
-from typing import Any, Callable, Iterator, cast
 from pathlib import Path
+from typing import Any, Callable, Iterator, cast
 
 from browser_runtime.control_leases import (
     FenceObservation,
@@ -16,10 +16,10 @@ from browser_runtime.control_leases import (
     Transfer,
     _scope,
 )
-from browser_runtime.control_peer import ControlPeer, DOMAIN, core_scope
+from browser_runtime.control_peer import DOMAIN, ControlPeer, core_scope
 from browser_runtime.credentials import Observation, Target
-from browser_runtime.effects import Binding, Cancelled, Denied
 from browser_runtime.effect_wire import VERSION
+from browser_runtime.effects import Binding, Cancelled, Denied
 
 
 def initial() -> Transfer:

@@ -361,7 +361,7 @@ class LeaseStore:
         elif type(grant) is PassiveStatus:
             grant.validate()
             target, deadline = grant.target, grant.deadline
-        elif type(grant) in (Input, CredentialInput):
+        elif type(grant) is Input or type(grant) is CredentialInput:
             if type(grant.holder) is not Holder:
                 raise ValueError
             grant.holder.validate()
@@ -370,9 +370,10 @@ class LeaseStore:
                     raise ValueError
                 target, deadline = grant.effect.target, grant.effect.deadline
             else:
-                if type(grant.credential) is not CredentialGrant:
+                credential = cast(CredentialInput, grant).credential
+                if type(credential) is not CredentialGrant:
                     raise ValueError
-                target, deadline = grant.credential.target, grant.credential.deadline
+                target, deadline = credential.target, credential.deadline
             if type(target) is not Target:
                 raise ValueError
             target.validate()
@@ -398,10 +399,11 @@ class LeaseStore:
 
     def _row(self, target: Target) -> tuple[object, ...] | None:
         _validate_retained(self._db)
-        return self._db.execute(
+        row: tuple[object, ...] | None = self._db.execute(
             "SELECT scope,epoch,holder,phase,transition FROM leases WHERE browser=?",
             (target.binding.browser,),
         ).fetchone()
+        return row
 
     def _input(self, grant: Input | CredentialInput) -> None:
         target = (
@@ -485,7 +487,7 @@ class LeaseStore:
                 stored_holder.validate()
                 if _encode(asdict(stored_holder)) != row[2]:
                     raise ValueError
-                phase, epoch = cast(str, row[3]), cast(int, row[1])
+                phase, epoch = row[3], row[1]
                 if phase == "active":
                     holder = stored_holder
                 # Pending's stored destination is not an active holder.

@@ -2,28 +2,35 @@
 
 import json
 import os
-from pathlib import Path
 import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 from dataclasses import asdict
+from pathlib import Path
 
 from browser_runtime.effect_wire import VERSION
-from tests.fixtures.effect_pipe_app import TARGET, DIGEST, PAYLOAD
+from tests.fixtures.effect_pipe_app import DIGEST, PAYLOAD, TARGET
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "tests/fixtures/effect_pipe_app.py"
 
 
 class PipeProcessTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory(prefix="pipe-target-")
         self.addCleanup(self.tmp.cleanup)
         self.site = Path(self.tmp.name) / "site-action-state"
 
-    def exchange(self, action, *, lose=False, trailing=False, opt_in=True):
+    def exchange(
+        self,
+        action: str,
+        *,
+        lose: bool = False,
+        trailing: bool = False,
+        opt_in: bool = True,
+    ) -> tuple[int, str | None]:
         raw = json.dumps(
             dict(
                 version=VERSION,
@@ -65,24 +72,26 @@ class PipeProcessTests(unittest.TestCase):
             size = struct.unpack(">I", result.stdout[:4])[0]
             self.assertLessEqual(size, 4096)
             self.assertEqual(size, len(result.stdout) - 4)
-            outcome = json.loads(result.stdout[4:])["outcome"]
+            observed = json.loads(result.stdout[4:])["outcome"]
+            self.assertIsInstance(observed, str)
+            outcome = str(observed)
         return result.returncode, outcome
 
-    def test_process_dispatch_then_fresh_process_reconcile(self):
+    def test_process_dispatch_then_fresh_process_reconcile(self) -> None:
         self.assertEqual(self.exchange("dispatch"), (0, "unknown"))
         self.assertEqual(self.exchange("reconcile"), (0, "confirmed"))
         self.assertEqual(self.site.read_bytes(), b"accepted\n")
 
-    def test_lost_response_reconcile_does_not_replay(self):
+    def test_lost_response_reconcile_does_not_replay(self) -> None:
         self.assertEqual(self.exchange("dispatch", lose=True), (2, None))
         self.assertEqual(self.exchange("reconcile"), (0, "confirmed"))
         self.assertEqual(self.site.read_bytes(), b"accepted\n")
 
-    def test_trailing_frame_rejected_before_target_effect(self):
+    def test_trailing_frame_rejected_before_target_effect(self) -> None:
         self.assertEqual(self.exchange("dispatch", trailing=True), (2, None))
         self.assertFalse(self.site.exists())
 
-    def test_fixture_cannot_activate_without_explicit_opt_in(self):
+    def test_fixture_cannot_activate_without_explicit_opt_in(self) -> None:
         self.assertEqual(self.exchange("dispatch", opt_in=False), (2, None))
         self.assertFalse(self.site.exists())
 

@@ -2,23 +2,24 @@
 """Bounded opt-in Browser-only test; no provisioning, runner registration or CI bypass."""
 
 from __future__ import annotations
+
 import argparse
 import hashlib
 import io
 import json
 import os
 import re
-from pathlib import Path
 import signal
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
-def worker():
+def worker() -> int:
     from browser_testing.account_e2e import qualify
 
     qualify(
@@ -32,7 +33,7 @@ def worker():
     output = io.StringIO()
     result = unittest.TextTestRunner(stream=output).run(suite)
     leaked = "SYNTHETIC_E2E_CANARY" in output.getvalue()
-    receipt = {
+    receipt: dict[str, object] = {
         "status": "passed"
         if result.wasSuccessful()
         and not result.skipped
@@ -66,7 +67,7 @@ def worker():
     return 0 if receipt["status"] == "passed" else 1
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--worker", action="store_true")
     parser.add_argument("--openbao-only", action="store_true")

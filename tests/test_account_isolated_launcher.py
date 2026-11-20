@@ -1,18 +1,22 @@
 """Offline launcher safety; does not launch namespaces or upstream binaries."""
 
+import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, cast
 from unittest.mock import patch
 
 from tools import run_isolated_account_e2e as launcher
 
 
 class LauncherTests(unittest.TestCase):
-    def test_mount_plan_has_no_host_writable_state_or_security_bypass(self):
+    def test_mount_plan_has_no_host_writable_state_or_security_bypass(self) -> None:
         argv = launcher.command(
             Path("/fixture/bin"),
             Path("/fixture/bao"),
@@ -32,7 +36,7 @@ class LauncherTests(unittest.TestCase):
         self.assertNotIn(str(Path.home()), argv)
         self.assertEqual(argv.count("--tmpfs"), 2)
 
-    def test_root_rejected_before_any_process(self):
+    def test_root_rejected_before_any_process(self) -> None:
         with (
             patch.object(os, "geteuid", return_value=0),
             patch.object(subprocess, "Popen") as spawn,
@@ -41,7 +45,7 @@ class LauncherTests(unittest.TestCase):
                 launcher.run(Path("/missing"), Path("/missing"), Path("/missing"))
             spawn.assert_not_called()
 
-    def test_unpinned_dependency_rejected_before_process(self):
+    def test_unpinned_dependency_rejected_before_process(self) -> None:
         with (
             patch.object(os, "geteuid", return_value=1000),
             patch.object(launcher, "pinned", side_effect=ValueError),
@@ -51,7 +55,7 @@ class LauncherTests(unittest.TestCase):
                 launcher.run(Path("/missing"), Path("/missing"), Path("/missing"))
             spawn.assert_not_called()
 
-    def test_pin_checks_executable_bytes(self):
+    def test_pin_checks_executable_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             p = Path(directory) / "binary"
             p.write_bytes(b"synthetic")
@@ -59,18 +63,18 @@ class LauncherTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 launcher.pinned(p, {"0" * 64})
             self.assertEqual(
-                launcher.pinned(p, {launcher.hashlib.sha256(b"synthetic").hexdigest()}),
+                launcher.pinned(p, {hashlib.sha256(b"synthetic").hexdigest()}),
                 p,
             )
 
-    def test_main_redacts_upstream_failures(self):
-        from contextlib import redirect_stdout
+    def test_main_redacts_upstream_failures(self) -> None:
         import io
+        from contextlib import redirect_stdout
 
         output = io.StringIO()
         with (
             patch.object(
-                launcher.sys,
+                sys,
                 "argv",
                 ["test", "--bao", "/x", "--chromium", "/y", "--certutil", "/z"],
             ),
@@ -89,19 +93,24 @@ class LauncherTests(unittest.TestCase):
 class LifecycleTests(unittest.TestCase):
     """Harmless local Python children only; no bwrap or upstream execution."""
 
-    def invoke(self, code, *, capture_override=None):
-        import sys
-
+    def invoke(
+        self,
+        code: str,
+        *,
+        capture_override: Callable[[subprocess.Popen[bytes]], tuple[bytes, bytes]]
+        | None = None,
+    ) -> type[BaseException] | None:
         real_popen = subprocess.Popen
         real_mkdtemp = tempfile.mkdtemp
-        processes, stages = [], []
+        processes: list[subprocess.Popen[bytes]] = []
+        stages: list[Path] = []
 
-        def spawn(*args, **kwargs):
-            child = real_popen(*args, **kwargs)
+        def spawn(*args: Any, **kwargs: Any) -> subprocess.Popen[bytes]:
+            child = cast(subprocess.Popen[bytes], real_popen(*args, **kwargs))
             processes.append(child)
             return child
 
-        def stage(**_kwargs):
+        def stage(**_kwargs: object) -> str:
             path = real_mkdtemp(prefix="launcher-test-")
             stages.append(Path(path))
             return path
@@ -112,8 +121,8 @@ class LifecycleTests(unittest.TestCase):
             patch.object(
                 launcher, "command", return_value=[sys.executable, "-c", code]
             ),
-            patch.object(launcher.subprocess, "Popen", side_effect=spawn),
-            patch.object(launcher.tempfile, "mkdtemp", side_effect=stage),
+            patch.object(subprocess, "Popen", side_effect=spawn),
+            patch.object(tempfile, "mkdtemp", side_effect=stage),
         ]
         if capture_override is not None:
             patches.append(
@@ -138,14 +147,14 @@ class LifecycleTests(unittest.TestCase):
         self.assertTrue(all(not p.exists() for p in stages))
         return error
 
-    def test_stdout_and_stderr_overflow_kill_and_reap(self):
+    def test_stdout_and_stderr_overflow_kill_and_reap(self) -> None:
         for fd in (1, 2):
             error = self.invoke(
                 f"import os,time; os.write({fd},b'x'*65536); time.sleep(30)"
             )
             self.assertIs(error, ValueError)
 
-    def test_total_timeout_kills_and_reaps(self):
+    def test_total_timeout_kills_and_reaps(self) -> None:
         real_capture = launcher.capture
         error = self.invoke(
             "import time; time.sleep(30)",
@@ -153,7 +162,7 @@ class LifecycleTests(unittest.TestCase):
         )
         self.assertIs(error, TimeoutError)
 
-    def test_sigterm_and_sighup_enter_cleanup_and_restore_handlers(self):
+    def test_sigterm_and_sighup_enter_cleanup_and_restore_handlers(self) -> None:
         import signal
 
         for sig in (signal.SIGTERM, signal.SIGHUP):
@@ -164,14 +173,14 @@ class LifecycleTests(unittest.TestCase):
             self.assertIs(error, launcher.Terminated)
             self.assertEqual(signal.getsignal(sig), previous)
 
-    def test_confirmed_exit_never_signals_reaped_pid(self):
-        with patch.object(launcher.os, "killpg") as kill:
+    def test_confirmed_exit_never_signals_reaped_pid(self) -> None:
+        with patch.object(os, "killpg") as kill:
             self.assertIsNone(self.invoke('print(\'{"status":"passed"}\')'))
             kill.assert_not_called()
 
-    def test_uncertain_wait_retains_staging(self):
-        from unittest.mock import Mock
+    def test_uncertain_wait_retains_staging(self) -> None:
         import shutil
+        from unittest.mock import Mock
 
         child = Mock(returncode=None, pid=12345)
         child.wait.side_effect = subprocess.TimeoutExpired("synthetic", 10)
@@ -180,10 +189,10 @@ class LifecycleTests(unittest.TestCase):
         with (
             patch.object(Path, "read_bytes", return_value=b"synthetic dependency"),
             patch.object(launcher, "pinned", side_effect=lambda p, _: p),
-            patch.object(launcher.tempfile, "mkdtemp", return_value=str(directory)),
-            patch.object(launcher.subprocess, "Popen", return_value=child),
+            patch.object(tempfile, "mkdtemp", return_value=str(directory)),
+            patch.object(subprocess, "Popen", return_value=child),
             patch.object(launcher, "capture", side_effect=TimeoutError),
-            patch.object(launcher.os, "killpg") as kill,
+            patch.object(os, "killpg") as kill,
         ):
             with self.assertRaises(subprocess.TimeoutExpired):
                 launcher.run(

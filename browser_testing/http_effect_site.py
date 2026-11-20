@@ -4,6 +4,8 @@ The HTTPS logical origin is invented; trusted tests map it to plaintext loopback
 HTTP. This does not authenticate TLS, browser frames, accounts or live authority.
 """
 
+from __future__ import annotations
+
 import base64
 import hashlib
 import http.client
@@ -13,9 +15,10 @@ import threading
 from dataclasses import asdict, replace
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from browser_runtime.effects import Binding, Readback
+from browser_runtime.guarded_peer import Grant, Guard
 from browser_testing.effect_site import Site
 
 LIMIT = 16384
@@ -29,7 +32,9 @@ def encode(value: object) -> bytes:
 class LocalSite:
     """One ephemeral test context, independent ledger and request counters."""
 
-    def __init__(self, path: Path, *, submission="none", readback="none"):
+    def __init__(
+        self, path: Path, *, submission: str = "none", readback: str = "none"
+    ) -> None:
         if submission not in ("none", "lost", "reject", "drop"):
             raise ValueError("unsupported synthetic submission")
         if readback not in ("none", "wrong-account"):
@@ -40,15 +45,18 @@ class LocalSite:
         self.request_started = threading.Event()
         self._stopping = threading.Event()
         self._socket_lock = threading.Lock()
-        self._active_socket = None
-        self._server = self._thread = None
+        self._active_socket: socket.socket | None = None
+        self._server: HTTPServer | None = None
+        self._thread: threading.Thread | None = None
 
-    def __enter__(self):
+    def __enter__(self) -> LocalSite:
         owner = self
 
         class Server(HTTPServer):
-            def get_request(self):
-                stream, address = super().get_request()
+            def get_request(self) -> tuple[socket.socket, tuple[str, int]]:
+                stream, address = cast(
+                    tuple[socket.socket, tuple[str, int]], super().get_request()
+                )
                 with owner._socket_lock:
                     if owner._stopping.is_set():
                         stream.close()
@@ -56,7 +64,9 @@ class LocalSite:
                     owner._active_socket = stream
                 return stream, address
 
-            def shutdown_request(self, request):
+            def shutdown_request(
+                self, request: socket.socket | tuple[bytes, socket.socket]
+            ) -> None:
                 try:
                     super().shutdown_request(request)
                 finally:
@@ -64,16 +74,20 @@ class LocalSite:
                         if owner._active_socket is request:
                             owner._active_socket = None
 
-            def handle_error(self, request, address):
+            def handle_error(
+                self,
+                request: socket.socket | tuple[bytes, socket.socket],
+                address: tuple[str, int],
+            ) -> None:
                 if not owner._stopping.is_set():
                     super().handle_error(request, address)
 
         class Handler(BaseHTTPRequestHandler):
-            def setup(self):
+            def setup(self) -> None:
                 self.request.settimeout(TIMEOUT)
                 super().setup()
 
-            def log_message(self, *args):
+            def log_message(self, format: str, *args: object) -> None:
                 pass  # No request bodies or headers in logs.
 
             def do_GET(self) -> None:
@@ -92,7 +106,7 @@ class LocalSite:
                 self.end_headers()
                 self.wfile.write(body)
 
-            def do_POST(self):
+            def do_POST(self) -> None:
                 try:
                     if owner._stopping.is_set():
                         self.close_connection = True
@@ -124,7 +138,7 @@ class LocalSite:
                         owner.submissions += 1
                         if owner.submission != "drop":
                             owner.ledger.submit(binding, payload)
-                        result = {"ack": "transport-only"}
+                        result: dict[str, Any] = {"ack": "transport-only"}
                     else:
                         digest = value["data"]
                         if not isinstance(digest, str) or len(digest) != 64:
@@ -148,21 +162,26 @@ class LocalSite:
                 except (ValueError, TypeError, KeyError):
                     self.send_error(400)
 
-        self._server = Server(("127.0.0.1", 0), Handler)
-        self.port = self._server.server_address[1]
-        self._thread = threading.Thread(
-            target=lambda: self._server.serve_forever(poll_interval=0.02),
+        server = Server(("127.0.0.1", 0), Handler)
+        self._server = server
+        self.port = server.server_address[1]
+        thread = threading.Thread(
+            target=lambda: server.serve_forever(poll_interval=0.02),
             name="synthetic-loopback-site",
             daemon=True,
         )
+        self._thread = thread
         try:
-            self._thread.start()
+            thread.start()
         except BaseException:
-            self._server.server_close()
+            server.server_close()
             raise
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
+        server, thread = self._server, self._thread
+        if server is None or thread is None:
+            raise RuntimeError("synthetic site was not started")
         # Socket timeouts alone are per-read, so a dribbling client could keep a
         # handler busy. Stop new work and interrupt this fixture's owned socket.
         with self._socket_lock:
@@ -174,11 +193,11 @@ class LocalSite:
                 except OSError:
                     pass  # Already closed by its handler.
         try:
-            self._server.shutdown()
+            server.shutdown()
         finally:
-            self._server.server_close()
-            self._thread.join(TIMEOUT + 1)
-        if self._thread.is_alive():
+            server.server_close()
+            thread.join(TIMEOUT + 1)
+        if thread.is_alive():
             raise RuntimeError("synthetic site failed to stop")
 
 
@@ -188,12 +207,12 @@ class HTTPAdapter:
     No host, URL, redirect, proxy or fallback comes from a Grant or page data.
     """
 
-    def __init__(self, port: int):
+    def __init__(self, port: int) -> None:
         if type(port) is not int or not 0 < port < 65536:
             raise ValueError("invalid synthetic port")
         self.port = port
 
-    def _request(self, route: str, grant: Any, guard: Any, data: str) -> Any:
+    def _request(self, route: str, grant: Grant, guard: Guard, data: str) -> Any:
         observed = guard.observe()
         if (
             observed is None
@@ -220,7 +239,7 @@ class HTTPAdapter:
         finally:
             connection.close()
 
-    def submit(self, grant, payload, guard):
+    def submit(self, grant: Grant, payload: bytes, guard: Guard) -> object:
         if (
             len(payload) > 4096
             or hashlib.sha256(payload).hexdigest() != grant.payload_digest
@@ -230,7 +249,7 @@ class HTTPAdapter:
             "/submit", grant, guard, base64.b64encode(payload).decode("ascii")
         )
 
-    def readback(self, grant, guard):
+    def readback(self, grant: Grant, guard: Guard) -> Readback:
         value = self._request("/readback", grant, guard, grant.payload_digest)
         if set(value) != {"binding", "payload_digest", "outcome", "evidence_digest"}:
             raise ValueError("invalid synthetic readback")

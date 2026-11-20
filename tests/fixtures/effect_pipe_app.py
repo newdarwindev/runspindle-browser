@@ -7,20 +7,21 @@ The target fixture owns its ephemeral action ledger, not Browser persistence.
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
 import hashlib
 import os
-from pathlib import Path
 import sys
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from browser_runtime.credentials import Observation, Target  # noqa: E402
-from browser_runtime.effects import Binding, Readback  # noqa: E402
-from browser_runtime.guarded_peer import Grant, GuardedPeer  # noqa: E402
 from browser_runtime.effect_pipe import serve_once  # noqa: E402
 from browser_runtime.effect_wire import Receiver  # noqa: E402
+from browser_runtime.effects import Binding, Readback  # noqa: E402
+from browser_runtime.guarded_peer import Grant, Guard, GuardedPeer  # noqa: E402
 
 PAYLOAD = b"synthetic-pipe-action"
 DIGEST = hashlib.sha256(PAYLOAD).hexdigest()
@@ -43,7 +44,7 @@ TARGET = Target(
 
 
 class Application:
-    def __init__(self, site_state: Path, action: str, lose_response: bool):
+    def __init__(self, site_state: Path, action: str, lose_response: bool) -> None:
         self.site_state = site_state
         self.grant = Grant(TARGET, DIGEST, action, time.monotonic() + 30)
         self.ticket = object()  # Never constructed from transport bytes.
@@ -51,23 +52,23 @@ class Application:
         self.lose_response = lose_response
 
     @contextmanager
-    def acquire(self):
+    def acquire(self) -> Iterator[Application]:
         self.active = True
         try:
             yield self
         finally:
             self.active = False
 
-    def admit(self, ticket):
+    def admit(self, ticket: object) -> Grant | None:
         return self.grant if self.active and ticket is self.ticket else None
 
-    def current(self, grant):
+    def current(self, grant: Grant) -> bool:
         return self.active and grant == self.grant
 
-    def observe(self):
+    def observe(self) -> Observation:
         return Observation(TARGET, time.monotonic())
 
-    def submit(self, grant, payload, guard):
+    def submit(self, grant: Grant, payload: bytes, guard: Guard) -> None:
         if guard is not self or not self.current(grant) or payload != PAYLOAD:
             raise ValueError
         with self.site_state.open("ab") as stream:
@@ -77,7 +78,7 @@ class Application:
         if self.lose_response:
             raise SystemExit(2)
 
-    def readback(self, grant, guard):
+    def readback(self, grant: Grant, guard: Guard) -> Readback:
         if guard is not self or not self.current(grant):
             raise ValueError
         data = self.site_state.read_bytes() if self.site_state.exists() else b""
@@ -89,7 +90,7 @@ class Application:
         )
 
 
-def main():
+def main() -> int:
     if os.environ.get("RUNSPINDLE_SYNTHETIC_PIPE_APP") != "1":
         return 2
     parser = argparse.ArgumentParser()

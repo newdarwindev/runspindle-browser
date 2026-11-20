@@ -1,3 +1,4 @@
+---
 # Source-only CI integration. Admission is OFF until the owner qualifies the
 # isolated lane and sets the repository variable; this workflow provisions none.
 name: browser-account-e2e

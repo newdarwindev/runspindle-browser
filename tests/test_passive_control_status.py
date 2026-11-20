@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable
 from dataclasses import asdict, replace
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -18,15 +19,17 @@ from browser_runtime.control_leases import (
 )
 from browser_runtime.credentials import Denied as CredentialDenied
 from browser_runtime.credentials import Grant as CredentialGrant
+from browser_runtime.credentials import Target
 from browser_runtime.effects import Denied
-from test_control_leases import AGENT, HUMAN, ControlFixture, PAYLOAD, target
-from test_lease_credentials import CredentialAdapters
+from tests.test_control_leases import AGENT, HUMAN, ControlFixture, target
+from tests.test_guarded_effects import PAYLOAD
+from tests.test_lease_credentials import CredentialAdapters
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class PassiveTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
@@ -39,23 +42,26 @@ class PassiveTests(unittest.TestCase):
         network.start()
         self.addCleanup(network.stop)
 
-    def passive(self, **changes):
-        self.f.grant = replace(
-            PassiveStatus(target(1, "passive-status"), 20.0), **changes
+    def passive(
+        self, bound: Target | None = None, deadline: float = 20.0
+    ) -> PassiveStatus:
+        admission = PassiveStatus(
+            target(1, "passive-status") if bound is None else bound, deadline
         )
-        return self.f.grant
+        self.f.grant = admission
+        return admission
 
-    def initialize(self):
+    def initialize(self) -> None:
         self.f.transition("initialize", None, AGENT, 0)
         self.assertEqual(self.store.transfer("admitted"), "active")
 
-    def scope(self):
+    def scope(self) -> str:
         physical = asdict(target(1, "passive-status"))
         for key in ("intent", "revision", "operation", "epoch"):
             del physical["binding"][key]
         return json.dumps(physical, sort_keys=True, separators=(",", ":"))
 
-    def snapshot(self):
+    def snapshot(self) -> ControlStatus:
         before = (self.root / "leases.sqlite").read_bytes()
         rows = self.store._db.execute("SELECT * FROM leases").fetchall()
         changes = self.store._db.total_changes
@@ -73,7 +79,9 @@ class PassiveTests(unittest.TestCase):
         self.assertFalse(self.f.active)
         return result
 
-    def test_absent_active_pending_are_read_only_and_pending_has_no_holder(self):
+    def test_absent_active_pending_are_read_only_and_pending_has_no_holder(
+        self,
+    ) -> None:
         self.passive()
         self.assertEqual(
             self.snapshot(), ControlStatus("absent", None, None, 10.0, self.scope())
@@ -98,7 +106,7 @@ class PassiveTests(unittest.TestCase):
             journal.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
-    def test_observation_does_not_prevent_later_transfer_or_grant_input(self):
+    def test_observation_does_not_prevent_later_transfer_or_grant_input(self) -> None:
         self.initialize()
         self.passive()
         old = self.snapshot()
@@ -108,14 +116,13 @@ class PassiveTests(unittest.TestCase):
         self.assertEqual(
             self.snapshot(), ControlStatus("active", 2, HUMAN, 10.0, self.scope())
         )
-        self.f.grant = old
-        with self.assertRaises(Denied):
+        with patch.object(self.f, "admit", return_value=old), self.assertRaises(Denied):
             self.store.transfer("admitted")
         self.assertEqual(self.f.fences(), 2)
 
     def test_passive_admission_never_enters_effect_credential_or_transition_routes(
         self,
-    ):
+    ) -> None:
         self.initialize()
         admission = self.passive()
         journal = self.store.journal(self.root / "effects.sqlite", self.f)
@@ -123,12 +130,13 @@ class PassiveTests(unittest.TestCase):
         vault = CredentialAdapters(self.f)
         inspector = Mock()
         self.store._inspector = inspector
-        for operation in (
+        operations: tuple[Callable[[], str], ...] = (
             lambda: self.store.transfer("admitted"),
             lambda: self.store.reconcile_transfer("admitted"),
             lambda: journal.dispatch("admitted", PAYLOAD),
             lambda: journal.reconcile("admitted"),
-        ):
+        )
+        for operation in operations:
             with self.assertRaises(Denied):
                 operation()
         with self.assertRaises(CredentialDenied):
@@ -139,8 +147,7 @@ class PassiveTests(unittest.TestCase):
         self.f.input(AGENT, 1)
         with self.assertRaises(Denied):
             self.store.status("admitted")
-        self.f.transition("takeover", AGENT, HUMAN, 1)
-        transfer = self.f.grant
+        transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
         credential = CredentialInput(
             CredentialGrant(target(1, "credential"), "credential:one", 20.0), AGENT
         )
@@ -150,38 +157,35 @@ class PassiveTests(unittest.TestCase):
             credential,
             ControlStatus("active", 1, AGENT, 10.0, self.scope()),
         ):
-            self.f.grant = other
-            with self.assertRaises(Denied):
+            with (
+                patch.object(self.f, "admit", return_value=other),
+                self.assertRaises(Denied),
+            ):
                 self.store.status("admitted")
         self.f.grant = admission
         with self.assertRaises(Denied):
             self.store.status("forged")
 
-    def test_wrong_scope_revoked_expired_and_stale_observations_deny(self):
+    def test_wrong_scope_revoked_expired_and_stale_observations_deny(self) -> None:
         self.initialize()
-        for field in (
-            "principal",
-            "account",
-            "browser",
-            "tab",
-            "native_session",
-            "frame",
-            "frame_origin",
-            "origin",
-        ):
+        base = target(1, "passive-status")
+        binding = base.binding
+        changes = (
+            ("principal", replace(base, binding=replace(binding, principal="other"))),
+            ("account", replace(base, binding=replace(binding, account="other"))),
+            ("browser", replace(base, binding=replace(binding, browser="other"))),
+            ("tab", replace(base, binding=replace(binding, tab="other"))),
+            ("native_session", replace(base, native_session="other")),
+            ("frame", replace(base, frame="other")),
+            ("frame_origin", replace(base, frame_origin="https://other.invalid")),
+            (
+                "origin",
+                replace(base, binding=replace(binding, origin="https://other.invalid")),
+            ),
+        )
+        for field, changed in changes:
             with self.subTest(field=field):
-                base = target(1, "passive-status")
-                value = (
-                    "https://other.invalid"
-                    if field in ("origin", "frame_origin")
-                    else "other"
-                )
-                changed = (
-                    replace(base, binding=replace(base.binding, **{field: value}))
-                    if field in ("principal", "account", "browser", "tab", "origin")
-                    else replace(base, **{field: value})
-                )
-                self.passive(target=changed)
+                self.passive(bound=changed)
                 with self.assertRaises(Denied):
                     self.store.status("admitted")
                 # Even coherent observed scope cannot reveal another row's owner.
@@ -203,7 +207,7 @@ class PassiveTests(unittest.TestCase):
             self.store.status("admitted")
         self.assertEqual(self.f.fences(), 1)
 
-    def test_read_delay_or_revocation_cannot_preserve_admission(self):
+    def test_read_delay_or_revocation_cannot_preserve_admission(self) -> None:
         self.initialize()
         self.passive()
         original = self.store._row
@@ -211,8 +215,8 @@ class PassiveTests(unittest.TestCase):
             self.f.now = 10.0
             self.f.allowed = True
 
-            def delayed(target):
-                row = original(target)
+            def delayed(selected: Target) -> tuple[object, ...] | None:
+                row = original(selected)
                 if mode == "expired":
                     self.f.now = 20.0
                 else:
@@ -224,7 +228,7 @@ class PassiveTests(unittest.TestCase):
                     self.store.status("admitted")
             self.assertFalse(self.store._db.in_transaction)
 
-    def test_scope_check_mutation_exposes_other_account_ownership(self):
+    def test_scope_check_mutation_exposes_other_account_ownership(self) -> None:
         script = r"""
 import pathlib, sys, unittest
 import browser_runtime.control_leases as module
@@ -250,7 +254,9 @@ sys.exit(0 if result.wasSuccessful() else 1)
         self.assertIn("Denied not raised", result.stderr)
         self.assertNotIn("ERROR:", result.stderr)
 
-    def test_timestamp_follows_final_callbacks_and_guard_exit_cannot_fake_success(self):
+    def test_timestamp_follows_final_callbacks_and_guard_exit_cannot_fake_success(
+        self,
+    ) -> None:
         self.initialize()
         self.passive()
         self.f.at_current = lambda: setattr(self.f, "now", 10.5)
@@ -260,7 +266,7 @@ sys.exit(0 if result.wasSuccessful() else 1)
             self.store.status("admitted")
         self.assertFalse(self.store._db.in_transaction)
 
-    def test_fresh_process_observes_same_row_without_backend_or_writes(self):
+    def test_fresh_process_observes_same_row_without_backend_or_writes(self) -> None:
         self.initialize()
         self.store.close()
         path = self.root / "leases.sqlite"

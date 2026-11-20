@@ -6,14 +6,23 @@ import sys
 import tempfile
 import traceback
 import unittest
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
 from browser_runtime.profile_directory import DirectoryProfileIO
-from browser_runtime.profile_store import Adapters, Cancelled, Denied, Store
+from browser_runtime.profile_store import (
+    Adapters,
+    Cancelled,
+    Denied,
+    Grant,
+    Guard,
+    Key,
+    Store,
+)
 from browser_testing.profile_store_fixtures import CANARY, Fake, grant
-from test_profile_directory import bundle
+from tests.test_profile_directory import bundle
 
 
 def cancel() -> None:
@@ -25,7 +34,9 @@ class CancellationTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
-        network = patch.object(socket.socket, "connect", side_effect=AssertionError("network forbidden"))
+        network = patch.object(
+            socket.socket, "connect", side_effect=AssertionError("network forbidden")
+        )
         network.start()
         self.addCleanup(network.stop)
 
@@ -52,21 +63,27 @@ class CancellationTests(unittest.TestCase):
                         self.assertEqual(store.run("trusted-ticket"), "stored")
                     fake.reads = fake.captures = fake.consumes = fake.releases = 0
                     fake.grant = grant(action)
-                    setattr(fake, "after_capture" if action == "save" else "after_consume", cancel)
+                    setattr(
+                        fake,
+                        "after_capture" if action == "save" else "after_consume",
+                        cancel,
+                    )
                     original = fake.adapters().keys
 
                     class Keys:
                         @contextmanager
-                        def acquire(self, *args):
+                        def acquire(
+                            self, store_id: str, grant: Grant, version: str | None
+                        ) -> Iterator[Key]:
                             try:
-                                with original.acquire(*args) as key:
+                                with original.acquire(store_id, grant, version) as key:
                                     yield key
                             except BaseException:
                                 if mode == "replace":
                                     raise RuntimeError(CANARY.decode())
 
                     @contextmanager
-                    def authority():
+                    def authority() -> Iterator[Fake]:
                         try:
                             yield fake
                         except BaseException:
@@ -79,16 +96,32 @@ class CancellationTests(unittest.TestCase):
                             store.run("trusted-ticket")
                     self.safe(caught.exception)
                     self.assertEqual((fake.reads, fake.releases), (1, 1))
-                    self.assertEqual((fake.captures, fake.consumes), (1, 0) if action == "save" else (0, 1))
+                    self.assertEqual(
+                        (fake.captures, fake.consumes),
+                        (1, 0) if action == "save" else (0, 1),
+                    )
                     store._adapters = fake.adapters()
                     fake.after_capture = fake.after_consume = lambda: None
                     if action == "restore":
-                        self.assertEqual(store._db.execute("SELECT result FROM restores").fetchall(), [("unknown",)])
+                        self.assertEqual(
+                            store._db.execute("SELECT result FROM restores").fetchall(),
+                            [("unknown",)],
+                        )
                         self.assertEqual(store.run("trusted-ticket"), "unknown")
                         self.assertEqual(fake.consumes, 1)
                     else:
-                        self.assertEqual(store._db.execute("SELECT count(*) FROM checkpoints").fetchone()[0], 0)
-                        self.assertEqual(store._db.execute("SELECT count(*) FROM nonces").fetchone()[0], 1)
+                        self.assertEqual(
+                            store._db.execute(
+                                "SELECT count(*) FROM checkpoints"
+                            ).fetchone()[0],
+                            0,
+                        )
+                        self.assertEqual(
+                            store._db.execute("SELECT count(*) FROM nonces").fetchone()[
+                                0
+                            ],
+                            1,
+                        )
 
     def test_key_entry_cancellation_survives_authority_suppression(self) -> None:
         store, fake = self.store()
@@ -99,7 +132,9 @@ class CancellationTests(unittest.TestCase):
         self.safe(caught.exception)
         self.assertEqual((fake.reads, fake.captures, fake.consumes), (1, 0, 0))
 
-    def test_release_cancellation_preserves_committed_restore_without_replay(self) -> None:
+    def test_release_cancellation_preserves_committed_restore_without_replay(
+        self,
+    ) -> None:
         store, fake = self.store()
         store.run("trusted-ticket")
         fake.grant = grant("restore")
@@ -107,8 +142,10 @@ class CancellationTests(unittest.TestCase):
 
         class Keys:
             @contextmanager
-            def acquire(self, *args):
-                with original.acquire(*args) as key:
+            def acquire(
+                self, store_id: str, grant: Grant, version: str | None
+            ) -> Iterator[Key]:
+                with original.acquire(store_id, grant, version) as key:
                     yield key
                 cancel()
 
@@ -117,7 +154,10 @@ class CancellationTests(unittest.TestCase):
         with self.assertRaises(Cancelled) as caught:
             store.run("trusted-ticket")
         self.safe(caught.exception)
-        self.assertEqual(store._db.execute("SELECT result FROM restores").fetchall(), [("delivered",)])
+        self.assertEqual(
+            store._db.execute("SELECT result FROM restores").fetchall(),
+            [("delivered",)],
+        )
         self.assertEqual(fake.consumes, 1)
         store._adapters = fake.adapters()
         self.assertEqual(store.run("trusted-ticket"), "delivered")
@@ -127,7 +167,7 @@ class CancellationTests(unittest.TestCase):
         store, fake = self.store()
 
         @contextmanager
-        def authority():
+        def authority() -> Iterator[Fake]:
             yield fake
             cancel()
 
@@ -149,7 +189,9 @@ class CancellationTests(unittest.TestCase):
         fake.after_capture = lambda: (_ for _ in ()).throw(ValueError(CANARY.decode()))
         with self.assertRaises(Denied):
             store.run("trusted-ticket")
-        self.assertEqual(store._db.execute("SELECT count(*) FROM checkpoints").fetchone()[0], 0)
+        self.assertEqual(
+            store._db.execute("SELECT count(*) FROM checkpoints").fetchone()[0], 0
+        )
 
     def test_directory_recovery_cancellation_overrides_ordinary_failure(self) -> None:
         path = self.root / "tree"
@@ -161,11 +203,11 @@ class CancellationTests(unittest.TestCase):
         original = tree._recover
         calls = [0]
 
-        def recovery(*args):
+        def recovery(grant: Grant, guard: Guard) -> None:
             calls[0] += 1
             if calls[0] == 2:
                 cancel()
-            return original(*args)
+            original(grant, guard)
 
         with patch.object(tree, "_recover", side_effect=recovery):
             with self.assertRaises(Cancelled) as caught:
@@ -195,7 +237,9 @@ sys.exit(0 if result.wasSuccessful() else 1)
         result = subprocess.run(
             [sys.executable, *(["-O"] if sys.flags.optimize else []), "-c", script],
             cwd=Path(__file__).resolve().parents[1],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertIn("profile operation denied", result.stderr)
@@ -208,7 +252,7 @@ sys.exit(0 if result.wasSuccessful() else 1)
         path.mkdir(mode=0o700)
         tree = DirectoryProfileIO(path, fake.grant)
         self.addCleanup(tree.close)
-        operations = [
+        operations: list[Callable[[], object]] = [
             lambda: store.run("invalid"),
             lambda: tree.capture(fake.grant, fake),
             lambda: Store(self.root / "missing", fake.adapters()),
@@ -229,9 +273,9 @@ sys.exit(0 if result.wasSuccessful() else 1)
                 try:
                     raise ValueError(CANARY.decode())
                 except ValueError:
-                    with self.assertRaises(Denied) as caught:
+                    with self.assertRaises(Denied) as denied:
                         owner.close()
-                    self.safe(caught.exception)
+                    self.safe(denied.exception)
             finally:
                 lock.release()
 
