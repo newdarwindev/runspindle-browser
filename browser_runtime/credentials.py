@@ -8,9 +8,11 @@ An opaque vault handle, not plaintext, crosses into the pinned injection helper.
 import math
 import re
 from dataclasses import dataclass, field
+from time import time_ns
 from typing import Callable, ContextManager, NoReturn, Protocol, cast
 
 from browser_runtime.effects import Binding, Cancelled
+from browser_runtime.telemetry import Buffer, Outcome
 
 
 class Denied(ValueError):
@@ -160,9 +162,13 @@ class Resolver:
         expected_digest: str = "",
         clock: Callable[[], float] | None = None,
         max_age: float = 1.0,
+        telemetry: Buffer | None = None,
     ) -> None:
         import time
 
+        if telemetry is not None and type(telemetry) is not Buffer:
+            raise TypeError("invalid telemetry buffer")
+        self._telemetry = telemetry
         self._adapters = adapters
         self._expected_digest = expected_digest
         self._clock = clock if clock is not None else time.monotonic
@@ -195,6 +201,31 @@ class Resolver:
             raise ValueError
 
     def resolve_and_inject(self, ticket: object) -> str:
+        # No observer callback/exporter runs within the credential fence. Fixed
+        # metadata only; exceptions/outcomes remain the original resolver's.
+        buffer = self._telemetry
+        if buffer is None:
+            return self._resolve_and_inject(ticket)
+        try:
+            started = time_ns()
+        except BaseException:
+            return self._resolve_and_inject(ticket)
+        outcome = Outcome.UNKNOWN
+        try:
+            result = self._resolve_and_inject(ticket)
+            outcome = Outcome.ACKNOWLEDGED
+            return result
+        except Denied:
+            outcome = Outcome.ERROR
+            raise
+        finally:
+            try:
+                Buffer._record(buffer, outcome, started)
+            except BaseException:
+                # Observation failure must never alter effect or cancellation.
+                pass
+
+    def _resolve_and_inject(self, ticket: object) -> str:
         # Serialize admission before any adapter callback; recursive use denies.
         with self._lock:
             attempted = self._attempted
