@@ -1,21 +1,35 @@
 """Invented values, independent protocol peer; no network or browser access."""
 
+from __future__ import annotations
+
 import contextlib
 import hashlib
 import json
-import tempfile
 import subprocess
 import sys
+import tempfile
 import unittest
+from collections.abc import Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
+from typing import NoReturn, TypedDict, Unpack
 from unittest.mock import patch
 
-from browser_runtime.autosave import Autosave, Login, Writer, MARKER
-from browser_runtime.credentials import Observation
-from browser_runtime.effects import Cancelled, Journal
+from browser_runtime.autosave import MARKER, Autosave, Login, Writer
+from browser_runtime.credentials import Grant, Observation
+from browser_runtime.effects import Binding, Cancelled, Journal, Outcome, Readback
 from browser_runtime.openbao import Response, Vault
-from test_openbao import Fixture, CANARY
+from tests.test_openbao import CANARY, Fixture
+
+
+class ExecutionArgs(TypedDict):
+    binding: Binding
+    payload: bytes
+    target_digest: str
+    approve: Callable[[Binding, str], bool]
+    submit: Callable[[Binding, bytes], None]
+    observe: Callable[[Binding, str], Readback]
+    reconcile_only: bool
 
 
 class ExternalEffects:
@@ -25,20 +39,20 @@ class ExternalEffects:
     The production external owner belongs outside Browser.
     """
 
-    def __init__(self, path):
+    def __init__(self, path: Path) -> None:
         self.path = path
 
     def execute(
         self,
         *,
-        binding,
-        payload,
-        target_digest,
-        approve,
-        submit,
-        observe,
-        reconcile_only,
-    ):
+        binding: Binding,
+        payload: bytes,
+        target_digest: str,
+        approve: Callable[[Binding, str], bool],
+        submit: Callable[[Binding, bytes], None],
+        observe: Callable[[Binding, str], Readback],
+        reconcile_only: bool,
+    ) -> Outcome:
         journal = Journal(self.path, approve=approve, submit=submit, observe=observe)
         try:
             if not reconcile_only:
@@ -53,23 +67,22 @@ class ExternalEffects:
 
 
 class Harness(Fixture):
-    def __init__(self, path):
+    def __init__(self, path: Path) -> None:
         super().__init__()
-        del self.current
         self.path = path
         self.opt_in = True
         self.expected = 0
         self.posts = 0
         self.captures = 0
         self.gets = 0
-        self.records = {}
+        self.records: dict[int, dict[str, str]] = {}
         self.login_ok = True
         self.lost = False
         self.offline = False
         self.wrong_marker = False
         self.observed = self.g.target
         self.ticket = object()
-        self.callback = lambda: None
+        self.callback: Callable[[], None] = lambda: None
         self.username = "synthetic-user"
         self.suppress = False
         self.v = Vault(
@@ -81,34 +94,38 @@ class Harness(Fixture):
         )
 
     @contextlib.contextmanager
-    def acquire(self):
+    def acquire(self) -> Iterator[Harness]:
         try:
             yield self
         except Exception:
             if not self.suppress:
                 raise
 
-    def admit(self, ticket):
+    def admit(self, ticket: object) -> Grant | None:
         return self.g if ticket is self.ticket else None
 
-    def observe(self):
+    def observe(self) -> Observation:
         return Observation(self.observed, self.now)
 
-    def current(self, grant):
+    def current(self, grant: Grant) -> bool:
         return self.allowed and grant == self.g
 
-    def consent(self, grant):
+    def consent(self, grant: Grant) -> int | None:
         return self.expected if self.opt_in and grant == self.g else None
 
-    def capture(self, grant):
+    def capture(self, grant: Grant) -> Login:
         self.captures += 1
         self.callback()
         return Login(self.username, CANARY, self.login_ok)
 
-    def peer(self, method, path, token, timeout, body):
+    def peer(
+        self, method: str, path: str, token: str, timeout: float, body: bytes | None
+    ) -> Response:
         if self.offline:
             raise RuntimeError(CANARY)
         if method == "POST":
+            if body is None:
+                raise AssertionError("synthetic POST requires a body")
             self.posts += 1
             data = json.loads(body)
             expected = data["options"]["cas"]
@@ -160,7 +177,7 @@ class Harness(Fixture):
             ).encode(),
         )
 
-    def service(self):
+    def service(self) -> Autosave:
         return Autosave(
             ExternalEffects(self.path),
             authority=self,
@@ -172,12 +189,12 @@ class Harness(Fixture):
 
 
 class AutosaveTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.f = Harness(Path(self.tmp.name) / "existing-effects.sqlite")
 
-    def test_normal_login_saves_and_replay_does_not_recapture_or_write(self):
+    def test_normal_login_saves_and_replay_does_not_recapture_or_write(self) -> None:
         f = self.f
         self.assertEqual(f.service().run(f.ticket), "saved")
         self.assertEqual(f.records[1]["password"], CANARY)
@@ -190,7 +207,9 @@ class AutosaveTests(unittest.TestCase):
         )
         self.assertNotIn(CANARY, repr(Login("u", CANARY, True)))
 
-    def test_missing_opt_in_and_forged_ticket_have_zero_capture_token_http(self):
+    def test_missing_opt_in_and_forged_ticket_have_zero_capture_token_http(
+        self,
+    ) -> None:
         f = self.f
         f.opt_in = False
         self.assertEqual(f.service().run(f.ticket), "not_saved")
@@ -198,30 +217,26 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(object()), "not_saved")
         self.assertEqual((f.captures, f.tokens, f.posts, f.gets), (0, 0, 0, 0))
 
-    def test_every_target_mismatch_denies_before_capture(self):
+    def test_every_target_mismatch_denies_before_capture(self) -> None:
         f = self.f
-        for field, value in [
-            ("account", "other"),
-            ("principal", "other"),
-            ("epoch", 2),
-            ("origin", "https://other.invalid"),
-            ("browser", "other"),
-            ("tab", "other"),
-        ]:
-            f.observed = replace(
-                f.g.target, binding=replace(f.g.target.binding, **{field: value})
-            )
-            self.assertEqual(f.service().run(f.ticket), "not_saved")
-        for field, value in [
-            ("native_session", "other"),
-            ("frame", "other"),
-            ("frame_origin", "https://other.invalid"),
-        ]:
-            f.observed = replace(f.g.target, **{field: value})
+        target = f.g.target
+        binding = target.binding
+        changes = (
+            replace(target, binding=replace(binding, account="other")),
+            replace(target, binding=replace(binding, principal="other")),
+            replace(target, binding=replace(binding, epoch=2)),
+            replace(target, binding=replace(binding, origin="https://other.invalid")),
+            replace(target, binding=replace(binding, browser="other")),
+            replace(target, binding=replace(binding, tab="other")),
+            replace(target, native_session="other"),
+            replace(target, frame="other"),
+            replace(target, frame_origin="https://other.invalid"),
+        )
+        for f.observed in changes:
             self.assertEqual(f.service().run(f.ticket), "not_saved")
         self.assertEqual((f.posts, f.captures, f.tokens), (0, 0, 0))
 
-    def test_expired_and_boolean_consent_deny(self):
+    def test_expired_and_boolean_consent_deny(self) -> None:
         f = self.f
         f.now = f.g.deadline
         self.assertEqual(f.service().run(f.ticket), "not_saved")
@@ -230,27 +245,28 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "not_saved")
         self.assertEqual(f.posts, 0)
 
-    def test_capture_redirect_revocation_and_failed_login_do_not_write(self):
-        for change in (
+    def test_capture_redirect_revocation_and_failed_login_do_not_write(self) -> None:
+        changes: tuple[Callable[[Harness], None], ...] = (
             lambda f: setattr(f, "allowed", False),
             lambda f: setattr(f, "opt_in", False),
             lambda f: setattr(f, "login_ok", False),
             lambda f: setattr(f, "observed", replace(f.g.target, frame="changed")),
-        ):
+        )
+        for change in changes:
             with self.subTest(change=change):
                 f = Harness(Path(self.tmp.name) / str(id(change)))
                 f.callback = lambda: change(f)
                 self.assertIn(f.service().run(f.ticket), ("unknown", "not_saved"))
                 self.assertEqual(f.posts, 0)
 
-    def test_lost_response_reconciles_without_second_post(self):
+    def test_lost_response_reconciles_without_second_post(self) -> None:
         f = self.f
         f.lost = True
         self.assertEqual(f.service().run(f.ticket), "saved")
         self.assertEqual(f.service().run(f.ticket, reconcile_only=True), "saved")
         self.assertEqual((f.posts, f.captures), (1, 1))
 
-    def test_outage_does_not_store_plaintext_or_retry(self):
+    def test_outage_does_not_store_plaintext_or_retry(self) -> None:
         f = self.f
         f.offline = True
         self.assertEqual(f.service().run(f.ticket), "unknown")
@@ -261,13 +277,13 @@ class AutosaveTests(unittest.TestCase):
         for p in Path(self.tmp.name).iterdir():
             self.assertNotIn(CANARY.encode(), p.read_bytes())
 
-    def test_wrong_operation_marker_is_not_success(self):
+    def test_wrong_operation_marker_is_not_success(self) -> None:
         f = self.f
         f.wrong_marker = True
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual(f.posts, 1)
 
-    def test_update_preserves_other_fields_and_checks_username(self):
+    def test_update_preserves_other_fields_and_checks_username(self) -> None:
         f = self.f
         f.records[1] = {"username": f.username, "password": "old", "other": "keep"}
         f.expected = 1
@@ -275,7 +291,7 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.records[2]["other"], "keep")
         self.assertEqual(f.records[2]["password"], CANARY)
 
-    def test_account_change_does_not_overwrite(self):
+    def test_account_change_does_not_overwrite(self) -> None:
         f = self.f
         f.records[1] = {"username": "other-account", "password": "old"}
         f.expected = 1
@@ -283,17 +299,17 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.posts, 0)
         self.assertEqual(f.records[1]["password"], "old")
 
-    def test_concurrent_version_conflict_does_not_post(self):
+    def test_concurrent_version_conflict_does_not_post(self) -> None:
         f = self.f
         f.records = {1: {"username": f.username}, 2: {"username": f.username}}
         f.expected = 1
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual(f.posts, 0)
 
-    def test_cancellation_has_no_secret_context_and_no_replay(self):
+    def test_cancellation_has_no_secret_context_and_no_replay(self) -> None:
         f = self.f
 
-        def cancel():
+        def cancel() -> NoReturn:
             raise KeyboardInterrupt(CANARY)
 
         f.callback = cancel
@@ -305,10 +321,10 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual((f.posts, f.captures), (0, 1))
 
-    def test_revocation_in_token_callback_blocks_network(self):
+    def test_revocation_in_token_callback_blocks_network(self) -> None:
         f = self.f
 
-        def revoke():
+        def revoke() -> str:
             f.opt_in = False
             return "synthetic-token"
 
@@ -316,25 +332,27 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual((f.posts, f.gets), (0, 0))
 
-    def test_mutation_removing_observation_check_breaks_zero_write_invariant(self):
+    def test_mutation_removing_observation_check_breaks_zero_write_invariant(
+        self,
+    ) -> None:
         f = self.f
         f.observed = replace(f.g.target, frame="wrong")
         with patch.object(Autosave, "_check", return_value=None):
             self.assertEqual(f.service().run(f.ticket), "saved")
         self.assertEqual(f.posts, 1)  # Independent spy catches the deliberate bug.
 
-    def test_suppressing_guard_cannot_turn_failed_admission_into_success(self):
+    def test_suppressing_guard_cannot_turn_failed_admission_into_success(self) -> None:
         f = self.f
         f.suppress = True
         f.opt_in = False
         self.assertEqual(f.service().run(f.ticket), "not_saved")
         self.assertEqual(f.posts, 0)
 
-    def test_final_vault_authorization_cannot_retarget_post(self):
+    def test_final_vault_authorization_cannot_retarget_post(self) -> None:
         f = self.f
-        calls = []
+        calls: list[Grant] = []
 
-        def mutate(grant):
+        def mutate(grant: Grant) -> bool:
             calls.append(grant)
             if len(calls) == 3:
                 f.observed = replace(f.g.target, frame="changed")
@@ -344,50 +362,55 @@ class AutosaveTests(unittest.TestCase):
         self.assertEqual(f.service().run(f.ticket), "unknown")
         self.assertEqual(f.posts, 0)
 
-    def test_consent_callback_cannot_hide_target_change(self):
+    def test_consent_callback_cannot_hide_target_change(self) -> None:
         f = self.f
 
-        def consent(grant):
+        def consent(grant: Grant) -> int:
             f.observed = replace(f.g.target, frame="changed")
             return 0
 
-        f.consent = consent
-        self.assertEqual(f.service().run(f.ticket), "not_saved")
+        with patch.object(f, "consent", consent):
+            self.assertEqual(f.service().run(f.ticket), "not_saved")
         self.assertEqual((f.posts, f.captures), (0, 0))
 
-    def test_suppressed_or_replaced_cancellation_still_propagates_sanitized(self):
+    def test_suppressed_or_replaced_cancellation_still_propagates_sanitized(
+        self,
+    ) -> None:
         for replacement in (False, True):
             with self.subTest(replacement=replacement):
                 f = Harness(Path(self.tmp.name) / str(replacement))
 
                 @contextlib.contextmanager
-                def guard():
+                def guard() -> Iterator[Harness]:
                     try:
                         yield f
                     except BaseException:
                         if replacement:
                             raise RuntimeError(CANARY)
 
-                f.acquire = guard
-
-                def cancel():
+                def cancel() -> NoReturn:
                     raise KeyboardInterrupt(CANARY)
 
                 f.callback = cancel
-                with self.assertRaises(Cancelled) as caught:
+                with (
+                    patch.object(f, "acquire", guard),
+                    self.assertRaises(Cancelled) as caught,
+                ):
                     f.service().run(f.ticket)
                 self.assertIsNone(caught.exception.__context__)
                 self.assertNotIn(CANARY, str(caught.exception))
                 self.assertEqual(f.posts, 0)
 
-    def test_unchanged_password_does_not_add_vault_version(self):
+    def test_unchanged_password_does_not_add_vault_version(self) -> None:
         f = self.f
         f.records[1] = {"username": f.username, "password": CANARY}
         f.expected = 1
         self.assertEqual(f.service().run(f.ticket), "saved")
         self.assertEqual((f.posts, len(f.records)), (0, 1))
 
-    def test_fresh_process_reopens_existing_journal_without_capture_or_post(self):
+    def test_fresh_process_reopens_existing_journal_without_capture_or_post(
+        self,
+    ) -> None:
         f = self.f
         self.assertEqual(f.service().run(f.ticket), "saved")
         script = """
@@ -410,7 +433,7 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertEqual(json.loads(completed.stdout), ["saved", 0, 0])
         self.assertNotIn(CANARY, completed.stdout + completed.stderr)
 
-    def test_saved_record_can_use_existing_vault_handle_path(self):
+    def test_saved_record_can_use_existing_vault_handle_path(self) -> None:
         f = self.f
         self.assertEqual(f.service().run(f.ticket), "saved")
         reader = Vault(
@@ -421,9 +444,9 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
             clock=lambda: f.now,
         )
         handle = reader.read(f.g)
-        received = []
+        received: list[str] = []
 
-        def sink(secret):
+        def sink(secret: str) -> bool:
             received.append(secret)
             return True
 
@@ -431,25 +454,17 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertEqual(received, [CANARY])
         self.assertFalse(reader.consume(handle, f.g, sink))
 
-    def test_browser_does_not_open_or_own_storage(self):
+    def test_browser_does_not_open_or_own_storage(self) -> None:
         f = self.f
 
         class ExternalOwner:
-            def execute(
-                self,
-                *,
-                binding,
-                payload,
-                target_digest,
-                approve,
-                submit,
-                observe,
-                reconcile_only,
-            ):
-                if not approve(binding, hashlib.sha256(payload).hexdigest()):
+            def execute(self, **kwargs: Unpack[ExecutionArgs]) -> Outcome:
+                binding, payload = kwargs["binding"], kwargs["payload"]
+                digest = hashlib.sha256(payload).hexdigest()
+                if not kwargs["approve"](binding, digest):
                     return "unknown"
-                submit(binding, payload)
-                return observe(binding, hashlib.sha256(payload).hexdigest()).outcome
+                kwargs["submit"](binding, payload)
+                return kwargs["observe"](binding, digest).outcome
 
         service = f.service()
         service.effects = ExternalOwner()
@@ -460,17 +475,18 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertEqual(list(Path(self.tmp.name).iterdir()), [])
         self.assertFalse(hasattr(service, "path"))
 
-    def test_external_owner_cannot_hide_callback_cancellation(self):
+    def test_external_owner_cannot_hide_callback_cancellation(self) -> None:
         f = self.f
 
         class SuppressingOwner:
-            def execute(self, **kwargs):
+            def execute(self, **kwargs: Unpack[ExecutionArgs]) -> Outcome:
                 try:
                     kwargs["submit"](kwargs["binding"], kwargs["payload"])
                 except BaseException:
                     return "confirmed"
+                raise AssertionError("expected cancelled callback")
 
-        def cancel():
+        def cancel() -> NoReturn:
             raise KeyboardInterrupt(CANARY)
 
         f.callback = cancel
@@ -482,13 +498,14 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertNotIn(CANARY, str(caught.exception))
         self.assertEqual(f.posts, 0)
 
-    def test_external_owner_cannot_reuse_callbacks_after_return(self):
+    def test_external_owner_cannot_reuse_callbacks_after_return(self) -> None:
         f = self.f
-        retained = {}
+        retained: ExecutionArgs | None = None
 
         class ExternalOwner:
-            def execute(self, **kwargs):
-                retained.update(kwargs)
+            def execute(self, **kwargs: Unpack[ExecutionArgs]) -> Outcome:
+                nonlocal retained
+                retained = kwargs
                 kwargs["submit"](kwargs["binding"], kwargs["payload"])
                 return kwargs["observe"](
                     kwargs["binding"], hashlib.sha256(kwargs["payload"]).hexdigest()
@@ -498,6 +515,8 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         service.effects = ExternalOwner()
         self.assertEqual(service.run(f.ticket), "saved")
         counts = (f.captures, f.posts, f.tokens)
+        if retained is None:
+            self.fail("owner did not receive execution callbacks")
         with self.assertRaises(ValueError):
             retained["submit"](retained["binding"], retained["payload"])
         with self.assertRaises(ValueError):
@@ -508,28 +527,33 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
             retained["observe"](retained["binding"], retained["target_digest"])
         self.assertEqual((f.captures, f.posts, f.tokens), counts)
 
-    def test_external_owner_cannot_invoke_callbacks_from_another_thread(self):
+    def test_external_owner_cannot_invoke_callbacks_from_another_thread(self) -> None:
         from concurrent.futures import ThreadPoolExecutor
 
         f = self.f
-        rejected = []
+        rejected: list[str] = []
 
         class ExternalOwner:
-            def execute(self, **kwargs):
-                def invoke(name, argument):
+            def execute(self, **kwargs: Unpack[ExecutionArgs]) -> Outcome:
+                def invoke(name: str, callback: Callable[[], object]) -> None:
                     try:
-                        kwargs[name](kwargs["binding"], argument)
+                        callback()
                     except ValueError:
                         rejected.append(name)
 
+                binding, payload, digest = (
+                    kwargs["binding"],
+                    kwargs["payload"],
+                    kwargs["target_digest"],
+                )
+                callbacks: tuple[tuple[str, Callable[[], object]], ...] = (
+                    ("approve", lambda: kwargs["approve"](binding, digest)),
+                    ("submit", lambda: kwargs["submit"](binding, payload)),
+                    ("observe", lambda: kwargs["observe"](binding, digest)),
+                )
                 with ThreadPoolExecutor(max_workers=1) as pool:
-                    for name in ("approve", "submit", "observe"):
-                        argument = (
-                            kwargs["payload"]
-                            if name == "submit"
-                            else kwargs["target_digest"]
-                        )
-                        pool.submit(invoke, name, argument).result(timeout=5)
+                    for name, callback in callbacks:
+                        pool.submit(invoke, name, callback).result(timeout=5)
                 return "unknown"
 
         service = f.service()

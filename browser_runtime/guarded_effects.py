@@ -3,7 +3,10 @@
 Existing journal files remain untouched until explicit migration/reconciliation.
 """
 
+import time
+from collections.abc import Callable
 from pathlib import Path
+
 from browser_runtime.effects import Journal, Outcome
 from browser_runtime.guarded_peer import (
     Authority,
@@ -19,8 +22,16 @@ from browser_runtime.guarded_peer import (
 class GuardedJournal(GuardedPeer):
     """Legacy owner adapter, not a second ledger for Core-owned operations."""
 
-    def __init__(self, path: str | Path, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        authority: Authority | None = None,
+        site: Site | None = None,
+        clock: Callable[[], float] = time.monotonic,
+        max_age: float = 1.0,
+    ) -> None:
+        super().__init__(authority=authority, site=site, clock=clock, max_age=max_age)
         self._journal = Journal(path, self._approve, self._submit, self._readback)
 
     def _execute(self, action: str, grant: Grant, payload: bytes | None) -> Outcome:

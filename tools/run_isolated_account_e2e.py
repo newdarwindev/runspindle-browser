@@ -7,14 +7,16 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
-import shutil
 import selectors
+import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import time
+from pathlib import Path
+from types import FrameType
+from typing import NoReturn
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -105,7 +107,12 @@ class Terminated(BaseException):
     """Internal cancellation marker, never printed."""
 
 
-def capture(process, timeout=300, stdout_limit=16384, stderr_limit=4096):
+def capture(
+    process: subprocess.Popen[bytes],
+    timeout: float = 300,
+    stdout_limit: int = 16384,
+    stderr_limit: int = 4096,
+) -> tuple[bytes, bytes]:
     """Bound allocation while reading; never buffer arbitrary child output."""
     end = time.monotonic() + timeout
     buffers = {"stdout": bytearray(), "stderr": bytearray()}
@@ -129,7 +136,7 @@ def capture(process, timeout=300, stdout_limit=16384, stderr_limit=4096):
     return bytes(buffers["stdout"]), bytes(buffers["stderr"])
 
 
-def run(bao: Path, chromium: Path, certutil: Path) -> dict:
+def run(bao: Path, chromium: Path, certutil: Path) -> dict[str, object]:
     if os.geteuid() == 0:
         raise ValueError("unprivileged worker required")
     pinned(Path("/usr/bin/bwrap"), {BWRAP_SHA256})
@@ -146,7 +153,7 @@ def run(bao: Path, chromium: Path, certutil: Path) -> dict:
     stopped = True
     handlers = {}
 
-    def terminated(_signum, _frame):
+    def terminated(_signum: int, _frame: FrameType | None) -> NoReturn:
         raise Terminated
 
     try:

@@ -6,46 +6,51 @@ import sys
 import tempfile
 import time
 import unittest
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
+from typing import NoReturn
 
-from browser_runtime.control_leases import CredentialInput
-from browser_runtime.credentials import Cancelled, Denied, Grant
+from browser_runtime.control_leases import CredentialInput, Holder, LeaseStore
+from browser_runtime.credentials import Denied, Fence, Grant, Resolver, Target
+from browser_runtime.effects import Cancelled
 from browser_runtime.effects import Denied as ControlDenied
-from test_control_leases import AGENT, HUMAN, ControlFixture, PAYLOAD, target
+from tests.test_control_leases import AGENT, HUMAN, ControlFixture, target
+from tests.test_guarded_effects import PAYLOAD
 
 PIN = "a" * 64
 CANARY = "synthetic-private-credential-cancel"
 
 
 class CredentialFixture(ControlFixture):
-    def credential(self, holder=AGENT, epoch=1):
-        self.grant = CredentialInput(
+    def credential(self, holder: Holder = AGENT, epoch: int = 1) -> CredentialInput:
+        admission = CredentialInput(
             Grant(target(epoch, "credential-input"), "credential:one", 20.0), holder
         )
-        return self.grant
+        self.grant = admission
+        return admission
 
 
 class CredentialAdapters:
-    def __init__(self, authority):
+    def __init__(self, authority: ControlFixture) -> None:
         self.authority = authority
         self.reads = self.injections = self.releases = 0
         self.handle = object()
-        self.after_read = lambda: None
-        self.at_inject = lambda: None
-        self.at_release = lambda: None
+        self.after_read: Callable[[], None] = lambda: None
+        self.at_inject: Callable[[], None] = lambda: None
+        self.at_release: Callable[[], None] = lambda: None
 
-    def read(self, grant):
+    def read(self, grant: Grant) -> object:
         if not self.authority.active:
             raise AssertionError("physical guard missing during read")
         self.reads += 1
         self.after_read()
         return self.handle
 
-    def current(self, handle, grant):
+    def current(self, handle: object, grant: Grant) -> bool:
         return handle is self.handle
 
-    def inject(self, handle, grant, fence):
+    def inject(self, handle: object, grant: Grant, fence: Fence) -> bool:
         if (
             not self.authority.active
             or handle is not self.handle
@@ -56,20 +61,22 @@ class CredentialAdapters:
         self.at_inject()
         return True
 
-    def release(self, handle):
+    def release(self, handle: object) -> None:
         if not self.authority.active or handle is not self.handle:
             raise AssertionError("physical guard missing during release")
         self.releases += 1
         self.at_release()
 
-    def resolver(self, store, digest=PIN, expected=PIN):
+    def resolver(
+        self, store: LeaseStore, digest: str = PIN, expected: str = PIN
+    ) -> Resolver:
         return store.credential_resolver(
             self, self, adapter_digest=digest, expected_digest=expected
         )
 
 
 class LeaseCredentialTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.f = CredentialFixture(self.tmp.name)
@@ -79,13 +86,13 @@ class LeaseCredentialTests(unittest.TestCase):
         self.f.transition("initialize", None, AGENT, 0)
         self.assertEqual(self.store.transfer("admitted"), "active")
 
-    def assert_no_secret_effects(self):
+    def assert_no_secret_effects(self) -> None:
         self.assertEqual(
             (self.adapters.reads, self.adapters.injections, self.adapters.releases),
             (0, 0, 0),
         )
 
-    def test_matching_lease_uses_existing_resolver_and_is_one_attempt(self):
+    def test_matching_lease_uses_existing_resolver_and_is_one_attempt(self) -> None:
         self.f.credential()
         resolver = self.adapters.resolver(self.store)
         self.assertEqual(resolver.resolve_and_inject("admitted"), "injected")
@@ -98,7 +105,7 @@ class LeaseCredentialTests(unittest.TestCase):
             resolver.resolve_and_inject("admitted")
         self.assertEqual(self.adapters.reads, 1)
 
-    def test_pins_fail_before_authority_or_vault(self):
+    def test_pins_fail_before_authority_or_vault(self) -> None:
         self.f.credential()
         calls = self.f.current_calls
         for digest, expected in ((PIN, "b" * 64), ("", "")):
@@ -109,27 +116,22 @@ class LeaseCredentialTests(unittest.TestCase):
         self.assertEqual(self.f.current_calls, calls)
         self.assert_no_secret_effects()
 
-    def test_wrong_holder_epoch_and_physical_scope_deny_before_vault(self):
+    def test_wrong_holder_epoch_and_physical_scope_deny_before_vault(self) -> None:
         for holder, epoch in ((HUMAN, 1), (AGENT, 2)):
             self.f.credential(holder, epoch)
             with self.assertRaises(Denied):
                 self.adapters.resolver(self.store).resolve_and_inject("admitted")
-        for field in ("account", "native_session", "frame", "frame_origin"):
+        changes: tuple[Callable[[Target], Target], ...] = (
+            lambda target: replace(
+                target, binding=replace(target.binding, account="other")
+            ),
+            lambda target: replace(target, native_session="other"),
+            lambda target: replace(target, frame="other"),
+            lambda target: replace(target, frame_origin="https://other.invalid"),
+        )
+        for change in changes:
             admission = self.f.credential()
-            current = admission.credential.target
-            if field == "account":
-                changed = replace(
-                    current, binding=replace(current.binding, account="other")
-                )
-            else:
-                changed = replace(
-                    current,
-                    **{
-                        field: "https://other.invalid"
-                        if field == "frame_origin"
-                        else "other"
-                    },
-                )
+            changed = change(admission.credential.target)
             self.f.grant = replace(
                 admission, credential=replace(admission.credential, target=changed)
             )
@@ -138,7 +140,7 @@ class LeaseCredentialTests(unittest.TestCase):
                 self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assert_no_secret_effects()
 
-    def test_effect_and_credential_admission_are_not_interchangeable(self):
+    def test_effect_and_credential_admission_are_not_interchangeable(self) -> None:
         self.f.input(AGENT, 1)
         with self.assertRaises(Denied):
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
@@ -150,7 +152,9 @@ class LeaseCredentialTests(unittest.TestCase):
         self.assert_no_secret_effects()
         self.assertEqual(self.f.effects(), 0)
 
-    def test_takeover_and_pending_state_block_old_and_unissued_credential_holders(self):
+    def test_takeover_and_pending_state_block_old_and_unissued_credential_holders(
+        self,
+    ) -> None:
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.assertEqual(self.store.transfer("admitted"), "active")
         self.f.credential(AGENT, 1)
@@ -170,7 +174,7 @@ class LeaseCredentialTests(unittest.TestCase):
                 self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assertEqual((self.adapters.reads, self.adapters.injections), (1, 1))
 
-    def test_revocation_after_read_releases_without_injecting(self):
+    def test_revocation_after_read_releases_without_injecting(self) -> None:
         self.f.credential()
         self.adapters.after_read = lambda: setattr(self.f, "allowed", False)
         with self.assertRaises(Denied):
@@ -181,20 +185,20 @@ class LeaseCredentialTests(unittest.TestCase):
         )
         self.assertFalse(self.f.active)
 
-    def test_current_callback_cannot_extend_deadline(self):
+    def test_current_callback_cannot_extend_deadline(self) -> None:
         self.f.credential()
         self.f.at_current = lambda: setattr(self.f, "now", 20.0)
         with self.assertRaises(Denied):
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assert_no_secret_effects()
 
-    def test_cancellation_stays_sanitized_and_releases_lease(self):
+    def test_cancellation_stays_sanitized_and_releases_lease(self) -> None:
         self.f.credential()
 
-        def cancel():
+        def cancel() -> NoReturn:
             raise KeyboardInterrupt(CANARY)
 
-        def cleanup_error():
+        def cleanup_error() -> NoReturn:
             raise RuntimeError(CANARY)
 
         self.adapters.at_inject = cancel
@@ -211,14 +215,16 @@ class LeaseCredentialTests(unittest.TestCase):
         self.f.transition("takeover", AGENT, HUMAN, 1)
         self.assertEqual(self.store.transfer("admitted"), "active")
 
-    def test_closed_store_denies_before_vault(self):
+    def test_closed_store_denies_before_vault(self) -> None:
         self.store.close()
         self.f.credential()
         with self.assertRaises(Denied):
             self.adapters.resolver(self.store).resolve_and_inject("admitted")
         self.assert_no_secret_effects()
 
-    def test_other_process_transfer_waits_for_release_and_physical_guard_exit(self):
+    def test_other_process_transfer_waits_for_release_and_physical_guard_exit(
+        self,
+    ) -> None:
         code = """import sys,time,contextlib
 from pathlib import Path
 sys.path.insert(0,'tests')
@@ -275,7 +281,7 @@ finally:s.close()
         self.assertEqual(self.store.transfer("admitted"), "active")
         self.assertEqual(self.f.fences(), 2)
 
-    def test_source_mutation_exposes_wrong_holder_vault_and_injection(self):
+    def test_source_mutation_exposes_wrong_holder_vault_and_injection(self) -> None:
         source = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -284,15 +290,17 @@ finally:s.close()
                 root / "browser_runtime",
                 ignore=shutil.ignore_patterns("__pycache__"),
             )
+            (root / "tests").mkdir()
             for name in (
+                "__init__.py",
                 "test_lease_credentials.py",
                 "test_control_leases.py",
                 "test_guarded_effects.py",
             ):
-                shutil.copyfile(source / "tests" / name, root / name)
+                shutil.copyfile(source / "tests" / name, root / "tests" / name)
             code = """from pathlib import Path
-from test_lease_credentials import CredentialFixture,CredentialAdapters,Denied
-from test_control_leases import AGENT,HUMAN
+from tests.test_lease_credentials import CredentialFixture,CredentialAdapters,Denied
+from tests.test_control_leases import AGENT,HUMAN
 Path('data').mkdir()
 f=CredentialFixture('data');s=f.store();a=CredentialAdapters(f)
 f.transition('initialize',None,AGENT,0);s.transfer('admitted');f.credential(HUMAN,1)
@@ -301,7 +309,7 @@ except Denied:pass
 print(a.reads,a.injections);s.close()
 """
 
-            def run():
+            def run() -> str:
                 result = subprocess.run(
                     [sys.executable, "-c", code],
                     cwd=root,

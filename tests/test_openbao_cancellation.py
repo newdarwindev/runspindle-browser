@@ -9,9 +9,9 @@ import unittest
 from collections.abc import Iterator
 from unittest.mock import patch
 
-from browser_runtime.credentials import Cancelled as ResolverCancelled
 from browser_runtime.credentials import Denied as ResolverDenied
 from browser_runtime.credentials import Grant
+from browser_runtime.effects import Cancelled as ResolverCancelled
 from browser_runtime.openbao import Handle, Response, Vault
 from tests.test_openbao_http import (
     CANARY,

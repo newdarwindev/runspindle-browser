@@ -21,7 +21,9 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, cast
 
 from browser_runtime.openbao import HTTPS
 from tools.browser_cdp import DevTools
@@ -44,12 +46,14 @@ finally: os.killpg(os.getpgrp(),signal.SIGKILL)
 """
 
 
-def require(value, message="isolated account fixture unavailable"):
+def require(
+    value: object, message: str = "isolated account fixture unavailable"
+) -> None:
     if not value:
         raise RuntimeError(message)
 
 
-def isolated():
+def isolated() -> None:
     require(os.environ.get("RUNSPINDLE_ACCOUNT_E2E") == "1")
     require(os.geteuid() != 0)
     interfaces = {
@@ -60,7 +64,7 @@ def isolated():
     require(interfaces == {"lo"}, "loopback-only isolated worker required")
 
 
-def qualify(bao, chromium):
+def qualify(bao: str | Path, chromium: str | Path) -> None:
     isolated()
     require(
         hashlib.sha256(Path(bao).read_bytes()).hexdigest() == BAO_SHA256,
@@ -72,13 +76,13 @@ def qualify(bao, chromium):
     )
 
 
-def reserve_port():
+def reserve_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+        return cast(tuple[str, int], sock.getsockname())[1]
 
 
-def spawn(argv, home):
+def spawn(argv: list[str], home: Path) -> subprocess.Popen[bytes]:
     # A parent-held pipe and fixed deadline kill the complete process group even
     # if the test worker crashes. No inherited credentials, proxies or HOME.
     return subprocess.Popen(
@@ -91,7 +95,7 @@ def spawn(argv, home):
     )
 
 
-def stop(process):
+def stop(process: subprocess.Popen[bytes] | None) -> None:
     if process is None:
         return
     if process.stdin:
@@ -104,7 +108,7 @@ def stop(process):
     process.wait(timeout=5)
 
 
-def until(probe, timeout=8):
+def until(probe: Callable[[], object], timeout: float = 8) -> None:
     end = time.monotonic() + timeout
     while time.monotonic() < end:
         try:
@@ -117,10 +121,12 @@ def until(probe, timeout=8):
 
 
 class OpenBaoFixture:
-    def __init__(self, executable):
-        self.executable, self.process, self.directory = executable, None, None
+    def __init__(self, executable: str | Path) -> None:
+        self.executable = executable
+        self.process: subprocess.Popen[bytes] | None = None
+        self.directory: Path | None = None
 
-    def __enter__(self):
+    def __enter__(self) -> OpenBaoFixture:
         isolated()
         require(
             hashlib.sha256(Path(self.executable).read_bytes()).hexdigest() == BAO_SHA256
@@ -149,9 +155,9 @@ class OpenBaoFixture:
                 urllib.request.HTTPSHandler(context=self.context),
             )
 
-            def healthy():
+            def healthy() -> bool:
                 with opener.open(self.origin + "/v1/sys/health", timeout=1) as response:
-                    return response.status == 200
+                    return bool(response.status == 200)
 
             until(healthy)
             return self
@@ -159,7 +165,7 @@ class OpenBaoFixture:
             self.__exit__(None, None, None)
             raise
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
         # On uncertain stop, keep the fixture directory for controlled cleanup.
         # A Path has no auto-cleaning finalizer; do not delete beneath a process.
         stop(self.process)
@@ -168,7 +174,7 @@ class OpenBaoFixture:
             shutil.rmtree(self.directory)
             self.directory = None
 
-    def transport(self):
+    def transport(self) -> HTTPS:
         # Fixture trust is per-client, never installed in host/system trust.
         return HTTPS(self.origin, tls_context=self.context)
 
@@ -176,16 +182,18 @@ class OpenBaoFixture:
 class AccountSite:
     """A target site's ephemeral verifier/session/action state, not Browser data."""
 
-    def __init__(self, certificate, key):
-        self.accounts, self.sessions, self.actions = {}, {}, {}
+    def __init__(self, certificate: str | Path, key: str | Path) -> None:
+        self.accounts: dict[str, tuple[bytes, bytes]] = {}
+        self.sessions: dict[str, str] = {}
+        self.actions: dict[str, str] = {}
         self.login_attempts = 0
         site = self
 
         class Handler(http.server.BaseHTTPRequestHandler):
-            def log_message(self, *_args):
+            def log_message(self, format: str, *args: object) -> None:
                 pass
 
-            def send(self, status, body=b"", **headers):
+            def send(self, status: int, body: bytes = b"", **headers: str) -> None:
                 self.send_response(status)
                 self.send_header("Content-Length", str(len(body)))
                 self.send_header("Cache-Control", "no-store")
@@ -199,14 +207,15 @@ class AccountSite:
                 self.end_headers()
                 self.wfile.write(body)
 
-            def user(self):
+            def user(self) -> str | None:
                 raw = self.headers.get("Cookie", "")
                 fields = dict(
                     pair.strip().split("=", 1) for pair in raw.split(";") if "=" in pair
                 )
-                return site.sessions.get(fields.get("session"))
+                session = fields.get("session")
+                return None if session is None else site.sessions.get(session)
 
-            def do_GET(self):
+            def do_GET(self) -> None:
                 if self.path in ("/register", "/login"):
                     page = self.path[1:]
                     self.send(
@@ -246,7 +255,7 @@ class AccountSite:
                 else:
                     self.send(404)
 
-            def do_POST(self):
+            def do_POST(self) -> None:
                 if self.headers.get("Origin") != site.origin:
                     self.send(403)
                     return
@@ -293,12 +302,12 @@ class AccountSite:
                                 Set_Cookie=f"session={cookie}; Secure; HttpOnly; SameSite=Strict; Path=/",
                             )
                     elif self.path == "/action":
-                        require(
-                            set(values) == {"operation"} and self.user() is not None
-                        )
+                        user = self.user()
+                        if set(values) != {"operation"} or user is None:
+                            raise RuntimeError("isolated account fixture unavailable")
                         operation = values["operation"][0]
                         require(0 < len(operation) <= 128)
-                        old = site.actions.setdefault(operation, self.user())
+                        old = site.actions.setdefault(operation, user)
                         require(old == self.user())
                         self.send(200, b"accepted")
                     else:
@@ -310,8 +319,10 @@ class AccountSite:
             daemon_threads = False
             block_on_close = True
 
-            def get_request(self):
-                connection, address = super().get_request()
+            def get_request(self) -> tuple[socket.socket, tuple[str, int]]:
+                connection, address = cast(
+                    tuple[socket.socket, tuple[str, int]], super().get_request()
+                )
                 connection.settimeout(2)
                 return connection, address
 
@@ -323,11 +334,11 @@ class AccountSite:
         self.server.socket = context.wrap_socket(self.server.socket, server_side=True)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
 
-    def __enter__(self):
+    def __enter__(self) -> AccountSite:
         self.thread.start()
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
         self.server.shutdown()
         self.server.server_close()
         self.thread.join(timeout=3)
@@ -337,11 +348,13 @@ class AccountSite:
 class AccountBrowser:
     """Fresh sandboxed Chromium profile with only fixture-local CA trust."""
 
-    def __init__(self, executable, ca):
+    def __init__(self, executable: str | Path, ca: str | Path) -> None:
         self.executable, self.ca = executable, ca
-        self.process, self.directory, self.client = None, None, None
+        self.process: subprocess.Popen[bytes] | None = None
+        self.directory: Path | None = None
+        self.client: DevTools | None = None
 
-    def __enter__(self):
+    def __enter__(self) -> AccountBrowser:
         isolated()
         require(
             hashlib.sha256(Path(self.executable).read_bytes()).hexdigest()
@@ -446,7 +459,7 @@ class AccountBrowser:
             self.__exit__(None, None, None)
             raise
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
         close_error = False
         try:
             if self.client:
@@ -462,9 +475,14 @@ class AccountBrowser:
             self.directory = None
         require(not close_error, "browser connection cleanup failed")
 
-    def evaluate(self, expression):
-        require(self.client is not None)
-        result = self.client.call(
+    def connected_client(self) -> DevTools:
+        client = self.client
+        if client is None:
+            raise RuntimeError("isolated account fixture unavailable")
+        return client
+
+    def evaluate(self, expression: str) -> Any:
+        result = self.connected_client().call(
             "Runtime.evaluate",
             {"expression": expression, "returnByValue": True, "awaitPromise": True},
         )
@@ -474,16 +492,15 @@ class AccountBrowser:
         )
         return result["result"]["value"]
 
-    def navigate(self, url, page):
-        require(self.client is not None)
-        self.client.call("Page.navigate", {"url": url})
+    def navigate(self, url: str, page: str) -> None:
+        self.connected_client().call("Page.navigate", {"url": url})
         until(lambda: self.evaluate("document.body?.dataset.page") == page)
 
-    def observe_frame(self):
-        require(self.client is not None)
-        return self.client.call("Page.getFrameTree")["frameTree"]["frame"]
+    def observe_frame(self) -> dict[str, Any]:
+        frame = self.connected_client().call("Page.getFrameTree")["frameTree"]["frame"]
+        return cast(dict[str, Any], frame)
 
-    def fill(self, username, password):
+    def fill(self, username: str, password: str) -> None:
         # Only the trusted test helper handles these values; no trace/log output.
         self.evaluate(
             "document.querySelector('[name=username]').value=" + json.dumps(username)
@@ -492,13 +509,13 @@ class AccountBrowser:
             "document.querySelector('[name=password]').value=" + json.dumps(password)
         )
 
-    def submit(self, expected_page):
+    def submit(self, expected_page: str) -> None:
         self.evaluate("document.querySelector('form').submit(); true")
         until(lambda: self.evaluate("document.body?.dataset.page") == expected_page)
 
-    def request(self, route, body=None):
+    def request(self, route: str, body: dict[str, str] | None = None) -> Any:
         require(route.startswith("/") and not route.startswith("//"))
-        options = {
+        options: dict[str, str | dict[str, str]] = {
             "credentials": "same-origin",
             "cache": "no-store",
             "redirect": "error",

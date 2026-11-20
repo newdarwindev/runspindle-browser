@@ -40,7 +40,7 @@ class Fixture:
         self.allowed = True
         self.calls: list[tuple[str, float]] = []
         self.tokens = 0
-        self.current = 1
+        self.current_version = 1
         self.deleted = ""
         self.destroyed = False
         self.response: Response | Exception | None = None
@@ -83,7 +83,7 @@ class Fixture:
             }
         else:
             data = {
-                "current_version": self.current,
+                "current_version": self.current_version,
                 "versions": {
                     "1": {"deletion_time": self.deleted, "destroyed": self.destroyed}
                 },
@@ -191,7 +191,7 @@ class OpenBaoTests(unittest.TestCase):
 
     def test_rotation_deletion_destruction_expiry_and_forget(self) -> None:
         for field, value in [
-            ("current", 2),
+            ("current_version", 2),
             ("deleted", "2026-01-01T00:00:00Z"),
             ("destroyed", True),
             ("now", 20.0),

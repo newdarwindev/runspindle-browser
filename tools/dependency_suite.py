@@ -13,12 +13,13 @@ import importlib.metadata
 import io
 import json
 import os
-from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
 import sys
 import unittest
+from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -37,7 +38,7 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def inventory() -> dict:
+def inventory() -> dict[str, Any]:
     from browser_testing.chromium_effect_site import ENGINE, ENGINE_SHA256
 
     blockers = []
@@ -136,14 +137,14 @@ def worker() -> int:
     return 0 if passed else 1
 
 
-def source_hashes() -> dict:
+def source_hashes() -> dict[str, str]:
     paths: list[Path] = []
     for directory in ("browser_runtime", "browser_testing", "tests", "tools"):
         paths.extend((ROOT / directory).glob("*.py"))
     return {str(path.relative_to(ROOT)): digest(path) for path in sorted(paths)}
 
 
-def run_components() -> list[dict]:
+def run_components() -> list[dict[str, Any]]:
     from tools.qualify_effect_reconciliation import run_mode
 
     require_isolation()
@@ -183,7 +184,7 @@ def main() -> int:
         return worker()
     if args.report is None:
         parser.error("--report is required")
-    report = {
+    report: dict[str, object] = {
         "schema": "runspindle.browser.dependency-suite.v1",
         "inventory": inventory(),
         "source_hashes": source_hashes(),
