@@ -53,6 +53,20 @@ class ControlAuthority(Protocol):
     def acquire(self) -> ContextManager[ControlGuard]: ...
 
 
+def _closure_snapshot(observed: object) -> tuple[dict[str, object], float] | None:
+    if (
+        type(observed) is not FenceObservation
+        or type(observed.transfer) is not Transfer
+        or observed.previous_inputs_closed is not True
+    ):
+        return None
+    try:
+        observed.transfer.validate()
+        return asdict(observed.transfer), _time(observed.observed_at)
+    except (TypeError, ValueError):
+        return None
+
+
 def core_scope(target: Target) -> bytes:
     """Core serde_json canonical map bytes; leave legacy _scope unchanged."""
     target.validate()
@@ -128,8 +142,15 @@ class ControlPeer:
         if not 0 < self._max_age <= 300:
             raise ValueError
 
-    def _check(self, guard: ControlGuard, grant: Transfer | Recovery) -> None:
+    def _check(
+        self,
+        guard: ControlGuard,
+        grant: Transfer | Recovery,
+        admitted: dict[str, object],
+    ) -> float:
         grant.validate()
+        if asdict(grant) != admitted:
+            raise ValueError
         transfer = grant if type(grant) is Transfer else cast(Recovery, grant).transfer
         if transfer.action == "handback" and guard.released(grant) is not True:
             raise ValueError
@@ -143,15 +164,20 @@ class ControlPeer:
         if guard.current(grant) is not True:
             raise ValueError
         observed = guard.observe()
-        if type(observed) is not Observation or _scope(observed.target) != _scope(
-            transfer.target
-        ):
+        if type(observed) is not Observation or type(observed.target) is not Target:
             raise ValueError
-        now = _time(self._clock())
+        observed.target.validate()
+        if _scope(observed.target) != _scope(transfer.target):
+            raise ValueError
+        now: float = _time(self._clock())
         if not 0 <= now - _time(observed.observed_at) <= self._max_age or now >= _time(
             grant.deadline
         ):
             raise ValueError
+        grant.validate()
+        if asdict(grant) != admitted:
+            raise ValueError
+        return now
 
     def exchange(self, raw: bytes, ticket: object, *, retained_payload: bytes) -> bytes:
         """One constrained request; Core supplies canonical bytes out of band.
@@ -188,28 +214,29 @@ class ControlPeer:
                         if type(grant) is Transfer
                         else cast(Recovery, grant).transfer
                     )
+                    grant.validate()
                     if transfer.target != request.target:
                         raise ValueError
                     matches(retained_payload, transfer)
-                    self._check(guard, grant)
+                    admitted_binding = asdict(grant)
+                    admitted_transfer = asdict(transfer)
+                    self._check(guard, grant, admitted_binding)
                     if request.action == "dispatch":
                         self._backend.fence(transfer, guard)
-                        self._check(guard, grant)
+                        self._check(guard, grant, admitted_binding)
                         # Submission evidence never activates ownership here.
                     else:
                         observation = self._inspector.inspect(
                             cast(Recovery, grant), guard
                         )
-                        self._check(guard, grant)
+                        closure = _closure_snapshot(observation)
+                        now = self._check(guard, grant, admitted_binding)
                         if (
-                            type(observation) is FenceObservation
-                            and observation.transfer == transfer
-                            and observation.previous_inputs_closed is True
-                            and 0
-                            <= _time(self._clock()) - _time(observation.observed_at)
-                            <= self._max_age
+                            closure is not None
+                            and closure[0] == admitted_transfer
+                            and 0 <= now - closure[1] <= self._max_age
+                            and _closure_snapshot(observation) == closure
                         ):
-                            self._check(guard, grant)
                             outcome = "confirmed"
                     failed = False
                 except BaseException as error:
