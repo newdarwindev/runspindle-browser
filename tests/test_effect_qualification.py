@@ -113,7 +113,10 @@ class QualificationProcessCleanup(unittest.TestCase):
     @staticmethod
     def alive(pid: int) -> bool:
         path = pathlib.Path(f"/proc/{pid}/stat")
-        return path.exists() and path.read_text().split()[2] != "Z"
+        try:
+            return path.read_text().split()[2] != "Z"
+        except FileNotFoundError:
+            return False
 
     @staticmethod
     def pid(path: pathlib.Path) -> int:
@@ -127,18 +130,33 @@ class QualificationProcessCleanup(unittest.TestCase):
     def test_exited_leader_cannot_leave_descendant_holding_output(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             path = pathlib.Path(temp) / "pid"
-            code = (
-                "import os,time,pathlib; pid=os.fork(); "
-                f"path=pathlib.Path({str(path)!r}); "
-                "path.write_text(str(os.getpid())) if pid==0 else None; "
-                "time.sleep(30) if pid==0 else None"
-            )
+            # The leader exits only after the descendant has published its PID.
+            code = f"""
+import os
+import pathlib
+import time
+
+reader, writer = os.pipe()
+if os.fork() == 0:
+    os.close(reader)
+    pathlib.Path({str(path)!r}).write_text(str(os.getpid()))
+    os.close(writer)
+    time.sleep(30)
+else:
+    os.close(writer)
+    os.read(reader, 1)
+"""
             with patch.object(
                 MODULE, "worker_command", return_value=[sys.executable, "-c", code]
             ):
                 with self.assertRaisesRegex(RuntimeError, "output incomplete"):
                     MODULE.run_mode(False)
-            self.assertFalse(self.alive(self.pid(path)))
+            pid = self.pid(path)
+            deadline = time.monotonic() + 5
+            # The output pipe can close before the kernel reports process exit.
+            while self.alive(pid) and time.monotonic() < deadline:
+                time.sleep(0.02)
+            self.assertFalse(self.alive(pid))
 
     def test_sigterm_cleans_running_owned_worker(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
