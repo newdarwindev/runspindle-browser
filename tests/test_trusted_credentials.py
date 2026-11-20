@@ -188,6 +188,29 @@ class TrustedCredentialsTests(unittest.TestCase):
             adapter = Adapters()
             self.denied(adapter, ticket=ticket)
 
+    def test_authority_cannot_change_reference_before_vault_read(self) -> None:
+        adapter = Adapters()
+
+        def current(*args: object) -> bool:
+            object.__setattr__(adapter.grant, "reference", "credential:changed")
+            return True
+
+        with patch.object(adapter, "current", side_effect=current):
+            self.denied(adapter)
+
+    def test_version_callback_cannot_rebind_reference_before_injection(self) -> None:
+        adapter = Adapters()
+        original = adapter.current
+
+        def current(*args: object) -> bool:
+            if len(args) == 2:
+                object.__setattr__(adapter.grant, "reference", "credential:changed")
+            return original(*args)
+
+        with patch.object(adapter, "current", side_effect=current):
+            self.denied(adapter, reads=1)
+        self.assertEqual(adapter.calls[-2:], ["release", "fence_closed"])
+
     def test_wrong_bindings_deny_before_read(self) -> None:
         for name, value in (
             ("account", "other"),
