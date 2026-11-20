@@ -90,3 +90,36 @@ and a later restore, zero discard key reads, unrelated-profile survival, scope a
 epoch rejection, stale replay, pending fences, lock contention, terminal forget,
 tombstone ordering, failure sanitation and explicit close behavior. They do not
 qualify real browser/quiescence authority or active-session integration.
+
+## Authority between recursive removals
+
+The legacy directory helper rechecks the exact current and quiescent guard
+before every file unlink and directory removal. This applies to explicit discard,
+permanent forget and the existing recovery paths that clean up staged or retired
+generations. If authority is lost after a removal, the helper leaves the rest of
+the tree alone and keeps the recorded phase. Fresh exact admission can resume
+the existing cleanup. Permanent forget keeps its separate ciphertext tombstone.
+These checks rely on the trusted guard for current authority and quiescence.
+
+The regressions withdraw authority immediately after the first successful
+plaintext unlink. The discard case independently sees a remaining sibling file,
+preserved encrypted state and successful cleanup in a fresh process. The forget
+case independently sees the empty nested directory retained, the terminal
+tombstone and later cleanup under renewed authority. Removing either pre-removal
+guard separately fails the corresponding regression.
+
+Run `python3 -B -m unittest discover -s tests -p 'test_profile*.py'` and repeat
+with `-O`. Local verification against
+`fe5647c18e1b48962a51e0e993f61e37d4dbfae2` used Python 3.13.18 on macOS arm64
+with `TMPDIR=/private/tmp` for canonical temporary paths and
+with installed cryptography 50.0.2, cffi 2.1.1 and pycparser 3.0. All 127 profile
+tests passed in both modes. Ruff, static quality and scaffold passed. The
+fixtures use disposable files, real local SQLite and synthetic authority.
+Physical erasure, cross-machine guarantees and Host profile relocation remain
+separate qualification work.
+
+```text
+d400b023d237b6749d0f63a01f7801e7023b614886cfed8fa594ee3ba9e89678  browser_runtime/profile_directory.py
+84a05387f70d241a8d2ecbd1cb8ebdff3f24d08ed11616268e8d1e6e883b7bba  tests/test_profile_discard.py
+96f356c53e8b8c4fb2f8dca5d1a31036148e3004996467a55b238291812ae252  requirements-profile.txt
+```
