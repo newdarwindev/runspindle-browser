@@ -76,6 +76,10 @@ transport's raw exceptions.
 no plaintext fields and are accepted only by identity in their creating instance.
 At most 128 handles are retained. Secret field size is limited to 16 KiB. Grant deadline
 bounds handle usability only, not OpenBao credential retention or server TTL.
+`read` snapshots the validated grant. The same binding is required before and
+after authorization and transport callbacks, and stays attached to the opaque
+handle until release. Reusing the original grant object after its session, frame
+or other binding fields change cannot trigger metadata access or consumption.
 `current` re-reads metadata; failure removes the handle. `consume` re-reads metadata,
 checks grant, removes the handle before calling the trusted helper sink, and never
 retries an uncertain sink effect. `release` is idempotent; `forget` clears all local

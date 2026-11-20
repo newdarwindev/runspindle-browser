@@ -39,6 +39,20 @@ timestamp sampled before it would permit a vault read or helper call after the
 observation aged out or the grant expired. The same guard still covers the whole
 operation, and this change adds neither a new lease nor automatic retry authority.
 
+The resolver records the exact admitted target, reference and deadline before
+calling any further adapter. It compares that binding before and after each
+authority check. If a callback changes the grant, the resolver denies before the
+next vault or helper effect. A handle returned before denial still follows the
+normal release path.
+
+Four synthetic regressions against Browser main
+`fe5647c18e1b48962a51e0e993f61e37d4dbfae2` exercised grant changes before the
+resolver read, before injection, before an OpenBao request and after handle
+creation. Run `python3 -B -m unittest tests.test_trusted_credentials
+tests.test_openbao tests.test_resolver_freshness tests.test_openbao_consume`
+and repeat with `-OB`. Removing the final resolver grant comparison in a private
+test copy caused the forbidden vault read and failed its independent call count.
+
 The injected clock is trusted composition, defaults to `time.monotonic`, and must
 share the observation/deadline time base. Age zero through `max_age` inclusive is
 accepted; `now == deadline` is expired. Boolean/non-numeric/non-finite clock values

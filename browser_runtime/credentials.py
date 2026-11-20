@@ -57,6 +57,39 @@ class Grant:
     deadline: float
 
 
+def _time(value: object) -> float:
+    if type(value) not in (int, float) or not math.isfinite(cast(float, value)):
+        raise ValueError
+    return float(cast(float, value))
+
+
+def _target_binding(target: Target) -> tuple[str, str, str, str]:
+    if type(target) is not Target or type(target.frame_origin) is not str:
+        raise ValueError
+    target.validate()
+    return (
+        target.binding.encoded(),
+        target.native_session,
+        target.frame,
+        target.frame_origin,
+    )
+
+
+@dataclass(frozen=True, repr=False)
+class _GrantBinding:
+    target: tuple[str, str, str, str]
+    reference: str
+    deadline: float
+
+
+def _grant_binding(grant: Grant) -> _GrantBinding:
+    if type(grant) is not Grant or type(grant.reference) is not str:
+        raise ValueError
+    return _GrantBinding(
+        _target_binding(grant.target), grant.reference, _time(grant.deadline)
+    )
+
+
 @dataclass(frozen=True)
 class Observation:
     target: Target
@@ -139,31 +172,25 @@ class Resolver:
 
         self._lock = threading.Lock()
 
-    @staticmethod
-    def _time(value: object) -> float:
-        if type(value) not in (int, float) or not math.isfinite(cast(float, value)):
+    def _check(self, fence: Fence, grant: Grant, binding: _GrantBinding) -> None:
+        if _grant_binding(grant) != binding:
             raise ValueError
-        return float(cast(float, value))
-
-    def _check(self, fence: Fence, grant: Grant) -> None:
         observation = fence.observe()
         if (
             type(observation) is not Observation
-            or type(observation.target) is not Target
-            or observation.target != grant.target
+            or _target_binding(observation.target) != binding.target
         ):
             raise ValueError
-        observation.target.validate()
-        observed_at = self._time(observation.observed_at)
-        deadline = self._time(grant.deadline)
+        observed_at = _time(observation.observed_at)
         # Both trusted callbacks may block. Preserve observe -> current order,
         # but never carry a pre-callback freshness/deadline sample into vault use.
         current = fence.current(grant)
-        now = self._time(self._clock())
+        now = _time(self._clock())
         if (
             not 0 <= now - observed_at <= self._max_age
-            or now >= deadline
+            or now >= binding.deadline
             or current is not True
+            or _grant_binding(grant) != binding
         ):
             raise ValueError
 
@@ -184,33 +211,32 @@ class Resolver:
                 or type(self._expected_digest) is not str
                 or re.fullmatch(r"[0-9a-f]{64}", self._expected_digest) is None
                 or adapters.digest != self._expected_digest
-                or self._time(self._max_age) < 0
+                or _time(self._max_age) < 0
             ):
                 raise ValueError
             with adapters.authority.acquire() as fence:
                 try:
                     grant = fence.admit(ticket)
-                    if type(grant) is not Grant or type(grant.target) is not Target:
+                    if type(grant) is not Grant:
                         raise ValueError
-                    grant.target.validate()
+                    binding = _grant_binding(grant)
                     if (
-                        type(grant.reference) is not str
-                        or re.fullmatch(
-                            r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", grant.reference
+                        re.fullmatch(
+                            r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", binding.reference
                         )
                         is None
                     ):
                         raise ValueError
-                    self._check(fence, grant)
+                    self._check(fence, grant, binding)
                     handle = adapters.vault.read(grant)
                     try:
                         try:
                             # Check after retrieval AND version validation. No caller may
                             # replace target/ref/epoch or supply its own observations.
-                            self._check(fence, grant)
+                            self._check(fence, grant, binding)
                             if adapters.vault.current(handle, grant) is not True:
                                 raise ValueError
-                            self._check(fence, grant)
+                            self._check(fence, grant, binding)
                             if adapters.helper.inject(handle, grant, fence) is not True:
                                 raise ValueError
                         except BaseException as error:
