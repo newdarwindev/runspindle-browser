@@ -44,7 +44,7 @@ for path in (root / ".github/workflows").glob("*.yml"):
     direct_validation = (
         path.name == "validation.yml"
         and hashlib.sha256(path.read_bytes()).hexdigest()
-        == "111aa813600b8146716bc63617e21f96696059196b930aae5a14a0314394ee3d"
+        == "721c9ed67aa7682f5b49842aa8812e8dc1d511015d9cf7d674fd37241b05ffb1"
     )
     assert lanes and (
         direct_validation or all(lane in allowed_lanes for lane in lanes)
