@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
+import textwrap
 import unittest
 from contextlib import contextmanager
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any, Callable, Iterator, cast
+from unittest.mock import patch
 
+from browser_runtime import control_peer
 from browser_runtime.control_leases import (
     FenceObservation,
     FenceReceipt,
@@ -222,6 +226,67 @@ class ControlPeerTests(unittest.TestCase):
             self.assertEqual(h.exchange("reconcile"), "unknown")
             self.assertEqual(h.calls, 0)
 
+    def test_foreign_transfer_equality_cannot_confirm_closure(self) -> None:
+        h = Harness()
+        h.grant = Recovery(h.transfer, 30.0)
+        comparisons: list[object] = []
+
+        class Foreign:
+            def __eq__(self, value: object) -> bool:
+                comparisons.append(value)
+                return True
+
+        h.receipt = FenceObservation(cast(Transfer, Foreign()), True, 10.0)
+        self.assertEqual(h.exchange("reconcile"), "unknown")
+        self.assertEqual(comparisons, [])
+        self.assertEqual((h.calls, h.reads), (0, 1))
+
+    def test_guard_callback_cannot_replace_admitted_destination_before_fence(
+        self,
+    ) -> None:
+        h = Harness()
+
+        def change_destination(grant: object) -> bool:
+            object.__setattr__(grant, "destination", Holder("agent", "different-agent"))
+            return True
+
+        with patch.object(h, "current", side_effect=change_destination):
+            with self.assertRaises(Denied):
+                h.exchange()
+        self.assertEqual(h.calls, 0, "changed holder must never reach the native fence")
+
+    def test_removing_final_grant_check_reaches_the_native_fence(self) -> None:
+        source = textwrap.dedent(inspect.getsource(ControlPeer._check))
+        anchor = "if asdict(grant) != admitted:"
+        self.assertEqual(source.count(anchor), 2)
+        before, after = source.rsplit(anchor, 1)
+        scope = dict(vars(control_peer))
+        exec(before + "if False:" + after, scope)
+        with patch.object(ControlPeer, "_check", scope["_check"]):
+            result = unittest.TestResult()
+            ControlPeerTests(
+                "test_guard_callback_cannot_replace_admitted_destination_before_fence"
+            ).run(result)
+        self.assertEqual(len(result.failures), 1)
+        self.assertEqual(result.errors, [])
+        self.assertIn("changed holder must never reach", result.failures[0][1])
+
+    def test_closure_cannot_be_upgraded_by_later_authority_callback(self) -> None:
+        h = Harness()
+        h.grant = Recovery(h.transfer, 30.0)
+        receipt = FenceObservation(h.transfer, False, 10.0)
+        h.receipt = receipt
+
+        def upgrade_closure(_: object) -> bool:
+            if h.reads:
+                object.__setattr__(receipt, "previous_inputs_closed", True)
+            return True
+
+        with patch.object(h, "current", side_effect=upgrade_closure):
+            self.assertEqual(h.exchange("reconcile"), "unknown")
+        self.assertTrue(receipt.previous_inputs_closed)
+        self.assertEqual((h.calls, h.reads), (0, 1))
+
     def test_expired_observation_current_authority_and_deadline_denied(self) -> None:
         for kind in ("age", "authority", "deadline"):
             h = Harness()
@@ -290,8 +355,6 @@ class ControlPeerTests(unittest.TestCase):
         # Core has already retained unknown; this failure grants no retry.
 
     def test_no_database_constructor_during_control_exchange(self) -> None:
-        from unittest.mock import patch
-
         h = Harness()
         with patch("sqlite3.connect", side_effect=AssertionError("no Browser store")):
             self.assertEqual(h.exchange(), "unknown")
