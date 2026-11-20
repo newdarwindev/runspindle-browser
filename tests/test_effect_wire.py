@@ -289,13 +289,15 @@ j.close()
 
     def test_expectation_bypass_mutants_fail_named_regressions(self) -> None:
         source = Path(__file__).resolve().parents[1]
-        for anchor, case in [
+        for anchor, replacement, case in [
             (
-                "or expected_target != grant.target",
+                "expected_target != grant.target",
+                "False",
                 "test_target_fields_cannot_retarget_authenticated_grant",
             ),
             (
                 "or expected_digest != grant.payload_digest",
+                "",
                 "test_reconcile_requires_exact_digest_and_target_before_readback",
             ),
         ]:
@@ -326,7 +328,7 @@ j.close()
                 module = root / "browser_runtime/guarded_peer.py"
                 original = module.read_text()
                 self.assertEqual(original.count(anchor), 1)
-                module.write_text(original.replace(anchor, ""))
+                module.write_text(original.replace(anchor, replacement))
                 mutant = subprocess.run(
                     command, cwd=root, capture_output=True, text=True, timeout=15
                 )
