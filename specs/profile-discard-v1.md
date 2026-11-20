@@ -110,11 +110,13 @@ guard separately fails the corresponding regression.
 
 Run `python3 -B -m unittest discover -s tests -p 'test_profile*.py'` and repeat
 with `-O`. Local verification against
-`fe5647c18e1b48962a51e0e993f61e37d4dbfae2` used Python 3.13.18 on macOS arm64
-with `TMPDIR=/private/tmp` for canonical temporary paths and
-with installed cryptography 50.0.2, cffi 2.1.1 and pycparser 3.0. All 127 profile
-tests passed in both modes. Ruff, static quality and scaffold passed. The
-fixtures use disposable files, real local SQLite and synthetic authority.
+`fe5647c18e1b48962a51e0e993f61e37d4dbfae2` used Python 3.13.18 on macOS arm64,
+`TMPDIR=/private/tmp`, cryptography 50.0.2, cffi 2.1.1 and pycparser 3.0.
+All 127 profile tests passed in both modes. Ruff, static quality and scaffold
+passed. Full discovery ran 616 tests in each mode, with 604 passes, 10 skips
+and two errors reproduced on the unchanged base. The errors concern the
+Linux SQLite library path and the committed-test diagnostics fixture.
+The profile fixtures use disposable files, real local SQLite and synthetic authority.
 Physical erasure, cross-machine guarantees and Host profile relocation remain
 separate qualification work.
 
