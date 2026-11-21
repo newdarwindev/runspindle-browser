@@ -20,7 +20,7 @@ import sys
 import threading
 import time
 import unittest
-from typing import Any, cast
+from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SUITES = (
@@ -37,6 +37,10 @@ SUITES = (
 LIMIT = 1_048_576
 
 
+class QualificationUnavailable(RuntimeError):
+    """A required local qualification input could not be read."""
+
+
 def check(value: Any, message: str) -> None:
     if not value:
         raise RuntimeError(message)
@@ -44,35 +48,42 @@ def check(value: Any, message: str) -> None:
 
 def qualify_environment() -> dict[str, Any]:
     check(os.geteuid() != 0, "qualification worker must be unprivileged")
+    try:
+        network_devices = pathlib.Path("/proc/self/net/dev").read_text()
+    except OSError:
+        raise QualificationUnavailable(
+            "qualification network namespace unavailable"
+        ) from None
     interfaces = {
         line.split(":", 1)[0].strip()
-        for line in pathlib.Path("/proc/self/net/dev").read_text().splitlines()
+        for line in network_devices.splitlines()
         if ":" in line
     }
     check(interfaces == {"lo"}, "requires isolated loopback-only network namespace")
-    expected = json.loads(
-        (ROOT / "docs/effect-reconciliation-toolchain.json").read_text()
-    )
+    try:
+        expected = json.loads(
+            (ROOT / "docs/effect-reconciliation-toolchain.json").read_text()
+        )
+    except OSError:
+        raise QualificationUnavailable(
+            "toolchain pin unavailable: manifest unreadable"
+        ) from None
     sqlite_extension = getattr(_sqlite3, "__file__", None)
-    check(
-        isinstance(sqlite_extension, str),
-        "toolchain pin unavailable: SQLite extension is built-in",
-    )
+    if not isinstance(sqlite_extension, str):
+        raise QualificationUnavailable(
+            "toolchain pin unavailable: SQLite extension is built-in"
+        )
     observed = {
         "python_version": sys.version.split()[0],
-        "python_sha256": hashlib.sha256(
-            pathlib.Path(sys.executable).resolve().read_bytes()
-        ).hexdigest(),
+        "python_sha256": toolchain_digest(pathlib.Path(sys.executable).resolve()),
         "sqlite_version": sqlite3.sqlite_version,
-        "sqlite3_extension_sha256": hashlib.sha256(
-            pathlib.Path(cast(str, sqlite_extension)).read_bytes()
-        ).hexdigest(),
-        "sqlite3_library_sha256": hashlib.sha256(
-            pathlib.Path("/usr/lib/x86_64-linux-gnu/libsqlite3.so.0").read_bytes()
-        ).hexdigest(),
+        "sqlite3_extension_sha256": toolchain_digest(pathlib.Path(sqlite_extension)),
+        "sqlite3_library_sha256": toolchain_digest(
+            pathlib.Path("/usr/lib/x86_64-linux-gnu/libsqlite3.so.0")
+        ),
     }
     check(
-        all(observed[key] == expected[key] for key in observed),
+        all(value == expected.get(key) for key, value in observed.items()),
         "toolchain pin mismatch",
     )
     return {
@@ -80,6 +91,15 @@ def qualify_environment() -> dict[str, Any]:
         "interfaces": sorted(interfaces),
         "source_base": expected["source_base"],
     }
+
+
+def toolchain_digest(path: pathlib.Path) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        raise QualificationUnavailable(
+            "toolchain pin unavailable: binary unreadable"
+        ) from None
 
 
 def inputs() -> dict[str, str]:
@@ -274,4 +294,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        exit_code = main()
+    except QualificationUnavailable as unavailable:
+        print(json.dumps({"status": "blocked", "reason": str(unavailable)}))
+        exit_code = 2
+    raise SystemExit(exit_code)
