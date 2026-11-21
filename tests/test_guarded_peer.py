@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from dataclasses import replace
 from unittest.mock import patch
 
+from browser_runtime.credentials import Observation
 from browser_runtime.effect_wire import Receiver
 from browser_runtime.effects import Cancelled, Denied, Readback
 from browser_runtime.guarded_peer import Grant, Guard, GuardedPeer
@@ -98,6 +99,61 @@ class StatelessPeerTests(unittest.TestCase):
         with patch.object(self.f, "submit", revoke), self.assertRaises(Denied):
             self.peer.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 1)  # external owner must retain unknown
+
+    def test_current_callback_cannot_retarget_the_admitted_binding(self) -> None:
+        target = replace(TARGET, binding=replace(TARGET.binding))
+        self.f.grant = replace(self.f.grant, target=target)
+        self.f.observed = target
+        self.f.at_current = lambda: object.__setattr__(target.binding, "tab", "other")
+        with self.assertRaises(Denied):
+            self.peer.dispatch("admitted", PAYLOAD)
+        self.assertEqual((self.f.effects(), self.f.reads), (0, 0))
+
+    def test_current_callback_cannot_rewrite_the_observed_clock(self) -> None:
+        def fresh() -> Observation:
+            observation = Observation(TARGET, 10.0)
+            self.f.at_current = lambda: object.__setattr__(
+                observation, "observed_at", 0.0
+            )
+            return observation
+
+        with (
+            patch.object(self.f, "observe", fresh),
+            self.assertRaises(Denied),
+        ):
+            self.peer.dispatch("admitted", PAYLOAD)
+        self.assertEqual((self.f.effects(), self.f.reads), (0, 0))
+
+    def test_final_authority_callback_cannot_change_readback_evidence(self) -> None:
+        self.f.grant = replace(self.f.grant, action="reconcile")
+        original = self.f.readback
+
+        def changed(grant: Grant, guard: Guard) -> Readback:
+            observed = original(grant, guard)
+            self.f.at_current = lambda: object.__setattr__(
+                observed, "evidence_digest", "b" * 64
+            )
+            return observed
+
+        with patch.object(self.f, "readback", changed):
+            self.assertEqual(self.peer.reconcile("admitted"), "unknown")
+        self.assertEqual((self.f.effects(), self.f.reads), (0, 1))
+
+    def test_readback_digest_requires_plain_text_without_host_equality(self) -> None:
+        self.f.grant = replace(self.f.grant, action="reconcile")
+        comparisons: list[object] = []
+
+        class PretendDigest:
+            def __eq__(self, other: object) -> bool:
+                comparisons.append(other)
+                return True
+
+        readback = Readback(TARGET.binding, DIGEST, "confirmed", "a" * 64)
+        object.__setattr__(readback, "payload_digest", PretendDigest())
+        with patch.object(self.f, "readback", return_value=readback):
+            self.assertEqual(self.peer.reconcile("admitted"), "unknown")
+        self.assertEqual(comparisons, [])
+        self.assertEqual(self.f.effects(), 0)
 
     def test_suppressed_cancellation_stays_redacted(self) -> None:
         f = self.f
