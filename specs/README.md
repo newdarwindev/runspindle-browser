@@ -119,3 +119,7 @@ consent and real browser/authority integration remain explicit acceptance gaps.
 
 [Content-free credential observations](telemetry-v1.md) add a bounded default-off
 producer. Browser SDK export and Collector qualification remain separate.
+
+[Stateless passive physical observation](stateless-passive-observation-v1.md)
+binds historical browser metadata to the selected target without issuing a
+control capability. Core remains the owner of durable control state.
