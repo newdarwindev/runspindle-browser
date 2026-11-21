@@ -498,6 +498,64 @@ print(json.dumps([f.service().run(f.ticket), f.posts, f.captures]))
         self.assertNotIn(CANARY, str(caught.exception))
         self.assertEqual(f.posts, 0)
 
+    def test_readback_only_rejects_external_submission_before_capture(self) -> None:
+        f = self.f
+        denied: list[str] = []
+
+        class IncorrectOwner:
+            def execute(self, **kwargs: Unpack[ExecutionArgs]) -> Outcome:
+                try:
+                    kwargs["submit"](kwargs["binding"], kwargs["payload"])
+                except ValueError:
+                    denied.append("submit")
+                return "confirmed"
+
+        service = f.service()
+        service.effects = IncorrectOwner()
+        self.assertEqual(service.run(f.ticket, reconcile_only=True), "unknown")
+        self.assertEqual(denied, ["submit"])
+        self.assertEqual((f.captures, f.tokens, f.gets, f.posts), (0, 0, 0, 0))
+
+    def test_external_owner_cannot_submit_twice_after_lost_reply(self) -> None:
+        f = self.f
+        f.lost = True
+        events: list[str] = []
+
+        class RepeatingOwner:
+            def execute(self, **kwargs: Unpack[ExecutionArgs]) -> Outcome:
+                binding, payload = kwargs["binding"], kwargs["payload"]
+                try:
+                    kwargs["submit"](binding, payload)
+                except TimeoutError:
+                    events.append("lost")
+                try:
+                    kwargs["submit"](binding, payload)
+                except ValueError:
+                    events.append("duplicate_denied")
+                receipt = kwargs["observe"](binding, kwargs["target_digest"])
+                events.append(receipt.outcome)
+                return receipt.outcome
+
+        service = f.service()
+        service.effects = RepeatingOwner()
+        self.assertEqual(service.run(f.ticket), "unknown")
+        self.assertEqual(events, ["lost", "duplicate_denied", "confirmed"])
+        self.assertEqual((f.captures, f.tokens, f.gets, f.posts), (1, 2, 1, 1))
+        self.assertEqual(len(f.records), 1)
+
+    def test_owner_cannot_report_new_write_saved_without_readback(self) -> None:
+        f = self.f
+
+        class AcknowledgementOnlyOwner:
+            def execute(self, **kwargs: Unpack[ExecutionArgs]) -> Outcome:
+                kwargs["submit"](kwargs["binding"], kwargs["payload"])
+                return "confirmed"
+
+        service = f.service()
+        service.effects = AcknowledgementOnlyOwner()
+        self.assertEqual(service.run(f.ticket), "unknown")
+        self.assertEqual((f.captures, f.tokens, f.gets, f.posts), (1, 1, 0, 1))
+
     def test_external_owner_cannot_reuse_callbacks_after_return(self) -> None:
         f = self.f
         retained: ExecutionArgs | None = None

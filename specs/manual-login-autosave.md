@@ -58,10 +58,15 @@ Autosave service with the same operation and target must not dispatch again.
 Browser does not implement that persistence guarantee. Transitional tests adapt
 the legacy Journal under an external fixture owner; production relocation remains
 work tracked in the storage inventory.
-`reconcile_only=True` never captures or writes. New attempts/operation IDs require
-fresh authorized intent, not a way to evade uncertainty. External-owner qualification is separate from a distributed browser fence.
-All external execution callbacks must complete synchronously under the held fence;
-the owner cannot retain them for background use.
+`reconcile_only=True` never captures or writes. The helper rejects submission
+in readback-only mode and permits at most one submission callback per run,
+including after a lost response. An executor that catches either rejection
+cannot report the operation as saved. A new submission requires a confirming
+readback through the helper before the executor can report it as saved.
+Previously confirmed durable outcomes can still replay without a new submission.
+New attempts and operation IDs require fresh authorized intent.
+All external execution callbacks must complete synchronously under the held fence.
+External-owner qualification remains separate from a distributed browser fence.
 
 ## User-facing outcomes and secret boundary
 
@@ -86,6 +91,13 @@ versioned protocol peer. It exercises zero writes on scope/consent/login failure
 CAS conflicts, lost acknowledgments, secret-free persistence, no replay, account
 switches, cancellation and an observation-check mutation. See the acceptance
 receipt for exact commands and limits. No real password or service was contacted.
+Executor-boundary regressions count zero capture and provider calls on a forbidden
+readback-only submission, one submission after a lost reply, and no reported save
+on an acknowledgement alone.
+
+Run the bounded synthetic helper and transport tests with
+`python3.15 -B -m unittest discover -s tests -p 'test_autosave*.py'`.
+Repeat with `-O` to exercise the same runtime checks with Python assertions disabled.
 
 This is additive to Browser #6/#13 (credential use), #7/#14 (profiles), #9/#16
 (control), and #1 (fixtures); it closes none of their broader acceptance gates.
