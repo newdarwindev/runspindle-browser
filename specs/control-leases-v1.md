@@ -40,6 +40,14 @@ holds the gate while the backend fences/drains the previous inputs. Only an exac
 `FenceReceipt` with `previous_inputs_closed is True`, followed by fresh authority
 and observations, can commit active destination ownership.
 
+The second writer transaction checks the exact pending row before calling the
+backend. If a fresh process has already confirmed that exact transition through
+recovery, the sender returns its retained active state without another fence.
+A changed row or transfer is denied. The grant must also match the committed
+transition after the backend and authority callbacks before activation.
+The backend receipt must prove closure both when received and after the final
+authority check. Incomplete closure keeps the transfer pending.
+
 For handback, `released(transfer)` must authenticate the exact current human
 holder's release, target and epoch. It is checked before reservation and again
 before backend fencing, with freshness rechecked after each callback. The backend
