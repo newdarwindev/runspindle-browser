@@ -13,7 +13,7 @@ import os
 import threading
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import (
     Callable,
@@ -144,6 +144,41 @@ class Authority(Protocol):
     def acquire(self) -> ContextManager[Guard]: ...
 
 
+def _observation_stamp(value: object) -> tuple[str, float]:
+    require(type(value) is Observation)
+    observed = cast(Observation, value)
+    require(type(observed.target) is Target)
+    observed.target.validate()
+    require(
+        type(observed.observed_at) in (int, float)
+        and math.isfinite(observed.observed_at)
+    )
+    return encoded(asdict(observed.target)), observed.observed_at
+
+
+def _check_observation(
+    grant: Grant, guard: Guard, clock: Callable[[], float], max_age: float
+) -> None:
+    admitted = encoded(asdict(grant))
+    deadline = grant.deadline
+    require(guard.current(grant) is True and guard.quiescent(grant) is True)
+    observed = guard.observe()
+    stamp = _observation_stamp(observed)
+    target, observed_at = stamp
+    # Observation may discover revocation or a resumed writer. Revalidate
+    # before effects, then sample time after every trusted callback.
+    require(guard.current(grant) is True and guard.quiescent(grant) is True)
+    now = clock()
+    require(type(now) in (int, float) and math.isfinite(now))
+    require(
+        encoded(asdict(grant)) == admitted
+        and target == encoded(asdict(grant.target))
+        and 0 <= now - observed_at <= max_age
+        and now < deadline
+        and _observation_stamp(observed) == stamp
+    )
+
+
 @dataclass(frozen=True, repr=False)
 class Key:
     version: str
@@ -245,26 +280,7 @@ class Store:
             _fail("profile close failed")
 
     def _check(self, guard: Guard, grant: Grant) -> None:
-        # Trusted callbacks may block. Sample observation/time only after the
-        # authority/quiescence callbacks, never reuse a pre-callback timestamp.
-        require(guard.current(grant) is True and guard.quiescent(grant) is True)
-        observed = guard.observe()
-        # Observation may discover revocation or a resumed writer. Revalidate
-        # before effects, then sample time after every trusted callback.
-        require(guard.current(grant) is True and guard.quiescent(grant) is True)
-        now = self._clock()
-        require(type(now) in (int, float) and math.isfinite(now))
-        require(type(observed) is Observation and type(observed.target) is Target)
-        observed = cast(Observation, observed)
-        require(
-            type(observed.observed_at) in (int, float)
-            and math.isfinite(observed.observed_at)
-        )
-        observed.target.validate()
-        require(observed.target == grant.target)
-        require(
-            0 <= now - observed.observed_at <= self._max_age and now < grant.deadline
-        )
+        _check_observation(grant, guard, self._clock, self._max_age)
         self._location.check()
 
     def _begin(self, guard: Guard, grant: Grant) -> None:
