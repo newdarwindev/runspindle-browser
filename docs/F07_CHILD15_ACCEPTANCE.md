@@ -100,6 +100,8 @@ sudo -n unshare --net --fork sh -c 'ip link set lo up; exec runuser -u "$1" -- "
 
 Only the new disposable network namespace receives a loopback interface; host
 network configuration is not changed. Tests run as the invoking non-root user.
+If required namespace or toolchain files are unavailable, the command reports
+`blocked`, exits with status 2, and leaves the acceptance report unwritten.
 The runner refuses root, extra network interfaces or mismatched toolchain pins.
 The [recorded receipt](effect-reconciliation-acceptance.json) identifies exact source, fixture/configuration, toolchain/dependency bytes,
 commands, stdout/stderr digests and per-run outcomes. The selected lane uses an
