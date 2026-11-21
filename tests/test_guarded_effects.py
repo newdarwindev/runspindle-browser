@@ -188,6 +188,28 @@ print(j.dispatch('admitted',PAYLOAD)); j.close()
             self.j.dispatch("admitted", PAYLOAD)
         self.assertEqual(self.f.effects(), 0)
 
+    def test_changed_readback_during_authority_check_does_not_settle(self) -> None:
+        self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")
+        self.f.grant = replace(self.f.grant, action="reconcile")
+        original = self.f.readback
+
+        def changed(grant: Grant, guard: Guard) -> Readback:
+            observed = original(grant, guard)
+            self.f.at_current = lambda: object.__setattr__(
+                observed, "evidence_digest", "b" * 64
+            )
+            return observed
+
+        with patch.object(self.f, "readback", changed):
+            self.assertEqual(self.j.reconcile("admitted"), "unknown")
+        self.assertEqual((self.f.effects(), self.f.reads), (1, 1))
+        self.assertEqual(
+            self.j._journal.db.execute(
+                "SELECT outcome,evidence FROM operations"
+            ).fetchall(),
+            [("unknown", None)],
+        )
+
     def test_freshness_exact_age_is_inclusive_and_deadline_exclusive(self) -> None:
         self.f.now = 11.0
         self.assertEqual(self.j.dispatch("admitted", PAYLOAD), "unknown")

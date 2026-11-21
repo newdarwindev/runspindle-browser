@@ -102,6 +102,24 @@ class Readback:
     evidence_digest: str
 
 
+def _readback_receipt(
+    observed: object, encoded_binding: str, payload_digest: str
+) -> tuple[Outcome, str] | None:
+    if (
+        type(observed) is not Readback
+        or type(observed.binding) is not Binding
+        or Binding.encoded(observed.binding) != encoded_binding
+        or type(observed.payload_digest) is not str
+        or observed.payload_digest != payload_digest
+        or type(observed.outcome) is not str
+        or observed.outcome not in ("confirmed", "rejected")
+        or type(observed.evidence_digest) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", observed.evidence_digest) is None
+    ):
+        return None
+    return observed.outcome, observed.evidence_digest
+
+
 class Journal:
     """One actual SQLite store serializes dispatch and readback adapter calls.
 
@@ -300,6 +318,7 @@ class Journal:
     def _reconcile(
         self, binding: Binding, payload_digest: str, target_digest: str | None
     ) -> Outcome:
+        original_binding = binding.encoded()
         encoded = self._encoded(binding, target_digest)
         if re.fullmatch(r"[0-9a-f]{64}", payload_digest) is None:
             raise Denied("invalid digest")
@@ -319,22 +338,25 @@ class Journal:
         self._authorized(binding, payload_digest)
         try:
             observed = self.observe(binding, payload_digest)
-            if (
-                type(observed) is not Readback
-                or type(observed.binding) is not Binding
-                or observed.binding.encoded() != binding.encoded()
-                or observed.payload_digest != payload_digest
-                or type(observed.outcome) is not str
-                or observed.outcome not in ("confirmed", "rejected")
-                or re.fullmatch(r"[0-9a-f]{64}", observed.evidence_digest) is None
-            ):
+            receipt = _readback_receipt(observed, original_binding, payload_digest)
+            if receipt is None:
                 return "unknown"
         except Exception:
             return "unknown"
         self._authorized(binding, payload_digest)
+        try:
+            if (
+                binding.encoded() != original_binding
+                or _readback_receipt(observed, original_binding, payload_digest)
+                != receipt
+            ):
+                return "unknown"
+        except Exception:
+            return "unknown"
+        outcome, evidence = receipt
         self.db.execute(
             "UPDATE operations SET outcome=?, evidence=? WHERE operation=?",
-            (observed.outcome, observed.evidence_digest, binding.operation),
+            (outcome, evidence, binding.operation),
         )
         self.db.execute("COMMIT")
-        return observed.outcome
+        return outcome
