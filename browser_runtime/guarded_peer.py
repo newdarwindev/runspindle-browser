@@ -12,7 +12,7 @@ import math
 import re
 import threading
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Callable, ContextManager, NoReturn, Protocol, cast
 
 from browser_runtime.credentials import Observation, Target
@@ -22,6 +22,7 @@ from browser_runtime.effects import (
     Denied,
     Outcome,
     Readback,
+    _readback_receipt,
 )
 
 
@@ -70,6 +71,31 @@ def _time(value: object) -> float:
     return float(cast(float, value))
 
 
+def _target_snapshot(value: object) -> Target:
+    if type(value) is not Target or type(value.binding) is not Binding:
+        raise ValueError
+    target = replace(value, binding=replace(value.binding))
+    target.validate()
+    return target
+
+
+def _grant_snapshot(grant: Grant | None) -> Grant:
+    if (
+        type(grant) is not Grant
+        or type(grant.payload_digest) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", grant.payload_digest) is None
+        or type(grant.action) is not str
+        or grant.action not in ("dispatch", "reconcile")
+    ):
+        raise ValueError
+    return Grant(
+        _target_snapshot(grant.target),
+        grant.payload_digest,
+        grant.action,
+        _time(grant.deadline),
+    )
+
+
 def _fail(cancelled: bool) -> NoReturn:
     # Also clear an exception already active in the caller, not only our handlers.
     try:
@@ -109,35 +135,35 @@ class GuardedPeer:
             raise Denied("invalid observation age")
         self._grant: Grant | None = None
         self._guard: Guard | None = None
+        self._admitted: Grant | None = None
 
     def _check(self) -> tuple[Grant, Guard]:
         grant, guard = self._grant, self._guard
-        if type(grant) is not Grant or guard is None:
-            raise ValueError
-        if type(grant.target) is not Target:
-            raise ValueError
-        grant.target.validate()
+        admitted = self._admitted
         if (
-            type(grant.payload_digest) is not str
-            or re.fullmatch(r"[0-9a-f]{64}", grant.payload_digest) is None
-            or type(grant.action) is not str
-            or grant.action not in ("dispatch", "reconcile")
+            type(grant) is not Grant
+            or guard is None
+            or admitted is None
+            or _grant_snapshot(grant) != admitted
         ):
             raise ValueError
-        deadline = _time(grant.deadline)
         observation = guard.observe()
-        if type(observation) is not Observation or observation.target != grant.target:
+        if (
+            type(observation) is not Observation
+            or _target_snapshot(observation.target) != admitted.target
+            or _grant_snapshot(grant) != admitted
+        ):
             raise ValueError
-        if type(observation.target) is not Target:
-            raise ValueError
-        observation.target.validate()
         observed_at = _time(observation.observed_at)
         current = guard.current(grant)
         now = _time(self._clock())  # Both trusted callbacks may block.
         if (
             current is not True
             or not 0 <= now - observed_at <= self._max_age
-            or now >= deadline
+            or now >= admitted.deadline
+            or _grant_snapshot(grant) != admitted
+            or _target_snapshot(observation.target) != admitted.target
+            or _time(observation.observed_at) != observed_at
         ):
             raise ValueError
         return grant, guard
@@ -181,21 +207,23 @@ class GuardedPeer:
             self._check()
             return "unknown"
         try:
-            observed = self._readback(grant.target.binding, grant.payload_digest)
-            valid = (
-                type(observed) is Readback
-                and type(observed.binding) is Binding
-                and observed.binding == grant.target.binding
-                and observed.payload_digest == grant.payload_digest
-                and type(observed.outcome) is str
-                and observed.outcome in ("confirmed", "rejected")
-                and type(observed.evidence_digest) is str
-                and re.fullmatch(r"[0-9a-f]{64}", observed.evidence_digest) is not None
-            )
+            binding, digest = grant.target.binding, grant.payload_digest
+            encoded = binding.encoded()
+            observed = self._readback(binding, digest)
+            receipt = _readback_receipt(observed, encoded, digest)
         except Exception:
-            valid = False
+            self._check()
+            return "unknown"
         self._check()
-        return observed.outcome if valid else "unknown"
+        try:
+            if (
+                receipt is not None
+                and _readback_receipt(observed, encoded, digest) == receipt
+            ):
+                return receipt[0]
+        except Exception:
+            pass
+        return "unknown"
 
     def _run(
         self,
@@ -213,25 +241,25 @@ class GuardedPeer:
             try:
                 if self._authority is None or self._site is None:
                     raise ValueError
+                if expected_target is not None or expected_digest is not None:
+                    expected_target = _target_snapshot(expected_target)
+                    if type(expected_digest) is not str:
+                        raise ValueError
                 with self._authority.acquire() as guard:
                     try:
                         self._guard = guard
                         self._grant = guard.admit(ticket)
+                        self._admitted = _grant_snapshot(self._grant)
                         grant, _ = self._check()
                         if grant.action != action:
                             raise ValueError
                         # Optional caller expectation narrows authenticated admission;
                         # it never supplies authority or selects an adapter.
-                        if expected_target is not None or expected_digest is not None:
-                            if type(expected_target) is not Target:
-                                raise ValueError
-                            expected_target.validate()
-                            if (
-                                type(expected_digest) is not str
-                                or expected_target != grant.target
-                                or expected_digest != grant.payload_digest
-                            ):
-                                raise ValueError
+                        if expected_target is not None and (
+                            expected_target != grant.target
+                            or expected_digest != grant.payload_digest
+                        ):
+                            raise ValueError
                         if action == "dispatch":
                             if (
                                 type(payload) is not bytes
@@ -249,6 +277,7 @@ class GuardedPeer:
         finally:
             self._grant = None
             self._guard = None
+            self._admitted = None
             self._lock.release()
         if result is None or cancelled:
             _fail(cancelled)

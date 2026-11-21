@@ -25,6 +25,12 @@ outcome. Duplicate/restarted dispatch prevention belongs exclusively to Core.
 A caller which independently authorizes the same dispatch twice can cause two
 effects: this peer deliberately does not create a second replay ledger.
 
+Admission pins a detached copy of the full target, action, deadline and digest
+before invoking later callbacks. A changed grant or observation aborts before
+the next site effect. The final authority check cannot replace terminal readback
+evidence. A changed or malformed receipt stays unknown, including in the
+legacy journal's durable record.
+
 No authenticated general IPC, always-allow CLI or production issuer is added.
 The source aligns with Core PR57's existing wire/registry facade, but an actual
 application-owned Core-to-Python transport remains unimplemented. Autosave's
