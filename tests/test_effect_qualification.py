@@ -56,9 +56,44 @@ class QualificationPrerequisites(unittest.TestCase):
                     ),
                 ],
             ),
+            patch.object(MODULE.pathlib.Path, "read_bytes", return_value=b"fixture"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "toolchain pin"):
+            with self.assertRaisesRegex(RuntimeError, "toolchain pin mismatch"):
                 MODULE.qualify_environment()
+
+    def test_missing_sqlite_library_is_a_blocked_prerequisite(self) -> None:
+        def file_bytes(path: pathlib.Path) -> bytes:
+            if path.name == "libsqlite3.so.0":
+                raise FileNotFoundError("fixture library missing")
+            return b"fixture"
+
+        with (
+            patch.object(MODULE.os, "geteuid", return_value=1000),
+            patch.object(
+                MODULE.pathlib.Path, "read_text", side_effect=["lo: data\n", "{}"]
+            ),
+            patch.object(
+                MODULE.pathlib.Path, "read_bytes", autospec=True, side_effect=file_bytes
+            ),
+        ):
+            with self.assertRaisesRegex(
+                MODULE.QualificationUnavailable, "toolchain pin unavailable"
+            ):
+                MODULE.qualify_environment()
+
+    def test_missing_network_namespace_is_a_blocked_prerequisite(self) -> None:
+        with (
+            patch.object(MODULE.os, "geteuid", return_value=1000),
+            patch.object(
+                MODULE.pathlib.Path, "read_text", side_effect=FileNotFoundError
+            ),
+            patch.object(MODULE.pathlib.Path, "read_bytes") as toolchain,
+        ):
+            with self.assertRaisesRegex(
+                MODULE.QualificationUnavailable, "network namespace unavailable"
+            ):
+                MODULE.qualify_environment()
+            toolchain.assert_not_called()
 
     def test_builtin_sqlite_fails_closed_with_qualification_category(self) -> None:
         with (
@@ -68,7 +103,9 @@ class QualificationPrerequisites(unittest.TestCase):
                 MODULE.pathlib.Path, "read_text", side_effect=["lo: data\n", "{}"]
             ),
         ):
-            with self.assertRaisesRegex(RuntimeError, "toolchain pin unavailable"):
+            with self.assertRaisesRegex(
+                MODULE.QualificationUnavailable, "toolchain pin unavailable"
+            ):
                 MODULE.qualify_environment()
 
 
