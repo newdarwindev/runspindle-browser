@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
+from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
@@ -127,6 +128,59 @@ class DirectoryTests(unittest.TestCase):
                 self.fake.grant, self.fake, bundle(self.fake.grant.scope())
             )
         self.assertEqual(self.all_files(self.tree_path), before)
+
+    def test_forget_rejects_mismatched_tree_before_ciphertext_deletion(self) -> None:
+        self.seed()
+        self.assertEqual(self.run_action("save"), "stored")
+
+        def persisted() -> tuple[list[tuple[Any, ...]], list[tuple[Any, ...]]]:
+            with closing(sqlite3.connect(self.store_path / "profiles.sqlite3")) as db:
+                return (
+                    db.execute("SELECT * FROM profiles").fetchall(),
+                    db.execute("SELECT * FROM checkpoints").fetchall(),
+                )
+
+        before = persisted()
+        scopes = {
+            "principal": grant(
+                target=replace(BASE, binding=replace(BASE.binding, principal="other"))
+            ),
+            "account": grant(
+                target=replace(BASE, binding=replace(BASE.binding, account="other"))
+            ),
+            "profile": grant(profile="other"),
+            "top-origin": grant(
+                target=replace(
+                    BASE, binding=replace(BASE.binding, origin="https://other.example")
+                )
+            ),
+            "frame-origin": grant(
+                target=replace(BASE, frame_origin="https://other.example")
+            ),
+        }
+        for name, selection in scopes.items():
+            with self.subTest(scope=name):
+                path = self.root / name
+                path.mkdir(mode=0o700)
+                wrong_tree = DirectoryProfileIO(path, selection)
+                self.addCleanup(wrong_tree.close)
+                wrong_store = MaterializedStore(
+                    self.store_path, self.fake, self.fake.adapters().keys, wrong_tree
+                )
+                self.addCleanup(wrong_store.close)
+                self.fake.grant = grant("forget")
+                tree_before = self.all_files(path)
+                with patch.object(
+                    wrong_tree, "forget", wraps=wrong_tree.forget
+                ) as cleanup:
+                    with self.assertRaises(Denied):
+                        wrong_store.run("trusted-ticket")
+                    self.assertEqual(persisted(), before)
+                    cleanup.assert_not_called()
+                self.assertEqual(self.all_files(path), tree_before)
+
+        self.assertEqual(self.run_action("restore"), "delivered")
+        self.assertEqual(self.run_action("forget"), "forgotten")
 
     def test_malformed_bundles_never_write_plaintext_or_outside_root(self) -> None:
         good = json.loads(bundle(self.fake.grant.scope()))
