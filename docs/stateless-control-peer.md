@@ -33,6 +33,9 @@ are redacted, including context managers suppressing the original exception.
 
 The peer captures the validated transfer and recovery bindings at admission.
 Guard callbacks must preserve those fields before a native fence or confirmation.
+It also captures the physical browser scope and timestamp as one observation.
+The clock callback must preserve both, and freshness uses the captured timestamp.
+An altered frame or refreshed timestamp cannot justify a fence or confirmation.
 Readback captures a typed closure observation before rechecking current authority.
 Only the same exact observation, with closure already true and a timestamp fresh
 at that final check, can confirm. A foreign equality object or a closure flag
