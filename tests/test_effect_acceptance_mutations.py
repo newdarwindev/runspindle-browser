@@ -28,6 +28,16 @@ with tempfile.TemporaryDirectory() as temporary:
         if sys.argv[1]=='readback':
             journal.observe=lambda *_:Readback(replace(binding,account='other'),digest,'confirmed','a'*64)
             outcome=journal.reconcile(binding,digest)
+        elif sys.argv[1]=='changed_receipt':
+            receipt=Readback(binding,digest,'confirmed','a'*64)
+            def observe(*_):
+                def authorize(*_):
+                    object.__setattr__(receipt,'evidence_digest','b'*64)
+                    return True
+                journal.approve=authorize
+                return receipt
+            journal.observe=observe
+            outcome=journal.reconcile(binding,digest)
         else:outcome=dispatch
         print(json.dumps({'outcome':outcome,'effects':site.effects(),
                           'rows':journal.db.execute('SELECT outcome FROM operations').fetchall()}))
@@ -47,8 +57,14 @@ class AcceptanceMutationControls(unittest.TestCase):
             ),
             (
                 "readback",
-                "            if (\n                type(observed) is not Readback",
-                "            if False and (\n                type(observed) is not Readback",
+                "or Binding.encoded(observed.binding) != encoded_binding",
+                "or False",
+            ),
+            (
+                "changed_receipt",
+                "or _readback_receipt(observed, original_binding, payload_digest)\n"
+                "                != receipt",
+                "or False",
             ),
         )
         for name, anchor, replacement in cases:
