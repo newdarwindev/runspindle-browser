@@ -137,8 +137,9 @@ The base encrypted Store's `forget` behavior stays unchanged: ciphertext deletio
 and a permanent profile tombstone, without an IO callback. Use MaterializedStore
 when explicitly requesting the combined component behavior:
 
-1. Validate fresh forget admission and commit the encrypted Store's permanent
-   tombstone and ciphertext deletion first.
+1. Validate fresh forget admission and compare its exact scope to the configured
+   directory's immutable scope before committing the encrypted Store's permanent
+   tombstone and ciphertext deletion. A mismatch leaves both stores intact.
 2. Under the same trusted guard, persist the directory's terminal FORGOTTEN state.
 3. Remove all explicitly inventoried current, candidate and retiring generations,
    fsync the removals, and persist the empty terminal state.
@@ -153,6 +154,13 @@ Tests kill the process in that exact gap and assert zero directory preparation o
 a later restore. A fresh authorized forget may finish plaintext cleanup. The
 standalone trusted IO helper must never be treated as an alternative admission
 route, usable-session result or launcher.
+
+The directory scope precheck compares principal, account, profile, top-level
+origin and frame origin in memory. Directory health and cleanup are checked
+after the encrypted tombstone commits, so failures there still require fresh
+forget admission. The mismatched-directory regression checks persisted profile
+and checkpoint rows through a separate SQLite connection and observes zero
+directory forget calls. A correctly bound restore and forget follow the denial.
 
 FORGOTTEN persists even if recursive cleanup stops. The same root/profile cannot
 be re-enrolled or restored. It is not credential deletion, site-session revocation,

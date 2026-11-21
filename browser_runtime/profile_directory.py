@@ -357,9 +357,12 @@ class DirectoryProfileIO:
             require(written > 0)
             offset += written
 
+    def _require_scope(self, grant: Grant) -> None:
+        require(grant.scope() == self._scope)
+
     def _check(self, grant: Grant, guard: Guard) -> None:
         grant.validate()
-        require(grant.scope() == self._scope)
+        self._require_scope(grant)
         _check_observation(grant, guard, self._clock, self._max_age)
         fd = root_fd(self._path)
         try:
@@ -802,6 +805,7 @@ class MaterializedStore(Store):
         return super()._restore(adapters, guard, grant)
 
     def _forget(self, guard: Guard, grant: Grant) -> Result:
+        self._tree._require_scope(grant)
         super()._forget(guard, grant)  # Durable permanent tombstone precedes all IO.
         self._tree.forget(grant, guard)
         self._check(guard, grant)
