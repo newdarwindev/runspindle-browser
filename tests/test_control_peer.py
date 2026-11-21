@@ -300,6 +300,59 @@ class ControlPeerTests(unittest.TestCase):
                 h.exchange()
             self.assertEqual(h.calls, 0)
 
+    def test_clock_callback_cannot_refresh_a_stale_physical_observation(self) -> None:
+        h = Harness()
+        h.observed = replace(h.observed, observed_at=0.0)
+
+        def refresh_observed_time() -> float:
+            object.__setattr__(h.observed, "observed_at", 10.0)
+            return 10.0
+
+        h.peer = ControlPeer(h, h, h, clock=refresh_observed_time)
+        with self.assertRaises(Denied):
+            h.exchange()
+        self.assertEqual((h.calls, h.reads), (0, 0))
+
+    def test_clock_callback_cannot_retarget_a_checked_physical_observation(
+        self,
+    ) -> None:
+        for action in ("dispatch", "reconcile"):
+            with self.subTest(action=action):
+                h = Harness()
+                if action == "reconcile":
+                    h.grant = Recovery(h.transfer, 30.0)
+
+                def change_frame() -> float:
+                    if action == "dispatch" or h.reads:
+                        object.__setattr__(
+                            h.observed,
+                            "target",
+                            replace(h.transfer.target, frame="different-frame"),
+                        )
+                    return 10.0
+
+                h.peer = ControlPeer(h, h, h, clock=change_frame)
+                with self.assertRaises(Denied):
+                    h.exchange(action)
+                self.assertEqual(h.calls, 0)
+                self.assertEqual(h.reads, int(action == "reconcile"))
+
+    def test_removing_final_physical_comparison_reaches_the_fence(self) -> None:
+        source = textwrap.dedent(inspect.getsource(ControlPeer._check))
+        anchor = "or _physical_observation(observed) != physical"
+        self.assertEqual(source.count(anchor), 1)
+        scope = dict(vars(control_peer))
+        exec(source.replace(anchor, ""), scope)
+        with patch.object(ControlPeer, "_check", scope["_check"]):
+            result = unittest.TestResult()
+            ControlPeerTests(
+                "test_clock_callback_cannot_retarget_a_checked_physical_observation"
+            ).run(result)
+        self.assertEqual(len(result.failures), 2)
+        self.assertEqual(result.errors, [])
+        self.assertIn("1 != 0", result.failures[0][1])
+        self.assertIn("Denied not raised", result.failures[1][1])
+
     def test_suppressed_cancellation_and_exception_are_sanitized(self) -> None:
         for error in (KeyboardInterrupt("private"), RuntimeError("private")):
             for action in ("dispatch", "reconcile"):
