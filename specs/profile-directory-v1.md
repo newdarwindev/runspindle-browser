@@ -211,7 +211,11 @@ remains stopped: observation can discover lost authority or a resumed writer.
 Neither key acquisition, plaintext capture/consumption nor directory metadata
 publication may cross that known loss merely because a later check would deny.
 Time is sampled after the second callbacks, so their delay cannot preserve an
-expired admission or stale observation. This is not universal TOCTOU immunity;
+expired admission or stale observation. Both adapters use the same check. It
+captures the exact observed target and timestamp before the second callbacks,
+then verifies that the observation and grant still match their captured values.
+Later callbacks cannot refresh a stale timestamp or substitute a frame.
+This is not universal TOCTOU immunity;
 trusted bounded callbacks and an atomic, coherent guard are still required.
 
 `tests/test_profile_observation_fence.py` exercises invented guards and keys with
