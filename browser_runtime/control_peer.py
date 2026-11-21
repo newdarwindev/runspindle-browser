@@ -67,6 +67,12 @@ def _closure_snapshot(observed: object) -> tuple[dict[str, object], float] | Non
         return None
 
 
+def _physical_observation(observed: object) -> tuple[str, float]:
+    if type(observed) is not Observation or type(observed.target) is not Target:
+        raise ValueError
+    return _scope(observed.target), _time(observed.observed_at)
+
+
 def core_scope(target: Target) -> bytes:
     """Core serde_json canonical map bytes; leave legacy _scope unchanged."""
     target.validate()
@@ -164,14 +170,15 @@ class ControlPeer:
         if guard.current(grant) is not True:
             raise ValueError
         observed = guard.observe()
-        if type(observed) is not Observation or type(observed.target) is not Target:
+        physical = _physical_observation(observed)
+        scope, observed_at = physical
+        if scope != _scope(transfer.target):
             raise ValueError
-        observed.target.validate()
-        if _scope(observed.target) != _scope(transfer.target):
-            raise ValueError
-        now: float = _time(self._clock())
-        if not 0 <= now - _time(observed.observed_at) <= self._max_age or now >= _time(
-            grant.deadline
+        now = _time(self._clock())
+        if (
+            not 0 <= now - observed_at <= self._max_age
+            or now >= _time(grant.deadline)
+            or _physical_observation(observed) != physical
         ):
             raise ValueError
         grant.validate()
