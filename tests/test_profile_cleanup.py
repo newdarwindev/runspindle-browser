@@ -8,6 +8,7 @@ import tempfile
 import textwrap
 import traceback
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from pathlib import Path
 from typing import Callable, cast
@@ -119,6 +120,26 @@ class ProfileCleanupTests(unittest.TestCase):
     def rows(self, table: str) -> list[tuple[object, ...]]:
         with closing(sqlite3.connect(self.directory / FILENAME)) as db:
             return db.execute("SELECT * FROM " + table).fetchall()
+
+    def test_foreign_thread_run_denies_before_authority_and_database(self) -> None:
+        self.fake.grant = grant("save")
+        with patch.object(self.fake, "acquire", wraps=self.fake.acquire) as acquire:
+            with ThreadPoolExecutor(max_workers=1) as worker:
+                pending = worker.submit(self.store.run, "trusted-ticket")
+                self.safe_failure(pending.result, Denied)
+            acquire.assert_not_called()
+        self.assertEqual(self.db.state_reads, 0)
+        self.assertEqual(self.db.close_calls, 0)
+        self.assertEqual(self.run_action(), "stored")
+
+    def test_foreign_thread_close_cannot_poison_owner_connection(self) -> None:
+        with ThreadPoolExecutor(max_workers=1) as worker:
+            pending = worker.submit(self.store.close)
+            self.safe_failure(pending.result, Denied)
+        self.assertEqual(self.db.close_calls, 0)
+        self.assertEqual(self.run_action(), "stored")
+        self.store.close()
+        self.assertEqual(self.db.close_calls, 1)
 
     def test_operation_denial_then_rollback_cancellation_is_cancelled(self) -> None:
         self.fake.after_capture = lambda: fail(ValueError)
