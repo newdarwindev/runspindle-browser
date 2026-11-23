@@ -186,6 +186,20 @@ class FenceReceipt:
     previous_inputs_closed: bool
 
 
+def _matching_fence_receipt(receipt: object, encoded: str) -> bool:
+    if (
+        type(receipt) is not FenceReceipt
+        or type(receipt.transfer) is not Transfer
+        or receipt.previous_inputs_closed is not True
+    ):
+        return False
+    try:
+        receipt.transfer.validate()
+        return _encode(asdict(receipt.transfer)) == encoded
+    except (TypeError, ValueError):
+        return False
+
+
 class Guard(Protocol):
     def admit(
         self, ticket: object
@@ -505,8 +519,9 @@ class LeaseStore:
             grant = guard.admit(ticket)
             if type(grant) is not Transfer or self._backend is None:
                 raise ValueError
-            self._check(guard, grant)
+            grant.validate()
             encoded = _encode(asdict(grant))
+            self._check(guard, grant)
             if (
                 len(encoded.encode("utf-8")) > MAX_TRANSITION_BYTES
                 or len(_scope(grant.target).encode("utf-8")) > MAX_SCOPE_BYTES
@@ -514,6 +529,8 @@ class LeaseStore:
                 raise ValueError
             self._db.execute("BEGIN IMMEDIATE")
             self._check(guard, grant)
+            if _encode(asdict(grant)) != encoded:
+                raise ValueError
             row = self._row(grant.target)
             if row is not None and row[4] == encoded:
                 return "active" if row[3] == "active" else "unknown"
@@ -534,16 +551,17 @@ class LeaseStore:
                 if guard.released(grant) is not True:
                     raise ValueError
                 self._check(guard, grant)  # Release authentication can block.
+            if _encode(asdict(grant)) != encoded:
+                raise ValueError
+            binding = (
+                _scope(grant.target),
+                grant.target.binding.epoch,
+                _encode(asdict(grant.destination)),
+            )
+            pending = (*binding, "pending", encoded)
             self._db.execute(
                 "INSERT INTO leases VALUES (?,?,?,?,?,?) ON CONFLICT(browser) DO UPDATE SET scope=excluded.scope,epoch=excluded.epoch,holder=excluded.holder,phase=excluded.phase,transition=excluded.transition",
-                (
-                    grant.target.binding.browser,
-                    _scope(grant.target),
-                    grant.target.binding.epoch,
-                    _encode(asdict(grant.destination)),
-                    "pending",
-                    encoded,
-                ),
+                (grant.target.binding.browser, *pending),
             )
             self._db.execute("COMMIT")  # Burn transition before the external fence.
             self._db.execute("BEGIN IMMEDIATE")
@@ -552,14 +570,19 @@ class LeaseStore:
                 if guard.released(grant) is not True:
                     raise ValueError
                 self._check(guard, grant)  # Release authentication can block.
+            if _encode(asdict(grant)) != encoded:
+                raise ValueError
+            row = self._row(grant.target)
+            if row == (*binding, "active", encoded):
+                return "active"
+            if row != pending:
+                raise ValueError
             receipt = self._backend.fence(grant, guard)
+            closed = _matching_fence_receipt(receipt, encoded)
             self._check(guard, grant)
-            if (
-                type(receipt) is FenceReceipt
-                and type(receipt.transfer) is Transfer
-                and receipt.transfer == grant
-                and receipt.previous_inputs_closed is True
-            ):
+            if _encode(asdict(grant)) != encoded:
+                raise ValueError
+            if closed and _matching_fence_receipt(receipt, encoded):
                 self._db.execute(
                     "UPDATE leases SET phase='active' WHERE browser=?",
                     (grant.target.binding.browser,),

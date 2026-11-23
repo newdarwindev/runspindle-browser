@@ -239,6 +239,98 @@ finally: s.close()
         self.assertEqual(self.store.reconcile_transfer("admitted"), "active")
         self.assertEqual(self.f.inspections, 0)
 
+    def test_fresh_recovery_before_dispatch_prevents_a_second_fence(self) -> None:
+        self.f.transition("takeover", AGENT, HUMAN, 1)
+        self.assertEqual(self.store.transfer("admitted"), "active")
+        transfer = self.f.transition("handback", HUMAN, AGENT, 2)
+        child = """import sys
+from tests.test_control_reconciliation import RecoveryFixture,AGENT,HUMAN
+fixture=RecoveryFixture(sys.argv[1])
+fixture.recovery(fixture.transition('handback',HUMAN,AGENT,2))
+store=fixture.store()
+try: print(store.reconcile_transfer('admitted'))
+finally: store.close()
+"""
+        begins = 0
+        recovered: list[subprocess.CompletedProcess[str]] = []
+
+        def before_begin(statement: str) -> None:
+            nonlocal begins
+            if statement != "BEGIN IMMEDIATE":
+                return
+            begins += 1
+            if begins == 2:
+                # The independent inspector has proof of the exact closed handback.
+                (self.f.root / "closed-transfer.json").write_text(
+                    json.dumps(asdict(transfer), sort_keys=True)
+                )
+                recovered.append(
+                    subprocess.run(
+                        [sys.executable, "-c", child, self.tmp.name],
+                        timeout=10,
+                        capture_output=True,
+                        text=True,
+                    )
+                )
+
+        self.store._db.set_trace_callback(before_begin)
+        try:
+            outcome = self.store.transfer("admitted")
+        finally:
+            self.store._db.set_trace_callback(None)
+        self.assertEqual(len(recovered), 1)
+        self.assertEqual(recovered[0].returncode, 0, recovered[0].stderr)
+        self.assertEqual(recovered[0].stdout.strip(), "active")
+        self.assertEqual(self.f.fences(), 2, "a resolved transfer must not fence again")
+        self.assertEqual(outcome, "active")
+        self.f.recovery(transfer)
+        self.assertEqual(self.store.reconcile_transfer("admitted"), "active")
+        self.assertEqual(self.f.inspections, 0)
+
+    def test_changed_transfer_after_fence_does_not_activate_the_reservation(
+        self,
+    ) -> None:
+        transfer = self.f.transition("takeover", AGENT, HUMAN, 1)
+        self.f.current_calls = 0
+
+        def change_returned_transfer() -> None:
+            if self.f.current_calls == 4:
+                object.__setattr__(transfer, "destination", Holder("human", "other"))
+
+        self.f.at_current = change_returned_transfer
+        with self.assertRaises(Denied):
+            self.store.transfer("admitted")
+        self.f.at_current = lambda: None
+        self.assertEqual(self.f.fences(), 2)
+        self.blocked()
+
+    def test_changed_closure_receipt_cannot_activate_handback(self) -> None:
+        self.f.transition("takeover", AGENT, HUMAN, 1)
+        self.assertEqual(self.store.transfer("admitted"), "active")
+        self.f.transition("handback", HUMAN, AGENT, 2)
+        self.f.closed_inputs = False
+        original = self.f.fence
+        receipts: list[FenceReceipt] = []
+
+        def fence(transfer: Transfer, guard: Guard) -> FenceReceipt:
+            receipt = original(transfer, guard)
+            receipts.append(receipt)
+            return receipt
+
+        def change_closure() -> None:
+            if receipts:
+                object.__setattr__(receipts[0], "previous_inputs_closed", True)
+
+        self.f.at_current = change_closure
+        with patch.object(self.f, "fence", fence):
+            self.assertEqual(self.store.transfer("admitted"), "unknown")
+        self.f.at_current = lambda: None
+        self.assertEqual(len(receipts), 1)
+        self.assertTrue(receipts[0].previous_inputs_closed)
+        self.assertEqual(self.f.fences(), 3)
+        self.blocked(AGENT, 3)
+        self.blocked(HUMAN, 2)
+
     def test_absent_inspector_denies_without_backend_effect(self) -> None:
         transfer = self.pending()
         other = LeaseStore(
