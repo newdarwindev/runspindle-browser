@@ -19,7 +19,6 @@ import time
 from pathlib import Path
 from typing import Callable, TypeVar, cast
 
-from browser_runtime.credentials import Observation
 from browser_runtime.profile_schema import require, token
 from browser_runtime.profile_store import (
     MAX_BYTES,
@@ -30,6 +29,7 @@ from browser_runtime.profile_store import (
     Keys,
     Result,
     Store,
+    _check_observation,
     _fail,
     encoded,
 )
@@ -363,22 +363,7 @@ class DirectoryProfileIO:
     def _check(self, grant: Grant, guard: Guard) -> None:
         grant.validate()
         self._require_scope(grant)
-        require(guard.current(grant) is True and guard.quiescent(grant) is True)
-        observed = guard.observe()
-        # Observation may discover revocation or a resumed writer. Revalidate
-        # before effects, then sample time after every trusted callback.
-        require(guard.current(grant) is True and guard.quiescent(grant) is True)
-        now = self._clock()
-        require(type(now) in (int, float) and math.isfinite(now))
-        require(type(observed) is Observation and observed.target == grant.target)
-        observed = cast(Observation, observed)
-        require(
-            type(observed.observed_at) in (int, float)
-            and math.isfinite(observed.observed_at)
-        )
-        require(
-            0 <= now - observed.observed_at <= self._max_age and now < grant.deadline
-        )
+        _check_observation(grant, guard, self._clock, self._max_age)
         fd = root_fd(self._path)
         try:
             info = os.fstat(fd)
