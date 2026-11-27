@@ -17,9 +17,10 @@ was imported.
 |---|---|---|---|
 | `reference-mobile-320.png`, `reference-mobile-390.png` | #5 static-equivalent reflow and #11 mobile roles/status | Generated from synthetic reference | Not reviewed as baselines |
 | `reference-tablet-768.png`, `reference-desktop-1440.png` | Seven owner roles, visible capability labels | Generated from synthetic reference | Not reviewed as baselines |
-| `canonical-map-*.png` | #5 actual canonical map rendering | Chrome-rendered canonical source, map scrolled into view | Local candidate; comparison pending |
+| `canonical-map-*.png` | #5 actual canonical map rendering | Chrome-rendered canonical source, map scrolled into view | Original candidate with a separate mirror comparison below |
 | `contact-sheet.png` | Side-by-side human review of reference and actual map | Generated, with labels identifying source | Reviewer disposition pending |
 | DOM results in `generated/evidence.json` | Map labels, local anchors, skip focus, visible outline and horizontal layout | Passed at 320/390/768/1440 CSS px; missing-label mutant detected | Programmatic component check only |
+| `mirror-comparison-evidence.json` | #5 and #11 canonical-to-composition parity | Architecture pixels, DOM and keyboard matched at all four widths. A color-only mutation was detected. | Reference baseline approval remains pending |
 | 195 CSS-px layout probe | 200% zoom reflow pressure at 390 physical px | Passed after heading-wrap fix | Actual browser zoom not run |
 
 The reference and canonical map differ intentionally: the reference summarizes
@@ -47,11 +48,35 @@ viewport dimensions and DOM observations are in
 [evidence.json](generated/evidence.json). Two local runs produced byte-identical
 10-file output sets.
 
-The pages use the operating system's `system-ui` font stack; an exact installed
-font-file digest is not pinned. Reference review, manual keyboard and assistive
-technology checks, actual browser zoom, long translated labels, missing-asset
-fallback on another renderer, clean umbrella-copy comparison and runtime
-integration remain open. The canonical page is dependency-free, so it has no
-expected external image or script asset to fall back from. The source and visual
-checks do not prove authenticated control, browser ownership, vault use, website
-effects, profile recovery or deployment.
+## Canonical and composition comparison
+
+On macOS with Chrome `158.0.8127.36` and Python `3.14.10`, run from a Browser
+checkout with the canonical source commit in its Git history. Supply a
+composition checkout whose Git objects include the commit in the
+[comparison evidence](mirror-comparison-evidence.json).
+
+    /opt/homebrew/bin/python3.14 -m tools.browser_mirror_visual \
+        --composition /prepared/runspindle --output /tmp/browser-mirror-new
+
+The verifier reads the composition HTML and source receipt from the exact Git
+commit. It confirms the published hashes, checks canonical bytes at the cited
+Browser commit, and matches the existing reference evidence to the canonical
+and reference source hashes. It renders both dependency-free pages in disposable
+Chrome profiles and captures the complete architecture section at 320, 390,
+768 and 1440 CSS pixels. The recorded pairs match byte for byte. The clipping
+excludes footer and status copy that the composition source deliberately rewrites.
+
+The keyboard probe advances to the skip link, activates it and tabs through
+Architecture to System map. It checks each link's text, focus outline, viewport
+position and visibility, then activates System map and verifies the fragment.
+A disposable color-only change in the Browser map card keeps the DOM and
+keyboard observations identical and changes the screenshot. The command writes
+eight named PNGs and a JSON receipt. Compare two fresh output directories with
+`diff -rq` and remove them after review.
+
+The pages use the operating system's `system-ui` font stack. Reference baseline
+approval, independent manual keyboard and assistive technology review, exact
+font-file pinning, actual browser zoom, long translated labels, missing-asset
+fallback on another renderer and runtime integration remain open. The canonical
+page has no external rendering assets. This comparison covers static document
+behavior and records its results independently of product runtime acceptance.

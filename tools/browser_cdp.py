@@ -42,6 +42,26 @@ PROBE = """(() => {
   };
 })()"""
 OPERATION_TIMEOUT = 5.0
+ARCHITECTURE_CLIP = """(() => {
+  const box = document.querySelector('#architecture-island').getBoundingClientRect();
+  const x = Math.floor(box.left + scrollX), y = Math.floor(box.top + scrollY);
+  return {x, y, width: Math.ceil(box.right + scrollX) - x,
+          height: Math.ceil(box.bottom + scrollY) - y, scale: 1};
+})()"""
+FOCUSED_LINK = """(() => {
+  const link = document.activeElement, style = getComputedStyle(link);
+  const box = link.getBoundingClientRect();
+  return {
+    href: link.getAttribute('href'),
+    name: link.textContent.trim(),
+    focusVisible: link.matches(':focus-visible') && style.outlineStyle !== 'none'
+      && parseFloat(style.outlineWidth) >= 2,
+    fullyOnscreen: box.left >= 0 && box.top >= 0
+      && box.right <= innerWidth && box.bottom <= innerHeight,
+    unobscured: document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      === link
+  };
+})()"""
 
 
 class DevTools:
@@ -173,6 +193,45 @@ class DevTools:
             self._read(deadline)
 
 
+def evaluate(client: DevTools, expression: str) -> Any:
+    result = client.call(
+        "Runtime.evaluate", {"expression": expression, "returnByValue": True}
+    )
+    if "exceptionDetails" in result:
+        raise RuntimeError("Chrome DOM probe failed")
+    return result["result"]["value"]
+
+
+def keypress(client: DevTools, key: str, virtual_code: int) -> None:
+    for key_type in ("keyDown", "keyUp"):
+        client.call(
+            "Input.dispatchKeyEvent",
+            {
+                "type": key_type,
+                "key": key,
+                "code": key,
+                "windowsVirtualKeyCode": virtual_code,
+            },
+        )
+
+
+def keyboard_navigation(client: DevTools) -> dict[str, Any]:
+    skip = evaluate(client, FOCUSED_LINK)
+    keypress(client, "Enter", 13)
+    skip_target = evaluate(client, "document.activeElement.id")
+    links = []
+    for _ in range(2):
+        keypress(client, "Tab", 9)
+        links.append(evaluate(client, FOCUSED_LINK))
+    keypress(client, "Enter", 13)
+    return {
+        "skip": skip,
+        "skipTarget": skip_target,
+        "sectionLinks": links,
+        "selectedFragment": evaluate(client, "location.hash"),
+    }
+
+
 def render(
     chrome: Path,
     source: Path,
@@ -254,33 +313,17 @@ def render(
                     },
                 )
             result: dict[str, Any] = {}
-            if mode in ("probe", "missing-label"):
-                for key_type in ("keyDown", "keyUp"):
-                    client.call(
-                        "Input.dispatchKeyEvent",
-                        {
-                            "type": key_type,
-                            "key": "Tab",
-                            "code": "Tab",
-                            "windowsVirtualKeyCode": 9,
-                        },
-                    )
-                evaluation = client.call(
-                    "Runtime.evaluate",
-                    {
-                        "expression": PROBE,
-                        "returnByValue": True,
-                    },
-                )
-                if "exceptionDetails" in evaluation:
-                    raise RuntimeError("Chrome DOM probe failed")
-                result = cast(dict[str, Any], evaluation["result"]["value"])
+            if mode in ("probe", "missing-label", "architecture"):
+                keypress(client, "Tab", 9)
+                result = cast(dict[str, Any], evaluate(client, PROBE))
             if screenshot:
                 options: dict[str, Any] = {
                     "format": "png",
-                    "captureBeyondViewport": mode == "full",
+                    "captureBeyondViewport": mode in ("full", "architecture"),
                 }
-                if mode == "full":
+                if mode == "architecture":
+                    options["clip"] = evaluate(client, ARCHITECTURE_CLIP)
+                elif mode == "full":
                     dimensions = client.call(
                         "Runtime.evaluate",
                         {
@@ -297,6 +340,8 @@ def render(
                     }
                 image = client.call("Page.captureScreenshot", options)["data"]
                 screenshot.write_bytes(base64.b64decode(image))
+            if mode == "architecture":
+                result["keyboard"] = keyboard_navigation(client)
             return result
         finally:
             if client:
