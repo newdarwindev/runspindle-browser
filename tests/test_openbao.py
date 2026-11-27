@@ -92,6 +92,28 @@ class Fixture:
 
 
 class OpenBaoTests(unittest.TestCase):
+    def test_authorizer_cannot_change_native_session_before_token_read(self) -> None:
+        f = Fixture()
+
+        def authorize(value: Grant) -> bool:
+            object.__setattr__(value.target, "native_session", "different-session")
+            return True
+
+        f.v._authorize = authorize
+        with self.assertRaises(Denied):
+            f.v.read(f.g)
+        self.assertEqual((f.tokens, f.calls), (0, []))
+
+    def test_retained_handle_cannot_follow_mutated_grant(self) -> None:
+        f = Fixture()
+        handle = f.v.read(f.g)
+        object.__setattr__(f.g.target, "frame", "different-frame")
+        seen: list[str] = []
+        self.assertFalse(f.v.consume(handle, f.g, lambda value: record(seen, value)))
+        self.assertEqual(seen, [])
+        self.assertEqual((f.tokens, len(f.calls)), (1, 1))
+        self.assertEqual(f.v._entries, {})
+
     def test_protocol_and_one_shot_handle(self) -> None:
         f = Fixture()
         h = f.v.read(f.g)
@@ -367,7 +389,7 @@ class OpenBaoTests(unittest.TestCase):
             f.v.read(f.g)
         self.assertEqual(f.calls, [])
         # Mutation bypasses actual grant verification, independent call spy catches it.
-        setattr(f.v, "_scope", lambda _: f.m)
+        setattr(f.v, "_scope", lambda *_: f.m)
         f.v.read(f.g)
         with self.assertRaises(AssertionError):
             self.assertEqual(f.calls, [])
